@@ -2,11 +2,12 @@ import { createAuthClient } from 'better-auth/client'
 import { twoFactorClient } from 'better-auth/client/plugins'
 import { API_URL } from './client'
 
-// Better Auth browser client. The backend mounts auth at `${API_URL}/auth`;
-// the client infers relative URLs when API_URL has no origin (default `/api`).
+// Better Auth browser client. The backend mounts auth at `${API_URL}/auth`.
+// When baseURL carries a path, the client uses it as the full auth prefix.
+const authBaseURL = `${API_URL.startsWith('http') ? API_URL : `${window.location.origin}${API_URL}`}/auth`
+
 export const authClient = createAuthClient({
-  baseURL: API_URL.startsWith('http') ? API_URL : `${window.location.origin}${API_URL}`,
-  basePath: `${API_URL.startsWith('http') ? new URL(API_URL).pathname : API_URL}/auth`,
+  baseURL: authBaseURL,
   plugins: [
     twoFactorClient({
       // When sign-in answers "second factor required", the app routes to the
