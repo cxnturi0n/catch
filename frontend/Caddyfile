@@ -1,0 +1,12 @@
+# Static SPA server used inside the frontend container. TLS and the /api
+# reverse proxy live in the edge Caddy (deploy/Caddyfile), so this one only
+# serves files with SPA fallback.
+:80 {
+	root * /srv/web
+	encode zstd gzip
+	try_files {path} /index.html
+	file_server
+	header Cache-Control "public, max-age=0, must-revalidate"
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+}

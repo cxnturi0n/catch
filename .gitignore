@@ -34,7 +34,7 @@ docs/*.pdf
 docs/*.docx
 
 # Supabase CLI local state (project ref, pooler url)
-supabase/.temp
+**/supabase/.temp
 
 # Local tooling
 .claude/
@@ -44,3 +44,4 @@ Catch-Business-Plan.pdf
 *.pdf
 HANDOVER.md
 docs/*.html
+deploy/.env

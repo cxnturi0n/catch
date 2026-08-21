@@ -1,0 +1,22 @@
+# Edge reverse proxy. SITE_ADDRESS=localhost gives a self-signed local cert;
+# a real hostname gets an automatic Let's Encrypt certificate.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
