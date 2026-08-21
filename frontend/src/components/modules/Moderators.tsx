@@ -182,7 +182,7 @@ export function Moderators() {
     }
 
     try {
-      await addModeratorWarning(target.id, newWarnings)
+      await addModeratorWarning(activeWorkspaceId, target.id, newWarnings)
       setModerators((prev) =>
         prev.map((m) => (m.id === target.id ? { ...m, warnings: newWarnings, rating: applyWarningPenalty(m.rating, warning.severity) } : m)),
       )
@@ -206,7 +206,7 @@ export function Moderators() {
     }
 
     try {
-      await removeModerator(targetId)
+      await removeModerator(activeWorkspaceId, targetId)
       setModerators((prev) => prev.filter((m) => m.id !== targetId))
       setRemoveTarget(null)
       showToast('Moderator removed')

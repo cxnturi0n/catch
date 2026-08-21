@@ -260,7 +260,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
       return
     }
     try {
-      await deletePointsMetric(target.id)
+      await deletePointsMetric(activeWorkspaceId, target.id)
       showToast('Metric removed')
     } catch {
       showToast('Failed to remove metric', 'error')

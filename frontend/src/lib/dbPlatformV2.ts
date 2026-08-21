@@ -7,17 +7,11 @@
 
 import { supabase } from './supabase'
 import type {
-  CompCurrency,
-  CompensationConfig,
-  CompensationKind,
   ContentPlatform,
   ContentScheduleItem,
   ContentStatus,
-  FixedPeriod,
   Meeting,
   MeetingProvider,
-  ModeratorResponseMetric,
-  ModeratorShiftEvent,
   Resource,
   ResourceKind,
   ResourceVisibility,
@@ -29,223 +23,27 @@ import type {
   WorkspaceId,
 } from '../types'
 
+// Moderator profile, CV, performance data and compensation configs now live
+// behind the Catch API.
+export {
+  updateModeratorProfile,
+  uploadModeratorCv,
+  getCvSignedUrl,
+  deleteModeratorCv,
+  fetchResponseMetrics,
+  fetchShiftEvents,
+  fetchCompensationConfigs,
+  upsertCompensationConfig,
+  applyCompensationConfigToAll,
+  type ModeratorProfileUpdate,
+  type CompConfigUpsert,
+} from './api/moderators'
+
+
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
   if (result.error) throw new Error(result.error.message)
   if (result.data === null) throw new Error('No data returned from Supabase.')
   return result.data
-}
-
-// ── Moderator profile updates (partial, safe against pre-016 schemas) ──
-
-export interface ModeratorProfileUpdate {
-  bio?: string | null
-  skills?: string[]
-  languages?: string[]
-  platformsKnown?: string[]
-  externalSource?: string | null
-  profilePhotoUrl?: string | null
-  cvStoragePath?: string | null
-  cvFilename?: string | null
-  cvExtractedText?: string | null
-  shiftStartUtc?: number | null
-  shiftEndUtc?: number | null
-  shiftDays?: number[]
-}
-
-export async function updateModeratorProfile(id: string, update: ModeratorProfileUpdate): Promise<void> {
-  const row: Record<string, unknown> = {}
-  if (update.bio !== undefined) row.bio = update.bio
-  if (update.skills !== undefined) row.skills = update.skills
-  if (update.languages !== undefined) row.languages = update.languages
-  if (update.platformsKnown !== undefined) row.platforms_known = update.platformsKnown
-  if (update.externalSource !== undefined) row.external_source = update.externalSource
-  if (update.profilePhotoUrl !== undefined) row.profile_photo_url = update.profilePhotoUrl
-  if (update.cvStoragePath !== undefined) row.cv_storage_path = update.cvStoragePath
-  if (update.cvFilename !== undefined) row.cv_filename = update.cvFilename
-  if (update.cvExtractedText !== undefined) row.cv_extracted_text = update.cvExtractedText
-  if (update.shiftStartUtc !== undefined) row.shift_start_utc = update.shiftStartUtc
-  if (update.shiftEndUtc !== undefined) row.shift_end_utc = update.shiftEndUtc
-  if (update.shiftDays !== undefined) row.shift_days = update.shiftDays
-  if (Object.keys(row).length === 0) return
-  const { error } = await supabase.from('moderators').update(row).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-// ── CV upload to Storage bucket "cvs" ──
-// Path convention: <workspaceId>/<moderatorId>/<timestamp>_<filename>
-
-export async function uploadModeratorCv(
-  workspaceId: WorkspaceId,
-  moderatorId: string,
-  file: File,
-): Promise<{ path: string; filename: string }> {
-  const safeName = file.name.replace(/[^\w.\-]+/g, '_')
-  const path = `${workspaceId}/${moderatorId}/${Date.now()}_${safeName}`
-  const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true, contentType: file.type })
-  if (error) throw new Error(error.message)
-  return { path, filename: file.name }
-}
-
-export async function getCvSignedUrl(storagePath: string, expiresIn = 300): Promise<string> {
-  const { data, error } = await supabase.storage.from('cvs').createSignedUrl(storagePath, expiresIn)
-  if (error || !data) throw new Error(error?.message ?? 'Failed to sign CV URL.')
-  return data.signedUrl
-}
-
-export async function deleteModeratorCv(storagePath: string): Promise<void> {
-  const { error } = await supabase.storage.from('cvs').remove([storagePath])
-  if (error) throw new Error(error.message)
-}
-
-// ── Response metrics + shift events ──
-
-interface ResponseMetricRow {
-  moderator_id: string
-  platform: string
-  day: string
-  responses_count: number
-  avg_response_seconds: number | null
-}
-
-export async function fetchResponseMetrics(
-  workspaceId: WorkspaceId,
-  sinceDays = 30,
-  moderatorId?: string,
-): Promise<ModeratorResponseMetric[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
-  let q = supabase
-    .from('moderator_response_metrics')
-    .select('moderator_id, platform, day, responses_count, avg_response_seconds')
-    .eq('workspace_id', workspaceId)
-    .gte('day', since)
-    .order('day', { ascending: false })
-  if (moderatorId) q = q.eq('moderator_id', moderatorId)
-  const result = await q
-  return unwrap<ResponseMetricRow[]>(result).map((r) => ({
-    moderatorId: r.moderator_id,
-    platform: r.platform as ModeratorResponseMetric['platform'],
-    day: r.day,
-    responsesCount: r.responses_count,
-    avgResponseSeconds: r.avg_response_seconds,
-  }))
-}
-
-interface ShiftEventRow {
-  moderator_id: string
-  day: string
-  expected_start_utc: string
-  expected_end_utc: string
-  first_activity_utc: string | null
-  was_on_time: boolean | null
-}
-
-export async function fetchShiftEvents(
-  workspaceId: WorkspaceId,
-  sinceDays = 30,
-  moderatorId?: string,
-): Promise<ModeratorShiftEvent[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
-  let q = supabase
-    .from('moderator_shift_events')
-    .select('moderator_id, day, expected_start_utc, expected_end_utc, first_activity_utc, was_on_time')
-    .eq('workspace_id', workspaceId)
-    .gte('day', since)
-    .order('day', { ascending: false })
-  if (moderatorId) q = q.eq('moderator_id', moderatorId)
-  const result = await q
-  return unwrap<ShiftEventRow[]>(result).map((r) => ({
-    moderatorId: r.moderator_id,
-    day: r.day,
-    expectedStartUtc: r.expected_start_utc,
-    expectedEndUtc: r.expected_end_utc,
-    firstActivityUtc: r.first_activity_utc,
-    wasOnTime: r.was_on_time,
-  }))
-}
-
-// ── Compensation configs (fixed / variable / both, apply-to-all) ──
-
-interface CompConfigRow {
-  moderator_id: string
-  workspace_id: string
-  kind: CompensationKind
-  fixed_amount: number | null
-  fixed_currency: string | null
-  fixed_period: string | null
-  variable_notes: string | null
-  updated_at: string
-}
-
-function mapCompConfig(r: CompConfigRow): CompensationConfig {
-  return {
-    moderatorId: r.moderator_id,
-    workspaceId: r.workspace_id,
-    kind: r.kind,
-    fixedAmount: r.fixed_amount,
-    fixedCurrency: (r.fixed_currency ?? null) as CompCurrency | null,
-    fixedPeriod: (r.fixed_period ?? null) as FixedPeriod | null,
-    variableNotes: r.variable_notes,
-    updatedAt: r.updated_at,
-  }
-}
-
-export async function fetchCompensationConfigs(workspaceId: WorkspaceId): Promise<CompensationConfig[]> {
-  const result = await supabase
-    .from('compensation_configs')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-  return unwrap<CompConfigRow[]>(result).map(mapCompConfig)
-}
-
-export interface CompConfigUpsert {
-  moderatorId: string
-  workspaceId: WorkspaceId
-  kind: CompensationKind
-  fixedAmount?: number | null
-  fixedCurrency?: CompCurrency | null
-  fixedPeriod?: FixedPeriod | null
-  variableNotes?: string | null
-}
-
-export async function upsertCompensationConfig(input: CompConfigUpsert): Promise<CompensationConfig> {
-  const row = {
-    moderator_id: input.moderatorId,
-    workspace_id: input.workspaceId,
-    kind: input.kind,
-    fixed_amount: input.fixedAmount ?? null,
-    fixed_currency: input.fixedCurrency ?? null,
-    fixed_period: input.fixedPeriod ?? null,
-    variable_notes: input.variableNotes ?? null,
-    updated_at: new Date().toISOString(),
-  }
-  const result = await supabase
-    .from('compensation_configs')
-    .upsert(row, { onConflict: 'moderator_id' })
-    .select('*')
-    .single()
-  return mapCompConfig(unwrap<CompConfigRow>(result))
-}
-
-/** Bulk apply the same config shape to every moderator id passed in. */
-export async function applyCompensationConfigToAll(
-  workspaceId: WorkspaceId,
-  moderatorIds: string[],
-  base: Omit<CompConfigUpsert, 'moderatorId' | 'workspaceId'>,
-): Promise<void> {
-  if (moderatorIds.length === 0) return
-  const now = new Date().toISOString()
-  const rows = moderatorIds.map((mid) => ({
-    moderator_id: mid,
-    workspace_id: workspaceId,
-    kind: base.kind,
-    fixed_amount: base.fixedAmount ?? null,
-    fixed_currency: base.fixedCurrency ?? null,
-    fixed_period: base.fixedPeriod ?? null,
-    variable_notes: base.variableNotes ?? null,
-    updated_at: now,
-  }))
-  const { error } = await supabase.from('compensation_configs').upsert(rows, { onConflict: 'moderator_id' })
-  if (error) throw new Error(error.message)
 }
 
 // ── Resources drive (internal storage + external links + view log) ──

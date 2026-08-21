@@ -172,14 +172,13 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
     if (file.type && file.type !== 'application/pdf') { showToast('Only PDF files are supported.', 'error'); return }
     setUploading(true)
     try {
-      const [uploaded, extracted] = await Promise.all([
-        uploadModeratorCv(activeWorkspaceId, moderator.id, file),
-        extractPdfText(file),
-      ])
-      setCvFilename(uploaded.filename)
-      setCvStoragePath(uploaded.path)
-      await updateModeratorProfile(moderator.id, { cvStoragePath: uploaded.path, cvFilename: uploaded.filename, cvExtractedText: extracted })
-      onUpdated?.({ cvStoragePath: uploaded.path, cvFilename: uploaded.filename, cvExtractedText: extracted })
+      // Text extraction happens in the browser; the server stores the PDF and
+      // the extracted text together in one request.
+      const extracted = await extractPdfText(file)
+      const uploaded = await uploadModeratorCv(activeWorkspaceId, moderator.id, file, extracted)
+      setCvFilename(uploaded.cvFilename ?? file.name)
+      setCvStoragePath(uploaded.cvStoragePath ?? moderator.id)
+      onUpdated?.({ cvStoragePath: uploaded.cvStoragePath, cvFilename: uploaded.cvFilename, cvExtractedText: extracted })
       showToast('CV uploaded.')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'CV upload failed.', 'error')
@@ -191,8 +190,7 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
   async function handleRemoveCv() {
     if (!moderator || !cvStoragePath) return
     try {
-      await deleteModeratorCv(cvStoragePath)
-      await updateModeratorProfile(moderator.id, { cvStoragePath: null, cvFilename: null, cvExtractedText: null })
+      await deleteModeratorCv(activeWorkspaceId, moderator.id)
       setCvStoragePath(null); setCvFilename(null)
       onUpdated?.({ cvStoragePath: undefined, cvFilename: undefined, cvExtractedText: undefined })
       showToast('CV removed.')
@@ -202,9 +200,9 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
   }
 
   async function handleOpenCv() {
-    if (!cvStoragePath) return
+    if (!cvStoragePath || !moderator) return
     try {
-      const url = await getCvSignedUrl(cvStoragePath)
+      const url = await getCvSignedUrl(activeWorkspaceId, moderator.id)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not open CV.', 'error')
@@ -225,7 +223,7 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
         shiftDays: days,
         ...preserved.current,
       }
-      await updateModeratorProfile(moderator.id, patch)
+      await updateModeratorProfile(activeWorkspaceId, moderator.id, patch)
       onUpdated?.({ ...patch, timezone })
       showToast('Profile saved.')
     } catch (err) {

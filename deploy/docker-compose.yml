@@ -51,6 +51,12 @@ services:
   api:
     <<: *backend
     command: ["node", "dist/api.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      STORAGE_LOCAL_ROOT: /data/storage
+    volumes:
+      - storage:/data/storage
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
       interval: 15s
@@ -96,5 +102,6 @@ services:
 
 volumes:
   pgdata:
+  storage:
   caddy_data:
   caddy_config:

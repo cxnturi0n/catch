@@ -36,6 +36,10 @@ const schema = z.object({
   TWITTER_CLIENT_ID: optionalSecret,
   TWITTER_CLIENT_SECRET: optionalSecret,
 
+  // File storage (local driver). Mount a volume here in containers.
+  STORAGE_LOCAL_ROOT: z.string().default('./storage'),
+  MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+
   // Secrets at rest: "<id>:<base64 32 bytes>[,...]", first = active key.
   // Generate one with: echo "k1:$(openssl rand -base64 32)"
   CREDENTIALS_ENCRYPTION_KEYS: z.string().min(1),

@@ -1,30 +1,43 @@
 import { supabase } from './supabase'
-import { initials as initialsOf } from '../data/moderatorsData'
 import type {
   CatchTask,
-  CompCurrency,
-  ConversionConfig,
   FeedbackCategory,
   FeedbackEntry,
   FeedbackRole,
   IntegrationConnection,
   IntegrationKey,
   KOL,
-  Moderator,
-  ModeratorMetricValue,
   ModerationIncident,
   NewFeedbackInput,
-  NewPaymentInput,
-  Payment,
-  PointsMetric,
   TaskPriority,
   TaskStatus,
   TrendPoint,
-  Warning,
   Workspace,
   WorkspaceId,
   WorkspaceIntegrations,
 } from '../types'
+
+// Moderators, compensation and payments now live behind the Catch API.
+export {
+  fetchModerators,
+  addModerator,
+  updateModerator,
+  addModeratorWarning,
+  removeModerator,
+  seedModerators,
+  fetchPointsConfig,
+  seedPointsConfig,
+  upsertPointsMetric,
+  deletePointsMetric,
+  fetchConversionConfig,
+  upsertConversionConfig,
+  fetchModeratorMetrics,
+  upsertModeratorMetric,
+  fetchPayments,
+  addPayment,
+  type PointsMetricInput,
+} from './api/moderators'
+
 
 // ── Shared helpers ──
 
@@ -583,148 +596,6 @@ export async function seedTasks(workspaceId: WorkspaceId, tasks: CatchTask[]): P
 
 // ── Moderators ──
 
-interface ModeratorRow {
-  id: string
-  workspace_id: string
-  full_name: string
-  discord_handle: string | null
-  telegram_handle: string | null
-  platforms: string[] | null
-  start_date: string | null
-  contract_type: string | null
-  monthly_rate: number | null
-  currency: string | null
-  timezone: string | null
-  country?: string | null
-  shift: string | null
-  status: string | null
-  notes: string | null
-  warnings: Warning[] | null
-  created_at: string
-  updated_at: string
-  // Profile v2 (migration 016) — nullable to survive pre-migration reads
-  bio?: string | null
-  skills?: string[] | null
-  languages?: string[] | null
-  platforms_known?: string[] | null
-  external_source?: string | null
-  profile_photo_url?: string | null
-  cv_storage_path?: string | null
-  cv_filename?: string | null
-  cv_extracted_text?: string | null
-  shift_start_utc?: number | null
-  shift_end_utc?: number | null
-  shift_days?: number[] | null
-}
-
-// The moderators table tracks roster/contract fields only — performance
-// stats (messages, bans, ratings, shift attendance) have no backing table in
-// this schema, so they default to a fresh-moderator baseline on read.
-function mapModerator(row: ModeratorRow): Moderator {
-  return {
-    id: row.id,
-    fullName: row.full_name,
-    discordHandle: row.discord_handle ?? '',
-    telegramHandle: row.telegram_handle ?? '',
-    avatarInitials: initialsOf(row.full_name),
-    startDate: row.start_date ?? row.created_at.slice(0, 10),
-    contractType: (row.contract_type ?? 'Volunteer') as Moderator['contractType'],
-    monthlyRate: row.monthly_rate ?? undefined,
-    currency: (row.currency ?? undefined) as Moderator['currency'],
-    timezone: row.timezone ?? '',
-    country: row.country ?? undefined,
-    shift: (row.shift ?? 'Morning (06-14)') as Moderator['shift'],
-    platforms: (row.platforms ?? []) as Moderator['platforms'],
-    status: (row.status ?? 'Off Duty') as Moderator['status'],
-    messagesThisMonth: 0,
-    bansExecuted: 0,
-    timeoutsGiven: 0,
-    avgResponseTime: '—',
-    lastActiveDate: row.updated_at.slice(0, 10),
-    shiftsCompleted: 0,
-    shiftsAssigned: 0,
-    warnings: row.warnings ?? [],
-    notes: row.notes ?? '',
-    rating: 5,
-    bio: row.bio ?? undefined,
-    skills: row.skills ?? undefined,
-    languages: row.languages ?? undefined,
-    platformsKnown: row.platforms_known ?? undefined,
-    externalSource: row.external_source ?? undefined,
-    profilePhotoUrl: row.profile_photo_url ?? undefined,
-    cvStoragePath: row.cv_storage_path ?? undefined,
-    cvFilename: row.cv_filename ?? undefined,
-    cvExtractedText: row.cv_extracted_text ?? undefined,
-    shiftStartUtc: row.shift_start_utc ?? undefined,
-    shiftEndUtc: row.shift_end_utc ?? undefined,
-    shiftDays: row.shift_days ?? undefined,
-  }
-}
-
-function moderatorToRow(workspaceId: WorkspaceId, m: Omit<Moderator, 'id' | 'avatarInitials'>) {
-  return {
-    workspace_id: workspaceId,
-    full_name: m.fullName,
-    discord_handle: m.discordHandle || null,
-    telegram_handle: m.telegramHandle || null,
-    platforms: m.platforms,
-    start_date: m.startDate || null,
-    contract_type: m.contractType,
-    monthly_rate: m.monthlyRate ?? null,
-    currency: m.currency ?? null,
-    timezone: m.timezone || null,
-    shift: m.shift,
-    status: m.status,
-    notes: m.notes || null,
-    warnings: m.warnings,
-    // Only sent when provided, so pre-022 callers don't hit a missing column.
-    ...(m.country !== undefined && { country: m.country }),
-    // Profile v2 fields — only sent if the caller provided them, so pre-016
-    // callers don't overwrite existing profile data with null.
-    ...(m.bio !== undefined && { bio: m.bio }),
-    ...(m.skills !== undefined && { skills: m.skills }),
-    ...(m.languages !== undefined && { languages: m.languages }),
-    ...(m.platformsKnown !== undefined && { platforms_known: m.platformsKnown }),
-    ...(m.externalSource !== undefined && { external_source: m.externalSource }),
-    ...(m.profilePhotoUrl !== undefined && { profile_photo_url: m.profilePhotoUrl }),
-    ...(m.cvStoragePath !== undefined && { cv_storage_path: m.cvStoragePath }),
-    ...(m.cvFilename !== undefined && { cv_filename: m.cvFilename }),
-    ...(m.cvExtractedText !== undefined && { cv_extracted_text: m.cvExtractedText }),
-    ...(m.shiftStartUtc !== undefined && { shift_start_utc: m.shiftStartUtc }),
-    ...(m.shiftEndUtc !== undefined && { shift_end_utc: m.shiftEndUtc }),
-    ...(m.shiftDays !== undefined && { shift_days: m.shiftDays }),
-  }
-}
-
-export async function fetchModerators(workspaceId: WorkspaceId): Promise<Moderator[]> {
-  const result = await supabase.from('moderators').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: true })
-  return unwrap<ModeratorRow[]>(result).map(mapModerator)
-}
-
-export async function addModerator(workspaceId: WorkspaceId, data: Omit<Moderator, 'id' | 'avatarInitials'>): Promise<Moderator> {
-  const result = await supabase.from('moderators').insert(moderatorToRow(workspaceId, data)).select('*').single()
-  return mapModerator(unwrap<ModeratorRow>(result))
-}
-
-export async function updateModerator(
-  id: string,
-  workspaceId: WorkspaceId,
-  data: Omit<Moderator, 'id' | 'avatarInitials'>,
-): Promise<Moderator> {
-  const result = await supabase.from('moderators').update(moderatorToRow(workspaceId, data)).eq('id', id).select('*').single()
-  return mapModerator(unwrap<ModeratorRow>(result))
-}
-
-export async function addModeratorWarning(id: string, warnings: Warning[]): Promise<void> {
-  const { error } = await supabase.from('moderators').update({ warnings }).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-export async function removeModerator(id: string): Promise<void> {
-  const { error } = await supabase.from('moderators').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
 // ── Metric snapshots — 1h / 5h / 24h windows (#4 granularity) ──
 
 export interface MetricSnapshot {
@@ -821,201 +692,6 @@ export async function fetchTelegramMembershipCounts(workspaceId: WorkspaceId, ho
     leaves: rows.filter((r) => r.event_type === 'leave').length,
     since,
   }
-}
-
-export async function seedModerators(workspaceId: WorkspaceId, moderators: Moderator[]): Promise<Moderator[]> {
-  if (moderators.length === 0) return []
-  const result = await supabase
-    .from('moderators')
-    .insert(moderators.map((m) => moderatorToRow(workspaceId, m)))
-    .select('*')
-  return unwrap<ModeratorRow[]>(result).map(mapModerator)
-}
-
-// ── Compensation: points catalog ──
-
-interface PointsConfigRow {
-  id: string
-  workspace_id: string
-  metric_key: string
-  label: string
-  points: number
-  created_at: string
-}
-
-function mapPointsMetric(row: PointsConfigRow): PointsMetric {
-  return { id: row.id, metricKey: row.metric_key, label: row.label, points: Number(row.points) }
-}
-
-export interface PointsMetricInput {
-  metricKey: string
-  label: string
-  points: number
-}
-
-export async function fetchPointsConfig(workspaceId: WorkspaceId): Promise<PointsMetric[]> {
-  const result = await supabase
-    .from('points_config')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: true })
-  return unwrap<PointsConfigRow[]>(result).map(mapPointsMetric)
-}
-
-export async function seedPointsConfig(workspaceId: WorkspaceId, metrics: PointsMetricInput[]): Promise<PointsMetric[]> {
-  if (metrics.length === 0) return []
-  const result = await supabase
-    .from('points_config')
-    .insert(metrics.map((m) => ({ workspace_id: workspaceId, metric_key: m.metricKey, label: m.label, points: m.points })))
-    .select('*')
-  return unwrap<PointsConfigRow[]>(result).map(mapPointsMetric)
-}
-
-export async function upsertPointsMetric(workspaceId: WorkspaceId, metric: PointsMetricInput): Promise<PointsMetric> {
-  const result = await supabase
-    .from('points_config')
-    .upsert(
-      { workspace_id: workspaceId, metric_key: metric.metricKey, label: metric.label, points: metric.points },
-      { onConflict: 'workspace_id,metric_key' },
-    )
-    .select('*')
-    .single()
-  return mapPointsMetric(unwrap<PointsConfigRow>(result))
-}
-
-export async function deletePointsMetric(id: string): Promise<void> {
-  const { error } = await supabase.from('points_config').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-// ── Compensation: conversion rate ──
-
-interface ConversionConfigRow {
-  id: string
-  workspace_id: string
-  rate: number
-  currency: string
-  updated_at: string
-}
-
-export async function fetchConversionConfig(workspaceId: WorkspaceId): Promise<ConversionConfig | null> {
-  const { data, error } = await supabase.from('conversion_config').select('*').eq('workspace_id', workspaceId).maybeSingle()
-  if (error) throw new Error(error.message)
-  if (!data) return null
-  const row = data as ConversionConfigRow
-  return { rate: Number(row.rate), currency: row.currency as CompCurrency }
-}
-
-export async function upsertConversionConfig(workspaceId: WorkspaceId, config: ConversionConfig): Promise<ConversionConfig> {
-  const result = await supabase
-    .from('conversion_config')
-    .upsert(
-      { workspace_id: workspaceId, rate: config.rate, currency: config.currency, updated_at: new Date().toISOString() },
-      { onConflict: 'workspace_id' },
-    )
-    .select('*')
-    .single()
-  const row = unwrap<ConversionConfigRow>(result)
-  return { rate: Number(row.rate), currency: row.currency as CompCurrency }
-}
-
-// ── Compensation: per-moderator metric counts ──
-
-interface ModeratorMetricRow {
-  id: string
-  workspace_id: string
-  moderator_id: string
-  metric_key: string
-  value: number
-  period: string
-  updated_at: string
-}
-
-export async function fetchModeratorMetrics(workspaceId: WorkspaceId, period = 'current'): Promise<ModeratorMetricValue[]> {
-  const result = await supabase
-    .from('moderator_metrics')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('period', period)
-  return unwrap<ModeratorMetricRow[]>(result).map((r) => ({
-    moderatorId: r.moderator_id,
-    metricKey: r.metric_key,
-    value: Number(r.value),
-    period: r.period,
-  }))
-}
-
-export async function upsertModeratorMetric(
-  workspaceId: WorkspaceId,
-  moderatorId: string,
-  metricKey: string,
-  value: number,
-  period = 'current',
-): Promise<void> {
-  const { error } = await supabase.from('moderator_metrics').upsert(
-    {
-      workspace_id: workspaceId,
-      moderator_id: moderatorId,
-      metric_key: metricKey,
-      value,
-      period,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'workspace_id,moderator_id,metric_key,period' },
-  )
-  if (error) throw new Error(error.message)
-}
-
-// ── Payments ──
-
-interface PaymentRow {
-  id: string
-  workspace_id: string
-  moderator_id: string
-  amount: number
-  currency: string
-  period: string | null
-  note: string | null
-  paid_at: string
-  created_at: string
-}
-
-function mapPayment(row: PaymentRow): Payment {
-  return {
-    id: row.id,
-    moderatorId: row.moderator_id,
-    amount: Number(row.amount),
-    currency: row.currency,
-    period: row.period ?? '',
-    note: row.note ?? '',
-    paidAt: row.paid_at,
-  }
-}
-
-export async function fetchPayments(workspaceId: WorkspaceId): Promise<Payment[]> {
-  const result = await supabase
-    .from('payments')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('paid_at', { ascending: false })
-  return unwrap<PaymentRow[]>(result).map(mapPayment)
-}
-
-export async function addPayment(workspaceId: WorkspaceId, input: NewPaymentInput): Promise<Payment> {
-  const result = await supabase
-    .from('payments')
-    .insert({
-      workspace_id: workspaceId,
-      moderator_id: input.moderatorId,
-      amount: input.amount,
-      currency: input.currency,
-      period: input.period || null,
-      note: input.note || null,
-      paid_at: input.paidAt,
-    })
-    .select('*')
-    .single()
-  return mapPayment(unwrap<PaymentRow>(result))
 }
 
 // ── Feedback (CatchLab) ──

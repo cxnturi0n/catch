@@ -14,6 +14,10 @@ import { adminPlugin } from './plugins/admin.js'
 import { workspaceRoutes } from './modules/workspaces/routes.js'
 import { integrationRoutes } from './modules/integrations/routes.js'
 import { adminRoutes } from './modules/admin/routes.js'
+import { moderatorRoutes } from './modules/moderators/routes.js'
+import { compensationRoutes } from './modules/compensation/routes.js'
+import { fileRoutes } from './routes/files.js'
+import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 
 // Builds the Fastify instance without listening — reused by api.ts and by tests.
@@ -21,6 +25,7 @@ export async function buildApp() {
   const app = Fastify({
     loggerInstance: logger,
     trustProxy: true, // behind Caddy
+    maxParamLength: 512, // signed download tokens are long
   })
 
   app.setValidatorCompiler(validatorCompiler)
@@ -36,6 +41,7 @@ export async function buildApp() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
+  await app.register(multipart, { limits: { fileSize: config.MAX_UPLOAD_BYTES, files: 1 } })
   await app.register(rateLimit, {
     global: true,
     max: 300,
@@ -80,6 +86,9 @@ export async function buildApp() {
   await app.register(workspaceRoutes)
   await app.register(integrationRoutes)
   await app.register(adminRoutes)
+  await app.register(moderatorRoutes)
+  await app.register(compensationRoutes)
+  await app.register(fileRoutes)
 
   return app
 }
