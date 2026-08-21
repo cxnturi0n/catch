@@ -3,10 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 // Boot the app without a database: readiness must report 503, liveness 200,
 // unknown routes the uniform error envelope.
 vi.mock('../src/db/client.js', () => ({
+  db: {},
   pingDatabase: async () => false,
   closeDatabase: async () => {},
 }))
 process.env.APP_URL ??= 'http://localhost:5173'
+process.env.API_URL ??= 'http://localhost:3000'
+process.env.AUTH_SECRET ??= 'test-secret-test-secret-test-secret-1234'
 process.env.DATABASE_URL ??= 'postgres://x:x@localhost:5432/x'
 
 const { buildApp } = await import('../src/app.js')

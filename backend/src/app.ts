@@ -6,6 +6,9 @@ import sensible from '@fastify/sensible'
 import { config } from './config.js'
 import { logger } from './logger.js'
 import { healthRoutes } from './routes/health.js'
+import { authRoutes } from './routes/auth.js'
+import { meRoutes } from './routes/me.js'
+import { sessionPlugin } from './plugins/session.js'
 
 // Builds the Fastify instance without listening — reused by api.ts and by tests.
 export async function buildApp() {
@@ -30,7 +33,10 @@ export async function buildApp() {
     timeWindow: '1 minute',
   })
 
+  await app.register(sessionPlugin)
   await app.register(healthRoutes)
+  await app.register(authRoutes)
+  await app.register(meRoutes)
 
   // Uniform error envelope: { error: { code, message } }. Validation and
   // sensible's http errors already carry a statusCode; everything else is 500
