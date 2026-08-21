@@ -1,5 +1,5 @@
 import { db } from '../db/client.js'
-import { securityEvents } from '../db/schema.js'
+import { securityEvents } from '../db/schema/index.js'
 import { logger } from '../logger.js'
 
 export type SecurityEventType =

@@ -9,6 +9,12 @@ import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
 import { meRoutes } from './routes/me.js'
 import { sessionPlugin } from './plugins/session.js'
+import { workspacePlugin } from './plugins/workspace.js'
+import { adminPlugin } from './plugins/admin.js'
+import { workspaceRoutes } from './modules/workspaces/routes.js'
+import { integrationRoutes } from './modules/integrations/routes.js'
+import { adminRoutes } from './modules/admin/routes.js'
+import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 
 // Builds the Fastify instance without listening — reused by api.ts and by tests.
 export async function buildApp() {
@@ -16,6 +22,9 @@ export async function buildApp() {
     loggerInstance: logger,
     trustProxy: true, // behind Caddy
   })
+
+  app.setValidatorCompiler(validatorCompiler)
+  app.setSerializerCompiler(serializerCompiler)
 
   await app.register(sensible)
   await app.register(helmet, {
@@ -33,15 +42,19 @@ export async function buildApp() {
     timeWindow: '1 minute',
   })
 
-  await app.register(sessionPlugin)
-  await app.register(healthRoutes)
-  await app.register(authRoutes)
-  await app.register(meRoutes)
-
   // Uniform error envelope: { error: { code, message } }. Validation and
   // sensible's http errors already carry a statusCode; everything else is 500
   // and never leaks internals to the client.
   app.setErrorHandler((error: unknown, req, reply) => {
+    if (hasZodFastifySchemaValidationErrors(error)) {
+      return reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid request',
+          issues: error.validation.map((v) => ({ path: v.instancePath, message: v.message })),
+        },
+      })
+    }
     const err = error as Partial<FastifyError> & { message?: string }
     const status = err.statusCode ?? 500
     if (status >= 500) req.log.error({ err }, 'unhandled error')
@@ -56,6 +69,17 @@ export async function buildApp() {
   app.setNotFoundHandler((_req, reply) => {
     reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
   })
+
+
+  await app.register(sessionPlugin)
+  await app.register(workspacePlugin)
+  await app.register(adminPlugin)
+  await app.register(healthRoutes)
+  await app.register(authRoutes)
+  await app.register(meRoutes)
+  await app.register(workspaceRoutes)
+  await app.register(integrationRoutes)
+  await app.register(adminRoutes)
 
   return app
 }

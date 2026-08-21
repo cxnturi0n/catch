@@ -36,6 +36,10 @@ const schema = z.object({
   TWITTER_CLIENT_ID: optionalSecret,
   TWITTER_CLIENT_SECRET: optionalSecret,
 
+  // Secrets at rest: "<id>:<base64 32 bytes>[,...]", first = active key.
+  // Generate one with: echo "k1:$(openssl rand -base64 32)"
+  CREDENTIALS_ENCRYPTION_KEYS: z.string().min(1),
+
   // Email (Resend). Without a key, emails are logged instead of sent.
   RESEND_API_KEY: optionalSecret,
   EMAIL_FROM: z.string().default('Catch <onboarding@resend.dev>'),

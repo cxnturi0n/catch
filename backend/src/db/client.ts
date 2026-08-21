@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import { config } from '../config.js'
-import * as schema from './schema.js'
+import * as schema from './schema/index.js'
 
 // One pool per process. API and worker each create their own on boot.
 export const pool = new Pool({
@@ -13,6 +13,8 @@ export const pool = new Pool({
 
 export const db = drizzle(pool, { schema })
 export type Db = typeof db
+// Accepts either the root client or a transaction handle.
+export type DbOrTx = Db | Parameters<Parameters<Db['transaction']>[0]>[0]
 
 export async function pingDatabase(): Promise<boolean> {
   try {

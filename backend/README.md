@@ -12,8 +12,11 @@ src/
   auth/         Better Auth instance (email+password, OAuth, 2FA) + security audit log
   email/        transactional email (Resend; logged to an in-memory outbox when unset)
   plugins/      Fastify plugins: session resolution + requireSession guards
-  db/           Drizzle client, schema, migration runner
-  routes/       HTTP routes (health, /auth/*, /me)
+  db/           Drizzle client, schema (auth + app), migration runner
+  lib/          crypto (secrets at rest), quota (plan limits), typed errors
+  modules/      one folder per domain: routes.ts (Zod schemas) · service.ts · repo.ts
+  routes/       cross-cutting routes (health, /auth/*, /me)
+scripts/        seed-demo.ts (never part of migrations)
 drizzle/        generated SQL migrations (npm run db:generate)
 ```
 
@@ -60,3 +63,19 @@ and session revocations.
 `npm test` runs against the database in `DATABASE_URL` (start it with
 `docker compose -f ../deploy/docker-compose.yml up -d db` and run
 `npm run db:migrate` once). Emails are captured in memory, never sent.
+
+## Authorization model
+
+- `requireSession` / `requireVerifiedEmail` — authenticated user.
+- `requireWorkspace` — loads `/workspaces/:workspaceId` **and** the caller's
+  membership in one query; non-members receive 404 so ids cannot be probed.
+  `requireWorkspaceRole(['owner','admin'])` adds a role check.
+- `requireAdmin` — `user.role = 'admin'` (database column; no hard-coded emails).
+- Plan quotas (`lib/quota.ts`) are enforced in services inside a transaction
+  with an advisory lock; the SPA only displays them.
+- Third-party secrets (`integrations.credentials_enc`, report webhook/token)
+  are AES-256-GCM encrypted with `CREDENTIALS_ENCRYPTION_KEYS`; repositories
+  expose them only through server-side functions and never through a route
+  response schema.
+- Tables that carry a `moderator_id` use a composite FK `(workspace_id,
+  moderator_id)` so a moderator can only be attached to its own workspace.

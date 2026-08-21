@@ -5,7 +5,7 @@ import { createHmac } from 'node:crypto'
 
 const { buildApp } = await import('../src/app.js')
 const { db, closeDatabase } = await import('../src/db/client.js')
-const schema = await import('../src/db/schema.js')
+const schema = await import('../src/db/schema/index.js')
 const { emailOutbox } = await import('../src/email/sender.js')
 
 type App = Awaited<ReturnType<typeof buildApp>>

@@ -13,8 +13,8 @@ export async function meRoutes(app: FastifyInstance) {
         emailVerified: user.emailVerified,
         image: user.image ?? null,
         twoFactorEnabled: user.twoFactorEnabled ?? false,
-        role: (user as { role?: string }).role ?? 'user',
-        plan: (user as { plan?: string }).plan ?? 'starter',
+        role: user.role ?? 'user',
+        plan: user.plan ?? 'starter',
       },
       session: { id: session.id, expiresAt: session.expiresAt },
     }

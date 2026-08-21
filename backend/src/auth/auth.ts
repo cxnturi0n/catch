@@ -4,7 +4,7 @@ import { twoFactor } from 'better-auth/plugins'
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
 import { config, isProduction } from '../config.js'
 import { db } from '../db/client.js'
-import * as schema from '../db/schema.js'
+import * as schema from '../db/schema/index.js'
 import { actionEmail, sendEmail } from '../email/sender.js'
 import { logger } from '../logger.js'
 import { recordSecurityEvent, type SecurityEventType } from './security-events.js'
@@ -117,6 +117,11 @@ export const auth = betterAuth({
   },
 
   user: {
+    // Exposed on the session user; never writable from sign-up/update-user.
+    additionalFields: {
+      role: { type: 'string', required: false, defaultValue: 'user', input: false },
+      plan: { type: 'string', required: false, defaultValue: 'starter', input: false },
+    },
     changeEmail: {
       enabled: true,
       sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
