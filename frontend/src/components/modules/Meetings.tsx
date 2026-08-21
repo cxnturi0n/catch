@@ -67,7 +67,7 @@ export function Meetings() {
     setMeetings((list) => list.filter((m) => m.id !== id))
     setDetail(null)
     try {
-      await deleteMeeting(id)
+      await deleteMeeting(activeWorkspaceId, id)
       showToast('Meeting deleted.', 'success')
     } catch {
       setMeetings(prev)

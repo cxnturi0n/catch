@@ -61,6 +61,8 @@ export interface CatchTask {
   priority: TaskPriority
   dueDate: string
   status: TaskStatus
+  area?: string
+  startDate?: string // 'YYYY-MM-DD'
 }
 
 export interface WorkspaceData {

@@ -1,9 +1,8 @@
-import { supabase } from '../../../lib/supabase'
-import type { TaskPriority, TaskStatus } from '../../../types'
+import { updateTask } from '../../../lib/api/operations'
+import type { TaskPriority, TaskStatus, WorkspaceId } from '../../../types'
 
-// Small write helpers for task fields that db.ts does not expose. These update
-// the `tasks` table directly via the shared Supabase client — file ownership
-// rules keep us out of db.ts, so reschedule + edit persistence live here.
+// Small write helpers used by the calendar (drag-and-drop) and the table
+// (inline edits). All go through the workspace-scoped tasks API.
 
 export interface TaskFields {
   title: string
@@ -13,29 +12,14 @@ export interface TaskFields {
   status: TaskStatus
 }
 
-/** Reschedule a task by writing a new due_date (used by calendar drag-and-drop). */
-export async function updateTaskDueDate(id: string, dueDate: string): Promise<void> {
-  const { error } = await supabase.from('tasks').update({ due_date: dueDate }).eq('id', id)
-  if (error) throw new Error(error.message)
+export async function updateTaskDueDate(workspaceId: WorkspaceId, id: string, dueDate: string): Promise<void> {
+  await updateTask(workspaceId, id, { dueDate })
 }
 
-/** Persist just the assignee (used by inline table editing). */
-export async function updateTaskAssignee(id: string, assignee: string): Promise<void> {
-  const { error } = await supabase.from('tasks').update({ assignee }).eq('id', id)
-  if (error) throw new Error(error.message)
+export async function updateTaskAssignee(workspaceId: WorkspaceId, id: string, assignee: string): Promise<void> {
+  await updateTask(workspaceId, id, { assignee: assignee || null })
 }
 
-/** Persist a full edit of an existing task. */
-export async function updateTaskFields(id: string, data: TaskFields): Promise<void> {
-  const { error } = await supabase
-    .from('tasks')
-    .update({
-      title: data.title,
-      assignee: data.assignee,
-      priority: data.priority,
-      status: data.status,
-      due_date: data.dueDate,
-    })
-    .eq('id', id)
-  if (error) throw new Error(error.message)
+export async function updateTaskFields(workspaceId: WorkspaceId, id: string, data: TaskFields): Promise<void> {
+  await updateTask(workspaceId, id, { title: data.title, assignee: data.assignee || null, priority: data.priority, status: data.status, dueDate: data.dueDate || null })
 }

@@ -14,7 +14,8 @@ import { TaskBoard } from './tasks/TaskBoard'
 import { TaskTable } from './tasks/TaskTable'
 import { TaskTimeCalendar, type CalendarFilter } from './tasks/TaskTimeCalendar'
 import { TaskFormModal } from './tasks/TaskFormModal'
-import { useLocalTaskMeta } from './tasks/taskLocalMeta'
+import { updateTask } from '../../lib/api/operations'
+import type { TaskMeta, TaskMetaMap } from './tasks/taskLocalMeta'
 import { updateTaskAssignee, updateTaskDueDate } from './tasks/taskApi'
 import { MeetingFormModal } from './meetings/MeetingFormModal'
 import { MeetingDetailModal } from './meetings/MeetingDetailModal'
@@ -45,7 +46,16 @@ export function Tasks() {
     !!user,
   )
 
-  const { map: taskMeta, update: updateTaskMeta } = useLocalTaskMeta(activeWorkspaceId)
+  // Area and start date are task columns now; the table still consumes them
+  // as a side map keyed by task id.
+  const taskMeta = useMemo<TaskMetaMap>(
+    () => Object.fromEntries(tasks.map((t) => [t.id, { ...(t.area && { area: t.area }), ...(t.startDate && { start: t.startDate }) }])),
+    [tasks],
+  )
+  function updateTaskMeta(id: string, patch: Partial<TaskMeta>) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...(patch.area !== undefined && { area: patch.area || undefined }), ...(patch.start !== undefined && { startDate: patch.start || undefined }) } : t)))
+    void updateTask(activeWorkspaceId, id, { ...(patch.area !== undefined && { area: patch.area || null }), ...(patch.start !== undefined && { startDate: patch.start || null }) }).catch(() => undefined)
+  }
 
   // Layout: leftMode + split percentage (left pane width). 100 = table/board
   // full width, 0 = calendar full width, anything between = split view.
@@ -142,7 +152,7 @@ export function Tasks() {
     if (!current || current.status === status) return
     const previous = current.status
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
-    void updateTaskStatus(id, status).catch(() => {
+    void updateTaskStatus(activeWorkspaceId, id, status).catch(() => {
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: previous } : t)))
     })
   }
@@ -159,7 +169,7 @@ export function Tasks() {
     if (!current || current.assignee === assignee) return
     const previous = current.assignee
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, assignee } : t)))
-    void updateTaskAssignee(id, assignee).catch(() => {
+    void updateTaskAssignee(activeWorkspaceId, id, assignee).catch(() => {
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, assignee: previous } : t)))
     })
   }
@@ -169,7 +179,7 @@ export function Tasks() {
     if (!current || current.dueDate === dateKey) return
     const previousDate = current.dueDate
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, dueDate: dateKey } : t)))
-    void updateTaskDueDate(id, dateKey).catch(() => {
+    void updateTaskDueDate(activeWorkspaceId, id, dateKey).catch(() => {
       setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, dueDate: previousDate } : t)))
     })
   }
@@ -204,7 +214,7 @@ export function Tasks() {
     setMeetings((list) => list.filter((m) => m.id !== id))
     setMeetingDetail(null)
     try {
-      await deleteMeeting(id)
+      await deleteMeeting(activeWorkspaceId, id)
       showToast('Meeting deleted.', 'success')
     } catch {
       setMeetings(prev)

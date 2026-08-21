@@ -87,7 +87,7 @@ export function ContentFormModal({
     const iso = new Date(scheduledAt).toISOString()
     try {
       if (editing) {
-        await updateContentScheduleItem(editing.id, {
+        await updateContentScheduleItem(workspaceId, editing.id, {
           title: title.trim(),
           description: description.trim() || null,
           platform: (platform || null) as ContentPlatform | null,
@@ -127,7 +127,7 @@ export function ContentFormModal({
     if (!editing) return
     setSubmitting(true)
     try {
-      await deleteContentScheduleItem(editing.id)
+      await deleteContentScheduleItem(workspaceId, editing.id)
       onDeleted(editing.id)
       onClose()
     } catch (err) {

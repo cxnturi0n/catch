@@ -107,7 +107,7 @@ export function TaskFormModal({
     }
     try {
       if (editingTask) {
-        await updateTaskFields(editingTask.id, payload)
+        await updateTaskFields(workspaceId, editingTask.id, payload)
         onUpdated({ ...editingTask, ...payload })
       } else {
         const created = await addTask(workspaceId, payload)

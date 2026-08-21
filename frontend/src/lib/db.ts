@@ -1,6 +1,5 @@
 import { supabase } from './supabase'
 import type {
-  CatchTask,
   FeedbackCategory,
   FeedbackEntry,
   FeedbackRole,
@@ -9,8 +8,6 @@ import type {
   KOL,
   ModerationIncident,
   NewFeedbackInput,
-  TaskPriority,
-  TaskStatus,
   TrendPoint,
   Workspace,
   WorkspaceId,
@@ -37,6 +34,7 @@ export {
   addPayment,
   type PointsMetricInput,
 } from './api/moderators'
+export { fetchTasks, addTask, updateTaskStatus, seedTasks } from './api/operations'
 
 
 // ── Shared helpers ──
@@ -528,71 +526,7 @@ export async function seedKOLs(workspaceId: WorkspaceId, kols: KOL[]): Promise<K
 
 // ── Tasks ──
 
-interface TaskRow {
-  id: string
-  workspace_id: string
-  title: string
-  assignee: string | null
-  priority: string | null
-  status: string | null
-  due_date: string | null
-  created_at: string
-}
 
-function mapTask(row: TaskRow): CatchTask {
-  return {
-    id: row.id,
-    title: row.title,
-    assignee: row.assignee ?? '',
-    priority: (row.priority ?? 'Medium') as TaskPriority,
-    dueDate: row.due_date ?? row.created_at.slice(0, 10),
-    status: (row.status ?? 'To Do') as TaskStatus,
-  }
-}
-
-export async function fetchTasks(workspaceId: WorkspaceId): Promise<CatchTask[]> {
-  const result = await supabase.from('tasks').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false })
-  return unwrap<TaskRow[]>(result).map(mapTask)
-}
-
-export async function addTask(workspaceId: WorkspaceId, data: Omit<CatchTask, 'id'>): Promise<CatchTask> {
-  const result = await supabase
-    .from('tasks')
-    .insert({
-      workspace_id: workspaceId,
-      title: data.title,
-      assignee: data.assignee,
-      priority: data.priority,
-      status: data.status,
-      due_date: data.dueDate,
-    })
-    .select('*')
-    .single()
-  return mapTask(unwrap<TaskRow>(result))
-}
-
-export async function updateTaskStatus(id: string, status: TaskStatus): Promise<void> {
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-export async function seedTasks(workspaceId: WorkspaceId, tasks: CatchTask[]): Promise<CatchTask[]> {
-  if (tasks.length === 0) return []
-  const result = await supabase
-    .from('tasks')
-    .insert(
-      tasks.map((t) => ({
-        workspace_id: workspaceId,
-        title: t.title,
-        assignee: t.assignee,
-        priority: t.priority,
-        status: t.status,
-        due_date: t.dueDate,
-      })),
-    )
-    .select('*')
-  return unwrap<TaskRow[]>(result).map(mapTask)
-}
 
 // ── Moderators ──
 

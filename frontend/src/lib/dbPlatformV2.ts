@@ -7,11 +7,6 @@
 
 import { supabase } from './supabase'
 import type {
-  ContentPlatform,
-  ContentScheduleItem,
-  ContentStatus,
-  Meeting,
-  MeetingProvider,
   Resource,
   ResourceKind,
   ResourceVisibility,
@@ -38,6 +33,17 @@ export {
   type ModeratorProfileUpdate,
   type CompConfigUpsert,
 } from './api/moderators'
+export {
+  fetchContentSchedule,
+  insertContentScheduleItem,
+  updateContentScheduleItem,
+  deleteContentScheduleItem,
+  fetchMeetings,
+  insertMeeting,
+  deleteMeeting,
+  type NewContentInput,
+  type NewMeetingInput,
+} from './api/operations'
 
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
@@ -197,187 +203,14 @@ export async function logResourceView(input: {
 
 // ── Content schedule (CM-owned calendar items visible to moderators) ──
 
-interface ContentRow {
-  id: string
-  workspace_id: string
-  title: string
-  description: string | null
-  platform: ContentPlatform | null
-  scheduled_at: string
-  published_at: string | null
-  status: ContentStatus
-  owner_user_id: string | null
-  assigned_moderator_id: string | null
-  notes: string | null
-  attachments: unknown
-  created_at: string
-  updated_at: string
-}
 
-function mapContent(r: ContentRow): ContentScheduleItem {
-  return {
-    id: r.id,
-    workspaceId: r.workspace_id,
-    title: r.title,
-    description: r.description,
-    platform: r.platform,
-    scheduledAt: r.scheduled_at,
-    publishedAt: r.published_at,
-    status: r.status,
-    ownerUserId: r.owner_user_id,
-    assignedModeratorId: r.assigned_moderator_id,
-    notes: r.notes,
-    attachments: Array.isArray(r.attachments) ? (r.attachments as ContentScheduleItem['attachments']) : [],
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }
-}
 
-export async function fetchContentSchedule(workspaceId: WorkspaceId, sinceDays = 60): Promise<ContentScheduleItem[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString()
-  const result = await supabase
-    .from('content_schedule')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .gte('scheduled_at', since)
-    .order('scheduled_at', { ascending: true })
-  return unwrap<ContentRow[]>(result).map(mapContent)
-}
 
-export interface NewContentInput {
-  workspaceId: WorkspaceId
-  title: string
-  description?: string | null
-  platform?: ContentPlatform | null
-  scheduledAt: string
-  ownerUserId?: string | null
-  assignedModeratorId?: string | null
-  notes?: string | null
-  attachments?: ContentScheduleItem['attachments']
-}
-
-export async function insertContentScheduleItem(input: NewContentInput): Promise<ContentScheduleItem> {
-  const row = {
-    workspace_id: input.workspaceId,
-    title: input.title,
-    description: input.description ?? null,
-    platform: input.platform ?? null,
-    scheduled_at: input.scheduledAt,
-    owner_user_id: input.ownerUserId ?? null,
-    assigned_moderator_id: input.assignedModeratorId ?? null,
-    notes: input.notes ?? null,
-    attachments: input.attachments ?? [],
-  }
-  const result = await supabase.from('content_schedule').insert(row).select('*').single()
-  return mapContent(unwrap<ContentRow>(result))
-}
-
-export async function updateContentScheduleItem(
-  id: string,
-  patch: Partial<Omit<ContentScheduleItem, 'id' | 'workspaceId' | 'createdAt' | 'updatedAt'>>,
-): Promise<void> {
-  const row: Record<string, unknown> = {}
-  if (patch.title !== undefined) row.title = patch.title
-  if (patch.description !== undefined) row.description = patch.description
-  if (patch.platform !== undefined) row.platform = patch.platform
-  if (patch.scheduledAt !== undefined) row.scheduled_at = patch.scheduledAt
-  if (patch.publishedAt !== undefined) row.published_at = patch.publishedAt
-  if (patch.status !== undefined) row.status = patch.status
-  if (patch.ownerUserId !== undefined) row.owner_user_id = patch.ownerUserId
-  if (patch.assignedModeratorId !== undefined) row.assigned_moderator_id = patch.assignedModeratorId
-  if (patch.notes !== undefined) row.notes = patch.notes
-  if (patch.attachments !== undefined) row.attachments = patch.attachments
-  if (Object.keys(row).length === 0) return
-  const { error } = await supabase.from('content_schedule').update(row).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-export async function deleteContentScheduleItem(id: string): Promise<void> {
-  const { error } = await supabase.from('content_schedule').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
 
 // ── Meetings (with calendar deep-link generation) ──
 
-interface MeetingRow {
-  id: string
-  workspace_id: string
-  title: string
-  description: string | null
-  starts_at: string
-  ends_at: string
-  meet_link: string | null
-  attendee_emails: string[] | null
-  attendee_moderator_ids: string[] | null
-  provider: MeetingProvider
-  created_by: string | null
-  created_at: string
-  updated_at: string
-}
 
-function mapMeeting(r: MeetingRow): Meeting {
-  return {
-    id: r.id,
-    workspaceId: r.workspace_id,
-    title: r.title,
-    description: r.description,
-    startsAt: r.starts_at,
-    endsAt: r.ends_at,
-    meetLink: r.meet_link,
-    attendeeEmails: r.attendee_emails ?? [],
-    attendeeModeratorIds: r.attendee_moderator_ids ?? [],
-    provider: r.provider,
-    createdBy: r.created_by,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }
-}
 
-export async function fetchMeetings(workspaceId: WorkspaceId, sinceDays = 30): Promise<Meeting[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString()
-  const result = await supabase
-    .from('meetings')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .gte('starts_at', since)
-    .order('starts_at', { ascending: true })
-  return unwrap<MeetingRow[]>(result).map(mapMeeting)
-}
-
-export interface NewMeetingInput {
-  workspaceId: WorkspaceId
-  title: string
-  description?: string | null
-  startsAt: string
-  endsAt: string
-  meetLink?: string | null
-  attendeeEmails?: string[]
-  attendeeModeratorIds?: string[]
-  provider?: MeetingProvider
-  createdBy?: string | null
-}
-
-export async function insertMeeting(input: NewMeetingInput): Promise<Meeting> {
-  const row = {
-    workspace_id: input.workspaceId,
-    title: input.title,
-    description: input.description ?? null,
-    starts_at: input.startsAt,
-    ends_at: input.endsAt,
-    meet_link: input.meetLink ?? null,
-    attendee_emails: input.attendeeEmails ?? [],
-    attendee_moderator_ids: input.attendeeModeratorIds ?? [],
-    provider: input.provider ?? 'google',
-    created_by: input.createdBy ?? null,
-  }
-  const result = await supabase.from('meetings').insert(row).select('*').single()
-  return mapMeeting(unwrap<MeetingRow>(result))
-}
-
-export async function deleteMeeting(id: string): Promise<void> {
-  const { error } = await supabase.from('meetings').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
 
 /**
  * Build a Google Calendar deep-link that pre-fills a new event; if the user
