@@ -1,68 +1,42 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { getProfile, updateProfileName } from '../lib/db'
-import { isPlanTier, type PlanTier } from '../lib/plan'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api, isApiError } from '../lib/api/client'
+import { authClient, authErrorMessage, type SocialProvider } from '../lib/api/auth'
+import type { PlanTier } from '../lib/plan'
 
 export interface AuthUser {
   id: string
   name: string
   email: string
+  emailVerified: boolean
+  image: string | null
+  twoFactorEnabled: boolean
+  role: 'user' | 'admin'
   plan: PlanTier
 }
 
-interface AuthResult {
+export interface AuthResult {
   ok: boolean
   error?: string
+  /** Sign-in succeeded but a second factor is required. */
+  twoFactorRequired?: boolean
+}
+
+interface MeResponse {
+  user: AuthUser
+  session: { id: string; expiresAt: string }
 }
 
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
-  hasOnboarded: boolean
+  providers: SocialProvider[]
+  refresh: () => Promise<AuthUser | null>
   login: (email: string, password: string) => Promise<AuthResult>
   signup: (name: string, email: string, password: string) => Promise<AuthResult>
-  signInWithGoogle: () => Promise<AuthResult>
-  logout: () => void
-  completeOnboarding: () => void
+  signInWithProvider: (provider: SocialProvider, redirectTo?: string) => Promise<AuthResult>
+  logout: () => Promise<void>
   updateProfile: (name: string) => Promise<void>
-  updatePassword: (newPassword: string) => Promise<AuthResult>
-}
-
-function nameFromEmail(email: string): string {
-  const local = email.split('@')[0] ?? ''
-  return (
-    local
-      .split(/[._-]/)
-      .filter(Boolean)
-      .map((part) => part[0].toUpperCase() + part.slice(1))
-      .join(' ') || 'Community Manager'
-  )
-}
-
-async function userFromSession(session: Session | null): Promise<AuthUser | null> {
-  const authUser = session?.user
-  if (!authUser) return null
-
-  let fullName: string | null = null
-  let email: string | null = null
-  let plan: PlanTier = 'starter'
-  try {
-    const profile = await getProfile(authUser.id)
-    fullName = profile?.full_name ?? null
-    email = profile?.email ?? null
-    if (isPlanTier(profile?.plan)) plan = profile.plan
-  } catch {
-    // profiles row may not have been created yet (trigger lag) — fall back below
-  }
-
-  return {
-    id: authUser.id,
-    name: fullName || (authUser.user_metadata?.full_name as string | undefined) || nameFromEmail(authUser.email ?? ''),
-    email: email ?? authUser.email ?? '',
-    plan,
-  }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -70,110 +44,82 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [hasOnboarded, setHasOnboarded] = useState(false)
+  const [providers, setProviders] = useState<SocialProvider[]>([])
+
+  // Session bootstrap: one call to /me. 401 simply means signed out.
+  const refresh = useCallback(async (): Promise<AuthUser | null> => {
+    try {
+      const me = await api<MeResponse>('/me')
+      setUser(me.user)
+      return me.user
+    } catch (err) {
+      if (isApiError(err) && err.status === 401) {
+        setUser(null)
+        return null
+      }
+      // Network/server error: keep whatever we had rather than bouncing to login.
+      return user
+    }
+  }, [user])
 
   useEffect(() => {
-    // No Supabase project configured (e.g. env vars missing on this
-    // deployment) — stay in guest mode permanently, never touch the client.
-    if (!isSupabaseConfigured) {
-      setUser(null)
-      setIsLoading(false)
-      return
-    }
-
     let cancelled = false
-
-    supabase.auth.getSession().then(({ data }) => {
-      userFromSession(data.session).then((u) => {
-        if (!cancelled) {
-          setUser(u)
-          setIsLoading(false)
-        }
-      })
+    Promise.all([
+      api<MeResponse>('/me').then((m) => m.user).catch(() => null),
+      api<{ providers: SocialProvider[] }>('/auth-providers').then((r) => r.providers).catch(() => [] as SocialProvider[]),
+    ]).then(([u, p]) => {
+      if (cancelled) return
+      setUser(u)
+      setProviders(p)
+      setIsLoading(false)
     })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      void userFromSession(session).then((u) => {
-        if (!cancelled) setUser(u)
-      })
-    })
-
     return () => {
       cancelled = true
-      listener.subscription.unsubscribe()
     }
   }, [])
 
   async function login(email: string, password: string): Promise<AuthResult> {
-    if (!isSupabaseConfigured) return { ok: false, error: 'Sign-in is not available on this deployment.' }
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { ok: false, error: error.message }
+    const { data, error } = await authClient.signIn.email({ email, password })
+    if (error) return { ok: false, error: authErrorMessage(error) }
+    if ((data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) return { ok: true, twoFactorRequired: true }
+    await refresh()
     return { ok: true }
   }
 
   async function signup(name: string, email: string, password: string): Promise<AuthResult> {
-    if (!isSupabaseConfigured) return { ok: false, error: 'Sign-up is not available on this deployment.' }
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name.trim() } },
-    })
-    if (error) return { ok: false, error: error.message }
-    setHasOnboarded(false)
+    const { error } = await authClient.signUp.email({ name: name.trim(), email, password, callbackURL: `${window.location.origin}/onboarding` })
+    if (error) return { ok: false, error: authErrorMessage(error) }
+    // Email verification is mandatory: no session yet.
     return { ok: true }
   }
 
-  async function signInWithGoogle(): Promise<AuthResult> {
-    if (!isSupabaseConfigured) return { ok: false, error: 'Sign-in is not available on this deployment.' }
-    // Redirect back to the dashboard on this same origin (localhost in dev, the
-    // deployed host in prod). This URL must be in Supabase's redirect allow-list.
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+  async function signInWithProvider(provider: SocialProvider, redirectTo = '/dashboard'): Promise<AuthResult> {
+    const { error } = await authClient.signIn.social({
+      provider,
+      callbackURL: `${window.location.origin}${redirectTo}`,
+      errorCallbackURL: `${window.location.origin}/login?error=oauth`,
+      newUserCallbackURL: `${window.location.origin}/onboarding`,
     })
-    if (error) return { ok: false, error: error.message }
-    return { ok: true }
+    if (error) return { ok: false, error: authErrorMessage(error) }
+    return { ok: true } // browser is being redirected
   }
 
-  function logout() {
-    void supabase.auth.signOut()
-    setHasOnboarded(false)
-    // Hard navigation — no need to await signOut(), the reload drops all client state anyway.
+  async function logout() {
+    await authClient.signOut().catch(() => undefined)
+    setUser(null)
     window.location.href = '/'
   }
 
-  function completeOnboarding() {
-    setHasOnboarded(true)
+  async function updateProfile(name: string) {
+    const { error } = await authClient.updateUser({ name: name.trim() })
+    if (error) throw new Error(authErrorMessage(error))
+    setUser((prev) => (prev ? { ...prev, name: name.trim() } : prev))
   }
 
-  async function updateProfile(name: string): Promise<void> {
-    if (!user) return
-    const trimmed = name.trim()
-    await updateProfileName(user.id, trimmed)
-    setUser((prev) => (prev ? { ...prev, name: trimmed } : prev))
-  }
-
-  async function updatePassword(newPassword: string): Promise<AuthResult> {
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) return { ok: false, error: error.message }
-    return { ok: true }
-  }
-
-  const value = useMemo(
-    () => ({
-      user,
-      isAuthenticated: user !== null,
-      isLoading,
-      hasOnboarded,
-      login,
-      signup,
-      signInWithGoogle,
-      logout,
-      completeOnboarding,
-      updateProfile,
-      updatePassword,
-    }),
-    [user, isLoading, hasOnboarded],
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, isAuthenticated: user !== null, isLoading, providers, refresh, login, signup, signInWithProvider, logout, updateProfile }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, isLoading, providers, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

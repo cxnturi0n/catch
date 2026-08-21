@@ -38,6 +38,7 @@ export const CRUMB: Record<string, { group: string; sub: string }> = {
   '/dashboard/discovery-responses': { group: 'Setup', sub: 'Discovery Responses' },
   '/dashboard/catchlab': { group: 'Lab', sub: 'CatchLab' },
   '/dashboard/profile': { group: 'Account', sub: 'Profile' },
+  '/dashboard/security': { group: 'Account', sub: 'Security' },
 }
 const PLATFORM_SUB: Record<string, string> = { discord: 'Discord', telegram: 'Telegram', galxe: 'Galxe', zealy: 'Zealy' }
 

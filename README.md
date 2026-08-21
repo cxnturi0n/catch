@@ -27,10 +27,15 @@ images, no shared build step. The frontend talks to the backend only over HTTP
 cd deploy && cp .env.example .env && docker compose up -d --build
 curl -k https://localhost/api/readyz
 
-# or: database in a container, apps on the host
+# or: database in a container, apps on the host (hot reload)
 cd deploy && docker compose up -d db
-cd ../backend  && cp .env.example .env && npm install && npm run db:migrate && npm run dev:api
-cd ../frontend && npm install && npm run dev
+cd ../backend  && cp .env.example .env   # set AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEYS, DATABASE_URL
+npm install && npm run db:migrate && npm run dev:api
+cd ../frontend && npm install && npm run dev   # http://localhost:5173 (proxies /api → :3000)
 ```
+
+Without `RESEND_API_KEY` the backend prints verification / reset emails in its
+log — copy the link from there. Social sign-in buttons appear only for
+providers whose `*_CLIENT_ID` / `*_CLIENT_SECRET` are set.
 
 See each folder's README for details.

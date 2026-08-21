@@ -1,17 +1,16 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from './AuthContext'
-import { initialWorkspaces } from '../data/mockData'
+import { isApiError } from '../lib/api/client'
 import {
-  buildLocalWorkspace,
+  createWorkspace,
   defaultIntegrations,
-  disconnectIntegrationDb,
+  disconnectIntegration as disconnectIntegrationApi,
   fetchIntegrations,
-  fetchWorkspaces,
-  insertWorkspace,
+  listWorkspaces,
   type NewWorkspaceInput,
-} from '../lib/db'
+  type QuotaState,
+} from '../lib/api/workspaces'
 import type { IntegrationKey, Workspace, WorkspaceId, WorkspaceIntegrations } from '../types'
-import { computeQuota, getPlanOverride, type PlanTier } from '../lib/plan'
 
 export class QuotaExceededError extends Error {
   resource: 'workspaces' | 'moderators'
@@ -29,14 +28,17 @@ export class QuotaExceededError extends Error {
 export type { NewWorkspaceInput }
 
 const ACTIVE_KEY = 'catch:activeWorkspace'
-const LOCAL_WORKSPACES_KEY = 'catch:localWorkspaces'
+
+export type WorkspaceView = Workspace & { role: string; platforms: string[] }
 
 interface WorkspaceContextValue {
-  workspaces: Workspace[]
+  workspaces: WorkspaceView[]
   workspacesLoading: boolean
+  workspaceQuota: QuotaState | null
   activeWorkspaceId: WorkspaceId
   setActiveWorkspaceId: (id: WorkspaceId) => void
   addWorkspace: (input: NewWorkspaceInput) => Promise<WorkspaceId>
+  reloadWorkspaces: () => Promise<void>
   getWorkspaceIntegrations: (workspaceId: WorkspaceId) => WorkspaceIntegrations
   integrationsLoading: boolean
   refreshIntegrations: (workspaceId: WorkspaceId) => Promise<void>
@@ -51,95 +53,56 @@ function readStoredActiveId(): WorkspaceId | null {
   }
 }
 
-function persistActiveId(id: WorkspaceId) {
-  try {
-    localStorage.setItem(ACTIVE_KEY, id)
-  } catch {
-    // localStorage unavailable — active workspace choice will not persist across reloads
-  }
-}
-
-/** Extra guest workspaces (created via Onboarding while signed out) layered on
- * top of the built-in mock workspaces — never reach Supabase. */
-function readLocalWorkspaces(): Workspace[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_WORKSPACES_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as Workspace[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function persistLocalWorkspaces(list: Workspace[]) {
-  try {
-    localStorage.setItem(LOCAL_WORKSPACES_KEY, JSON.stringify(list))
-  } catch {
-    // localStorage unavailable — guest workspaces will not persist across reloads
-  }
-}
-
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
+// Workspaces come from the API only. There is no guest mode: a signed-out user
+// never reaches a consumer of this context (ProtectedRoute).
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-
-  // dbWorkspaces backs signed-in users (fetched from Supabase); guestExtraWorkspaces
-  // backs guests, layered on top of the seeded mock workspaces below.
-  const [dbWorkspaces, setDbWorkspaces] = useState<Workspace[]>([])
-  const [guestExtraWorkspaces, setGuestExtraWorkspaces] = useState<Workspace[]>(() => readLocalWorkspaces())
-  // Which user id we've finished fetching workspaces for. `workspacesLoading` is
-  // derived from this so it's true the instant `user` is set (before the fetch
-  // effect even runs) — closing the race that briefly saw 0 workspaces and
-  // bounced signed-in users to /onboarding on every fresh tab.
+  const [workspaces, setWorkspaces] = useState<WorkspaceView[]>([])
+  const [workspaceQuota, setWorkspaceQuota] = useState<QuotaState | null>(null)
   const [loadedForUser, setLoadedForUser] = useState<string | null>(null)
   const [activeWorkspaceId, setActiveWorkspaceIdState] = useState<WorkspaceId>('')
-
   const [integrationsCache, setIntegrationsCache] = useState<Record<WorkspaceId, WorkspaceIntegrations>>({})
   const [integrationsLoading, setIntegrationsLoading] = useState(false)
 
-  // No authenticated user → never touch Supabase. Render the seeded mock
-  // workspaces (Arbitrum Foundation, KuCoin Exchange) plus any workspace the
-  // guest created locally during Onboarding, so the dashboard always has
-  // something to render instead of an empty list.
-  const workspaces = useMemo(
-    () => (user ? dbWorkspaces : [...initialWorkspaces, ...guestExtraWorkspaces]),
-    [user, dbWorkspaces, guestExtraWorkspaces],
-  )
-
-  // A signed-in user is "loading" until we've fetched workspaces for THAT exact
-  // user id. Guests are never loading.
   const workspacesLoading = user ? loadedForUser !== user.id : false
 
-  // Workspaces belong to the signed-in owner — reload the list whenever the
-  // authenticated user changes (login, logout, or session restore).
+  const reloadWorkspaces = useCallback(async () => {
+    if (!user) return
+    try {
+      const r = await listWorkspaces()
+      setWorkspaces(r.workspaces)
+      setWorkspaceQuota(r.quota)
+    } catch {
+      setWorkspaces([])
+    }
+  }, [user])
+
   useEffect(() => {
     if (!user) {
+      setWorkspaces([])
       setLoadedForUser(null)
       return
     }
-
     let cancelled = false
-    fetchWorkspaces(user.id)
-      .then((list) => {
-        if (!cancelled) setDbWorkspaces(list)
+    listWorkspaces()
+      .then((r) => {
+        if (cancelled) return
+        setWorkspaces(r.workspaces)
+        setWorkspaceQuota(r.quota)
       })
       .catch(() => {
-        if (!cancelled) setDbWorkspaces([])
+        if (!cancelled) setWorkspaces([])
       })
       .finally(() => {
         if (!cancelled) setLoadedForUser(user.id)
       })
-
     return () => {
       cancelled = true
     }
   }, [user])
 
-  // Resolve/clamp the active workspace id whenever the resolved list changes
-  // — keeps the current selection if it's still valid, otherwise falls back
-  // to the last stored id or the first workspace in the list.
   useEffect(() => {
     if (workspaces.length === 0) {
       setActiveWorkspaceIdState('')
@@ -153,22 +116,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [workspaces])
 
   useEffect(() => {
-    if (activeWorkspaceId) persistActiveId(activeWorkspaceId)
+    if (!activeWorkspaceId) return
+    try {
+      localStorage.setItem(ACTIVE_KEY, activeWorkspaceId)
+    } catch {
+      /* preference only */
+    }
   }, [activeWorkspaceId])
 
-  // Guest mode keeps its extra workspaces entirely in localStorage.
-  useEffect(() => {
-    persistLocalWorkspaces(guestExtraWorkspaces)
-  }, [guestExtraWorkspaces])
-
-  async function loadIntegrations(workspaceId: WorkspaceId) {
+  const loadIntegrations = useCallback(async (workspaceId: WorkspaceId) => {
     setIntegrationsLoading(true)
-    if (!user) {
-      // Guest mode — never touch Supabase; every integration starts unconnected.
-      setIntegrationsCache((prev) => ({ ...prev, [workspaceId]: defaultIntegrations() }))
-      setIntegrationsLoading(false)
-      return
-    }
     try {
       const integrations = await fetchIntegrations(workspaceId)
       setIntegrationsCache((prev) => ({ ...prev, [workspaceId]: integrations }))
@@ -177,79 +134,47 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } finally {
       setIntegrationsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (activeWorkspaceId) void loadIntegrations(activeWorkspaceId)
-    // loadIntegrations closes over `user`, which is already a dependency of
-    // the effects above that drive activeWorkspaceId — re-running here on
-    // activeWorkspaceId changes is sufficient.
-  }, [activeWorkspaceId])
-
-  function setActiveWorkspaceId(id: WorkspaceId) {
-    setActiveWorkspaceIdState(id)
-  }
+  }, [activeWorkspaceId, loadIntegrations])
 
   async function addWorkspace(input: NewWorkspaceInput): Promise<WorkspaceId> {
-    if (!user) {
-      // Guest session — skip Supabase entirely and keep the workspace local.
-      // Guests aren't billed, so no quota enforcement here.
-      const workspace = buildLocalWorkspace(input.name)
-      setGuestExtraWorkspaces((prev) => [...prev, workspace])
-      setActiveWorkspaceIdState(workspace.id)
-      return workspace.id
+    try {
+      const ws = await createWorkspace(input)
+      setWorkspaces((prev) => [...prev, ws])
+      setActiveWorkspaceIdState(ws.id)
+      void reloadWorkspaces()
+      return ws.id
+    } catch (err) {
+      if (isApiError(err) && err.code === 'QUOTA_EXCEEDED') {
+        const q = workspaceQuota
+        throw new QuotaExceededError('workspaces', q?.used ?? 0, q?.limit ?? 0)
+      }
+      throw err
     }
-
-    // Plan quota gate: block creating a workspace past the tier limit.
-    const tier: PlanTier = getPlanOverride() ?? user.plan ?? 'starter'
-    const q = computeQuota('workspaces', dbWorkspaces.length, tier)
-    if (q.status === 'reached') {
-      throw new QuotaExceededError('workspaces', q.used, q.limit)
-    }
-
-    const workspace = await insertWorkspace(user.id, input)
-    setDbWorkspaces((prev) => [...prev, workspace])
-    setActiveWorkspaceIdState(workspace.id)
-    return workspace.id
   }
 
-  function getWorkspaceIntegrations(workspaceId: WorkspaceId): WorkspaceIntegrations {
-    return integrationsCache[workspaceId] ?? defaultIntegrations()
-  }
-
-  async function refreshIntegrations(workspaceId: WorkspaceId): Promise<void> {
-    await loadIntegrations(workspaceId)
-  }
-
-  async function disconnectIntegration(workspaceId: WorkspaceId, key: IntegrationKey): Promise<void> {
-    if (!user) {
-      // Guest mode — update the cached (never-persisted) state directly.
-      setIntegrationsCache((prev) => ({
-        ...prev,
-        [workspaceId]: {
-          ...(prev[workspaceId] ?? defaultIntegrations()),
-          [key]: { status: 'Not Connected', fields: {}, mockData: {}, lastSync: null },
-        },
-      }))
-      return
-    }
-    await disconnectIntegrationDb(workspaceId, key)
-    await loadIntegrations(workspaceId)
-  }
-
-  const value = useMemo(
+  const value = useMemo<WorkspaceContextValue>(
     () => ({
       workspaces,
       workspacesLoading,
+      workspaceQuota,
       activeWorkspaceId,
-      setActiveWorkspaceId,
+      setActiveWorkspaceId: setActiveWorkspaceIdState,
       addWorkspace,
-      getWorkspaceIntegrations,
+      reloadWorkspaces,
+      getWorkspaceIntegrations: (id) => integrationsCache[id] ?? defaultIntegrations(),
       integrationsLoading,
-      refreshIntegrations,
-      disconnectIntegration,
+      refreshIntegrations: loadIntegrations,
+      disconnectIntegration: async (workspaceId, key) => {
+        await disconnectIntegrationApi(workspaceId, key)
+        await loadIntegrations(workspaceId)
+      },
     }),
-    [workspaces, workspacesLoading, activeWorkspaceId, integrationsCache, integrationsLoading],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [workspaces, workspacesLoading, workspaceQuota, activeWorkspaceId, integrationsCache, integrationsLoading, reloadWorkspaces, loadIntegrations],
   )
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>

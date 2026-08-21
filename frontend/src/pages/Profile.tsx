@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Globe, Loader2, LogOut, Search, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useTimezone } from '../context/TimezoneContext'
@@ -52,8 +53,7 @@ export function Profile() {
   }
 
   function handleLogout() {
-    logout()
-    window.location.href = '/'
+    void logout()
   }
 
   return (
@@ -147,8 +147,11 @@ export function Profile() {
           <ShieldCheck size={18} />
         </div>
         <div>
-          <div className="text-sm font-medium text-white">Signed in with Google</div>
-          <div className="text-xs text-[var(--text-secondary)]">No password to manage — your access is secured by your Google account.</div>
+          <div className="text-sm font-medium text-white">Account security</div>
+          <div className="text-xs text-[var(--text-secondary)]">
+            Password, two-factor authentication, devices and linked accounts live in{' '}
+            <Link to="/dashboard/security" className="text-[var(--accent-emerald-bright)] hover:underline">Security</Link>.
+          </div>
         </div>
       </div>
 

@@ -17,6 +17,9 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => (
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })))
 const Onboarding = lazy(() => import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })))
 const Profile = lazy(() => import('./pages/Profile').then((m) => ({ default: m.Profile })))
+const Security = lazy(() => import('./pages/Security').then((m) => ({ default: m.Security })))
+const TwoFactor = lazy(() => import('./pages/TwoFactor').then((m) => ({ default: m.TwoFactor })))
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail })))
 // Public discovery form — deliberately NOT wrapped in ProtectedRoute/MainLayout.
 const DiscoveryForm = lazy(() => import('./pages/discovery/DiscoveryForm').then((m) => ({ default: m.DiscoveryForm })))
 
@@ -80,6 +83,8 @@ function App() {
                 />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/two-factor" element={<TwoFactor />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route
                   path="/onboarding"
                   element={
@@ -234,6 +239,7 @@ function App() {
                     }
                   />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="security" element={<Security />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

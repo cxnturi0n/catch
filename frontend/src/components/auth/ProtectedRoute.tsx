@@ -12,11 +12,14 @@ function AuthGateFallback() {
 
 // Auth gate: the dashboard is for signed-in users only. While the session is
 // still restoring we show a loader (never redirect mid-restore); once we know
-// the user is not authenticated, send them to Google sign-in. No guest access.
+// the user is not authenticated, send them to sign-in. No guest access.
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   if (isLoading) return <AuthGateFallback />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
+  // The API refuses workspace routes for unverified accounts; route the user
+  // to the screen that lets them re-send the link instead of showing errors.
+  if (!user.emailVerified) return <Navigate to="/verify-email" replace />
   return <>{children}</>
 }
 

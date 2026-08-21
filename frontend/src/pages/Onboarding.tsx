@@ -7,7 +7,7 @@ import { useWorkspace } from '../context/WorkspaceContext'
 import { useToast } from '../context/ToastContext'
 import { CatchMark } from '../components/brand/CatchMark'
 import { BrandBackdrop } from '../components/brand/BrandBackdrop'
-import { saveOnboardingProfile } from '../lib/db'
+import { updateProfile } from '../lib/api/workspaces'
 import { COMMUNITY_SIZES } from '../lib/constants'
 
 const ROLES = [
@@ -93,9 +93,9 @@ export function Onboarding() {
       // "Who is using Catch" signal — best-effort, never blocks entering the app.
       if (user) {
         try {
-          await saveOnboardingProfile(user.id, { role, managesMultiple: !!managesMultiple, communitySize, primaryPlatforms: platforms })
+          await updateProfile({ jobRole: role, managesMultiple: !!managesMultiple, communitySize, primaryPlatforms: platforms, onboarded: true })
         } catch {
-          // migration 003 may not be applied yet — proceed regardless
+          // profile is informational only
         }
       }
       showToast('Workspace ready — welcome to Catch')
