@@ -1,0 +1,288 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Discovery form — "Sapphire" restyle token layer + animated gem background.
+   SCOPED to the public discovery form only (`.df-scope`). Imports nothing from,
+   and changes nothing in, the dashboard. Night is the shipped default; day
+   tokens are kept under [data-df-theme="day"] for later (no toggle wired yet).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.df-scope {
+  /* ── NIGHT (default) ── */
+  --df-bg-root: #04091c;
+  --df-surface-card: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.07));
+  --df-card-border: rgba(255, 255, 255, 0.13);
+  --df-surface-option: rgba(255, 255, 255, 0.045);
+  --df-option-border: rgba(255, 255, 255, 0.09);
+  --df-surface-field: rgba(3, 7, 22, 0.5);
+  --df-bar-header: rgba(4, 9, 28, 0.55);
+  --df-bar-footer: rgba(4, 9, 28, 0.72);
+  --df-blur: 30px;
+  --df-edge-light: linear-gradient(90deg, transparent, rgba(220, 232, 255, 0.55), transparent);
+  --df-text-primary: #ffffff;
+  --df-text-high: #f4f7ff;
+  --df-text-body: #dfe7fb;
+  --df-text-label: #e6edff;
+  --df-text-secondary: #c6d2ec;
+  --df-text-muted: #a3afc9;
+  --df-text-dim: #98a4c0;
+  --df-text-faint: #7c88a6;
+  --df-accent: #2f6bff;
+  --df-accent-gradient: linear-gradient(180deg, #3f7bff, #2050e6);
+  --df-accent-shadow: 0 12px 32px rgba(47, 107, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  --df-accent-soft: linear-gradient(90deg, rgba(47, 107, 255, 0.26), rgba(47, 107, 255, 0.08));
+  --df-accent-ring: rgba(120, 160, 255, 0.42);
+  --df-radio-rest: rgba(255, 255, 255, 0.24);
+  --df-hover-fill: rgba(255, 255, 255, 0.07);
+  --df-pos: #3ee0a0;
+  --df-pos-bg: rgba(62, 224, 160, 0.14);
+  --df-pos-border: rgba(62, 224, 160, 0.36);
+  --df-track: rgba(255, 255, 255, 0.1);
+  --df-seg-fill: #5b8cff;
+  --df-seg-glow: 0 0 10px rgba(91, 140, 255, 0.8);
+  --df-caret: #7fa8ff;
+  --df-arrow: #7fa8ff;
+  --df-eyebrow: #7fa8ff;
+
+  /* Gem body/scrim — corner variant defaults; step overrides below. */
+  --df-scrim: linear-gradient(184deg, rgba(4, 9, 28, 0.5) 0%, rgba(4, 9, 28, 0.9) 34%, rgba(4, 9, 28, 0.95) 100%);
+
+  color: var(--df-text-body);
+  background: var(--df-bg-root);
+}
+
+.df-scope[data-df-theme='day'] {
+  --df-bg-root: #f5f2ec;
+  --df-surface-card: linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.4));
+  --df-card-border: rgba(255, 255, 255, 0.85);
+  --df-surface-option: rgba(255, 255, 255, 0.55);
+  --df-option-border: rgba(255, 255, 255, 0.85);
+  --df-surface-field: rgba(255, 255, 255, 0.62);
+  --df-bar-header: rgba(252, 251, 248, 0.62);
+  --df-bar-footer: rgba(252, 251, 248, 0.78);
+  --df-edge-light: linear-gradient(90deg, transparent, rgba(47, 107, 255, 0.34), transparent);
+  --df-text-primary: #171e2c;
+  --df-text-high: #171e2c;
+  --df-text-body: #3b4354;
+  --df-text-label: #171e2c;
+  --df-text-secondary: #4c5464;
+  --df-text-muted: #5f594e;
+  --df-text-dim: #6f6757;
+  --df-text-faint: #6f6757;
+  --df-accent-gradient: linear-gradient(180deg, #2f6bff, #1f49c7);
+  --df-accent-shadow: 0 12px 28px rgba(47, 107, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  --df-accent-soft: linear-gradient(90deg, rgba(47, 107, 255, 0.14), rgba(47, 107, 255, 0.05));
+  --df-accent-ring: #2f6bff;
+  --df-radio-rest: rgba(150, 138, 116, 0.36);
+  --df-hover-fill: rgba(255, 255, 255, 0.75);
+  --df-pos: #0a6b52;
+  --df-pos-bg: rgba(14, 140, 106, 0.1);
+  --df-pos-border: rgba(14, 140, 106, 0.3);
+  --df-track: rgba(150, 138, 116, 0.24);
+  --df-scrim: linear-gradient(190deg, rgba(245, 242, 236, 0.3) 0%, rgba(245, 242, 236, 0.8) 44%, rgba(245, 242, 236, 0.92) 100%);
+  color: var(--df-text-body);
+}
+
+/* 1px light filament along a card's top edge, inset by the padding. */
+.df-filament {
+  position: absolute;
+  top: 0;
+  left: 22px;
+  right: 22px;
+  height: 1px;
+  background: var(--df-edge-light);
+  pointer-events: none;
+}
+
+/* Visible focus ring the reference omits — required for shipping. */
+.df-scope :where(button, [role='radio'], textarea, a, input):focus-visible {
+  outline: 2px solid rgba(120, 160, 255, 0.55);
+  outline-offset: 2px;
+}
+
+/* ── Animated sapphire gem ─────────────────────────────────────────────────
+   One fixed layer behind the form. Only transform/opacity animate. */
+.df-gem {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.df-gem__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--df-scrim);
+}
+.df-gem__wrap,
+.df-gem__glow,
+.df-gem__facet {
+  position: absolute;
+}
+.df-gem__facet {
+  inset: 0;
+}
+.df-gem__wrap {
+  will-change: transform;
+}
+.df-gem__glow {
+  border-radius: 50%;
+  will-change: transform;
+}
+
+/* Step 2 / day — corner gem */
+.df-gem--corner .df-gem__wrap {
+  width: 364px;
+  height: 342px;
+  right: -16%;
+  top: -14%;
+  animation: df-gemDriftA 34s ease-in-out infinite;
+}
+.df-gem--corner .df-c-body {
+  clip-path: polygon(38% 2%, 84% 16%, 100% 58%, 72% 96%, 24% 88%, 2% 44%);
+  background: linear-gradient(146deg, #1e5bff, #0e2fa8 46%, #081a5e);
+  filter: blur(2px);
+  opacity: 0.9;
+}
+.df-gem--corner .df-c-crown {
+  clip-path: polygon(38% 2%, 84% 16%, 62% 40%, 20% 30%);
+  background: linear-gradient(120deg, rgba(220, 232, 255, 0.8), rgba(158, 197, 255, 0.3) 40%, transparent 66%);
+  animation: df-facetPulse 11s ease-in-out infinite;
+}
+.df-gem--corner .df-c-right {
+  clip-path: polygon(84% 16%, 100% 58%, 72% 96%, 64% 52%);
+  background: linear-gradient(200deg, rgba(158, 197, 255, 0.5), rgba(30, 91, 255, 0.2) 55%, transparent);
+  animation: df-facetPulseB 14s ease-in-out infinite;
+}
+.df-gem--corner .df-c-shadow {
+  clip-path: polygon(2% 44%, 24% 88%, 58% 74%, 30% 36%);
+  background: linear-gradient(60deg, rgba(8, 26, 94, 0.9), rgba(3, 7, 28, 0.7));
+  opacity: 0.85;
+}
+.df-gem--corner .df-glow-a {
+  width: 240px;
+  height: 240px;
+  right: 2%;
+  top: -2%;
+  background: radial-gradient(circle, rgba(30, 91, 255, 0.4), transparent 70%);
+  filter: blur(34px);
+  animation: df-caustic 26s ease-in-out infinite;
+}
+.df-gem--corner .df-glow-b {
+  width: 300px;
+  height: 280px;
+  left: -10%;
+  bottom: 6%;
+  background: radial-gradient(circle, rgba(14, 47, 168, 0.3), transparent 70%);
+  filter: blur(46px);
+  animation: df-gemDriftB 40s ease-in-out infinite;
+}
+
+/* Day fills for the corner gem (used by Step 1 and Step 2 in day). */
+.df-scope[data-df-theme='day'] .df-gem--corner .df-gem__wrap {
+  right: -12%;
+  top: -18%;
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-c-body {
+  background: linear-gradient(146deg, #2f6bff, #1b3fd6 46%, #123fcb);
+  opacity: 0.5;
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-c-crown {
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(220, 232, 255, 0.5) 40%, transparent 66%);
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-c-right {
+  background: linear-gradient(200deg, rgba(158, 197, 255, 0.62), rgba(47, 107, 255, 0.24) 55%, transparent);
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-c-shadow {
+  background: linear-gradient(60deg, rgba(27, 63, 214, 0.5), rgba(18, 63, 203, 0.28));
+  opacity: 0.7;
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-glow-a {
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.26), transparent 70%);
+}
+.df-scope[data-df-theme='day'] .df-gem--corner .df-glow-b {
+  background: radial-gradient(circle, rgba(106, 79, 216, 0.18), transparent 70%);
+}
+
+/* Step 1 — crown gem rising from the bottom, centred */
+.df-gem--crown {
+  --df-scrim: linear-gradient(180deg, rgba(4, 9, 28, 0.92) 0%, rgba(4, 9, 28, 0.88) 60%, rgba(4, 9, 28, 0.82) 92%, rgba(4, 9, 28, 0.45) 100%);
+}
+.df-gem--crown .df-gem__wrap {
+  width: 900px;
+  height: 700px;
+  left: 50%;
+  bottom: -40%;
+  margin-left: -450px;
+  animation: df-gemDriftB 42s ease-in-out infinite;
+}
+.df-gem--crown .df-c-body {
+  clip-path: polygon(50% 0, 78% 12%, 96% 44%, 84% 82%, 50% 100%, 16% 82%, 4% 44%, 22% 12%);
+  background: linear-gradient(180deg, #1e5bff, #123fcb 38%, #081a5e 78%, #03071c);
+  filter: blur(3px);
+  opacity: 0.9;
+}
+.df-gem--crown .df-c-crown {
+  clip-path: polygon(50% 0, 78% 12%, 62% 40%, 38% 40%, 22% 12%);
+  background: linear-gradient(170deg, rgba(220, 232, 255, 0.72), rgba(158, 197, 255, 0.2) 44%, transparent 70%);
+  animation: df-facetPulse 13s ease-in-out infinite;
+}
+.df-gem--crown .df-c-right {
+  clip-path: polygon(78% 12%, 96% 44%, 70% 62%, 62% 40%);
+  background: linear-gradient(230deg, rgba(158, 197, 255, 0.4), transparent 58%);
+  animation: df-facetPulseB 17s ease-in-out infinite;
+}
+.df-gem--crown .df-c-left {
+  clip-path: polygon(22% 12%, 38% 40%, 30% 62%, 4% 44%);
+  background: linear-gradient(120deg, rgba(91, 140, 255, 0.32), transparent 60%);
+}
+.df-gem--crown .df-c-shadow {
+  clip-path: polygon(30% 62%, 70% 62%, 84% 82%, 50% 100%, 16% 82%);
+  background: linear-gradient(0deg, rgba(3, 7, 28, 0.92), rgba(8, 26, 94, 0.2) 60%, transparent);
+}
+.df-gem--crown .df-glow-a {
+  width: 660px;
+  height: 440px;
+  left: 50%;
+  bottom: -16%;
+  margin-left: -330px;
+  background: radial-gradient(circle, rgba(30, 91, 255, 0.46), transparent 70%);
+  filter: blur(70px);
+  animation: df-caustic 30s ease-in-out infinite;
+}
+
+@keyframes df-gemDriftA {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(3%, -2%, 0) rotate(2.5deg) scale(1.05); }
+}
+@keyframes df-gemDriftB {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1.04); }
+  50% { transform: translate3d(-3%, 2.5%, 0) rotate(-2deg) scale(0.97); }
+}
+@keyframes df-facetPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.95; }
+}
+@keyframes df-facetPulseB {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.42; }
+}
+@keyframes df-caustic {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate3d(5%, 4%, 0) scale(1.16); opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .df-gem__wrap,
+  .df-gem__glow,
+  .df-gem__facet {
+    animation: none !important;
+  }
+  .df-scope textarea {
+    caret-color: auto;
+  }
+}
+
+@media print {
+  .df-gem {
+    display: none !important;
+  }
+}

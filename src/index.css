@@ -1,0 +1,686 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* "Sapphire" restyle: Plus Jakarta Sans for UI, JetBrains Mono for every number/eyebrow */
+  --font-sans: "Plus Jakarta Sans", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", monospace;
+
+  --color-bg: #060812;
+  --color-card: #0c1424;
+  --color-border: #1c2b47;
+  --color-purple: #1e3a8a;
+  --color-cyan: #2f7cf6;
+  --color-emerald: #4d9fff;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9fb2d4;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* ── NIGHT (default dark sapphire) ──────────────────────────────────────
+     Page is deep navy; cards/surfaces are clearly lighter so they lift off
+     the background. Borders are stronger and text tiers are readable. */
+  --bg-primary: #060a18;
+  --bg-card: #101c33;
+  --border-card: #26395c;
+  /* Sapphire system (token names kept for compatibility; values are all blue now) */
+  --accent-purple: #1e3a8a;
+  --accent-cyan: #2f7cf6;
+  --accent-emerald: #4d9fff;
+  --accent-emerald-bright: #8cc5ff;
+  --accent-sapphire: #2f7cf6;
+  --accent-sapphire-deep: #14276b;
+  --text-primary: #f4f8ff;
+  --text-secondary: #b4c6e6;
+  --text-muted: #8194ba;
+
+  /* Unified sapphire glow scale — soft, medium, strong, plus a focus ring */
+  --glow-purple: 0 0 30px rgba(37, 99, 235, 0.35);
+  --glow-soft: 0 0 18px rgba(77, 159, 255, 0.18);
+  --glow-emerald: 0 0 24px rgba(77, 159, 255, 0.30);
+  --glow-emerald-strong: 0 0 46px rgba(140, 197, 255, 0.42);
+  --glow-focus: 0 0 0 3px rgba(77, 159, 255, 0.28);
+
+  /* Radius scale */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  /* Surfaces — subtle raised fills layered over cards */
+  --surface-1: rgba(255, 255, 255, 0.03);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --hairline: rgba(120, 170, 255, 0.16);
+
+  /* Frosted-glass tokens (consumed by .glass / .glass-panel) */
+  --glass-bg: rgba(18, 30, 55, 0.62);
+  --glass-border: rgba(120, 170, 255, 0.16);
+  --glass-panel-bg: rgba(13, 23, 44, 0.88);
+  --glass-panel-border: rgba(120, 170, 255, 0.18);
+
+  /* Raised-surface hover fill + card drop shadow (theme-aware) */
+  --raise-hover: rgba(255, 255, 255, 0.06);
+  --raise-hover-strong: rgba(255, 255, 255, 0.09);
+  --shadow-card: 0 0 0 1px rgba(120, 170, 255, 0.04);
+
+  /* Ambient sapphire pools behind the shell — strong in night mode */
+  --ambient-1: rgba(47, 124, 246, 0.20);
+  --ambient-2: rgba(77, 159, 255, 0.16);
+  --ambient-3: rgba(30, 58, 138, 0.20);
+}
+
+/* ── DAY (light) ──────────────────────────────────────────────────────────
+   Very light slate page, white cards with a real drop shadow + clear border,
+   dark readable text, and the same sapphire accents darkened for AA contrast
+   on white. Mirror on both selectors so it wins over :root. */
+:root[data-theme="day"],
+[data-theme="day"] {
+  color-scheme: light;
+
+  --bg-primary: #eef2f9;
+  --bg-card: #ffffff;
+  --border-card: #d3ddee;
+
+  --accent-purple: #1e3a8a;
+  --accent-cyan: #2563eb;
+  --accent-emerald: #1d6fe0;
+  --accent-emerald-bright: #1560c9;
+  --accent-sapphire: #2563eb;
+  --accent-sapphire-deep: #1e3a8a;
+  --text-primary: #0d1930;
+  --text-secondary: #33425f;
+  --text-muted: #55627e;
+
+  --glow-purple: 0 0 24px rgba(37, 99, 235, 0.14);
+  --glow-soft: 0 8px 20px -8px rgba(30, 58, 138, 0.18);
+  --glow-emerald: 0 10px 26px -10px rgba(37, 99, 235, 0.22);
+  --glow-emerald-strong: 0 14px 34px -10px rgba(37, 99, 235, 0.30);
+  --glow-focus: 0 0 0 3px rgba(37, 99, 235, 0.22);
+
+  --surface-1: rgba(15, 28, 51, 0.03);
+  --surface-2: rgba(15, 28, 51, 0.06);
+  --hairline: rgba(37, 99, 235, 0.16);
+
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(37, 99, 235, 0.14);
+  --glass-panel-bg: rgba(255, 255, 255, 0.92);
+  --glass-panel-border: rgba(37, 99, 235, 0.16);
+
+  --raise-hover: rgba(15, 28, 51, 0.05);
+  --raise-hover-strong: rgba(15, 28, 51, 0.08);
+  --shadow-card: 0 1px 2px rgba(15, 28, 51, 0.06), 0 8px 24px -12px rgba(15, 28, 51, 0.14);
+
+  --ambient-1: rgba(37, 99, 235, 0.10);
+  --ambient-2: rgba(77, 159, 255, 0.10);
+  --ambient-3: rgba(37, 99, 235, 0.08);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.glow {
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.32);
+}
+
+/* Sapphire glow */
+.glow-emerald {
+  box-shadow: 0 0 34px rgba(77, 159, 255, 0.30), inset 0 0 0 1px rgba(140, 197, 255, 0.10);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #1e3a8a, #2f7cf6, #6db3ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Sapphire wordmark gradient */
+.gradient-text-emerald {
+  background: linear-gradient(100deg, #2f7cf6 0%, #4d9fff 45%, #8cc5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Shiny sapphire wordmark: blue gradient with an icy band that sweeps across.
+   0% state already shows the full gradient, so it stays visible if frozen. */
+.text-shine {
+  background: linear-gradient(100deg, #2f7cf6 0%, #4d9fff 28%, #eaf3ff 48%, #6db3ff 60%, #8cc5ff 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shine 5.5s linear infinite;
+}
+@keyframes text-shine {
+  to {
+    background-position: -220% center;
+  }
+}
+
+.gradient-bar {
+  background: linear-gradient(90deg, #1e3a8a, #2f7cf6, #6db3ff);
+}
+
+.gradient-bar-emerald {
+  background: linear-gradient(90deg, #2f7cf6, #4d9fff 60%, #8cc5ff);
+}
+
+/* Luminous sapphire backdrop: bright radial glow pools over near-black, so the
+   page reads as lit-from-behind rather than flatly dark. */
+.ambient-field {
+  background:
+    radial-gradient(1000px circle at 50% -5%, var(--ambient-1), transparent 55%),
+    radial-gradient(760px circle at 84% 16%, var(--ambient-2), transparent 58%),
+    radial-gradient(820px circle at 10% 92%, var(--ambient-3), transparent 60%),
+    var(--bg-primary);
+}
+
+/* Frosted-glass surfaces — moderate translucency + blur, sapphire-tinted border.
+   Used for cards, tables and popups so content reads as sitting on glass over
+   the luminous backdrop. */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+}
+/* Soft-glowing top filament, inset by the card padding. */
+.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: var(--sf-edge-light);
+  box-shadow: 0 0 7px 0.5px var(--sf-edge-glow);
+  pointer-events: none;
+  z-index: 2;
+}
+/* Partial glowing border: a 1px gradient ring, bright only on the top-left arc
+   (the gradient fades to transparent), so the glow lights PART of the border. */
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--sf-glow-border);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+.glass-panel {
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid var(--glass-panel-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Subtle sheen sweep for premium buttons/cards on hover */
+.sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.10) 48%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 0.7s ease;
+  pointer-events: none;
+}
+.sheen:hover::after {
+  transform: translateX(120%);
+}
+
+/* Consistent keyboard/focus ring across interactive primitives */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-focus);
+  border-color: var(--accent-emerald);
+}
+
+/* Card lift: gentle raise + sapphire glow on hover (transform + shadow only) */
+.card-hover {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(140, 197, 255, 0.28);
+  box-shadow: var(--glow-soft);
+}
+
+/* Skeleton loading — visible base tint with a sheen that sweeps via transform only.
+   Never gates visibility: the block is always a soft surface even if frozen. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-md);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(140, 197, 255, 0.12), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Slow-breathing glow for hero/logo halos */
+@keyframes breathe {
+  0%, 100% { opacity: 0.5; transform: scale(0.94); }
+  50%      { opacity: 0.9; transform: scale(1.06); }
+}
+.animate-breathe {
+  animation: breathe 5.5s ease-in-out infinite;
+}
+
+/* Gentle float for accent nodes */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.animate-float-y {
+  animation: float-y 7s ease-in-out infinite;
+}
+
+/* Continuous slow rotation for the vault mechanism ring */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 26s linear infinite;
+  transform-origin: center;
+}
+.animate-spin-slower {
+  animation: spin-slow 60s linear infinite;
+  transform-origin: center;
+}
+
+/* Rise-in for content entrance. Transform-only — never animates opacity — so if
+   the animation is frozen at 0% (hidden/non-compositing renderer) the content is
+   still fully visible, just momentarily offset. Motion is an enhancement, never
+   a gate on visibility. */
+@keyframes rise-in {
+  from { transform: translateY(10px); }
+  to   { transform: translateY(0); }
+}
+.animate-rise-in {
+  animation: rise-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe,
+  .animate-float-y,
+  .animate-spin-slow,
+  .animate-spin-slower,
+  .animate-rise-in,
+  .text-shine,
+  .skeleton::after,
+  .sheen::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a2535;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #263449;
+}
+
+[data-theme="day"] ::-webkit-scrollbar-thumb {
+  background: #c2cee1;
+}
+[data-theme="day"] ::-webkit-scrollbar-thumb:hover {
+  background: #aab9d2;
+}
+
+/* The animated sapphire ember field belongs to the dark aesthetic; in day mode
+   fade the whole ambient layer right down so text keeps maximum contrast. */
+[data-theme="day"] .shell-ambient {
+  opacity: 0.28;
+}
+[data-theme="day"] .shell-ambient .ambient-field {
+  opacity: 0.5;
+}
+
+/* Brand mark lighting. Night: the faceted C sits on a dark field, so it carries
+   its own outer glow. Day: no glow (it would haze on white) — the mark gets a
+   projected shadow instead and its lower facet deepens for contrast. */
+.catch-mark {
+  filter: drop-shadow(0 0 10px rgba(63, 123, 255, 0.45)) drop-shadow(0 0 22px rgba(47, 107, 255, 0.22));
+}
+[data-theme="day"] .catch-mark {
+  filter: drop-shadow(0 6px 10px rgba(15, 25, 55, 0.28)) drop-shadow(0 1px 2px rgba(15, 25, 55, 0.18));
+}
+/* Catch Intelligence bar — part of the shell, not of any section's layout. It
+   starts where the sidebar ends and runs to the page edge, re-flowing with the
+   sidebar width (and any future right rail that sets --rail-w). */
+.catch-bar {
+  left: 0;
+  right: var(--rail-w, 0px);
+}
+@media (min-width: 1024px) {
+  .catch-bar {
+    left: var(--sidebar-w, 0px);
+  }
+}
+
+/* Gold mark = Catch's own AI. Same lighting language, warm instead of sapphire. */
+.catch-mark--gold {
+  filter: drop-shadow(0 0 10px rgba(230, 184, 77, 0.5)) drop-shadow(0 0 22px rgba(212, 160, 45, 0.24));
+}
+[data-theme="day"] .catch-mark--gold {
+  filter: drop-shadow(0 6px 10px rgba(90, 62, 10, 0.26)) drop-shadow(0 1px 2px rgba(90, 62, 10, 0.16));
+}
+[data-theme="day"] .catch-mark .cm-facet-dark {
+  opacity: 0.92;
+}
+@media (prefers-reduced-motion: reduce) {
+  .catch-mark { transition: none; }
+}
+
+/* On light surfaces the wordmark's icy sweep band would wash out; keep it as a
+   solid sapphire gradient instead so "Catch" stays legible. */
+[data-theme="day"] .text-shine {
+  /* Use background-IMAGE (not the `background` shorthand) so background-clip:text
+     from the base rule is preserved — the shorthand would reset it and paint a
+     solid blue block over the wordmark. Re-assert clip + transparent fill too. */
+  background-image: linear-gradient(100deg, #1d6fe0 0%, #2563eb 50%, #1560c9 100%);
+  background-size: auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: none;
+}
+
+/* ── Day-mode safety net ─────────────────────────────────────────────────────
+   Module files still carry hardcoded dark-on-dark utilities (text-white, slate
+   text, a few #hex backgrounds) that were never converted to theme variables.
+   Remap the common ones so day mode is READABLE without editing every module.
+   All scoped to [data-theme="day"] — night mode is untouched. */
+[data-theme="day"] .text-white {
+  color: var(--text-primary);
+}
+[data-theme="day"] .text-slate-100,
+[data-theme="day"] .text-slate-200,
+[data-theme="day"] .text-slate-300 {
+  color: var(--text-secondary);
+}
+[data-theme="day"] .text-slate-400,
+[data-theme="day"] .text-slate-500,
+[data-theme="day"] .text-slate-600 {
+  color: var(--text-muted);
+}
+
+/* Common hardcoded dark surfaces (inputs, inner panels) → theme card surface. */
+[data-theme="day"] .bg-\[\#070b12\],
+[data-theme="day"] .bg-\[\#05080f\],
+[data-theme="day"] .bg-\[\#0b1018\],
+[data-theme="day"] .bg-\[\#0c1424\],
+[data-theme="day"] .bg-\[\#0a1118\],
+[data-theme="day"] .bg-\[\#0a1628\] {
+  background-color: var(--bg-card);
+}
+
+/* Keep white text where it sits on a SOLID colored/gradient background (primary
+   buttons, avatars, active nav, gradient chips). Translucent accent chips use
+   text-[var(--accent-*)] rather than text-white, so they are unaffected. The
+   compound selectors outrank the .text-white remap above by specificity. */
+[data-theme="day"] [class*="gradient-bar"],
+[data-theme="day"] [class*="gradient-bar"] *,
+[data-theme="day"] [class*="bg-gradient-to-"].text-white,
+[data-theme="day"] [class*="bg-gradient-to-"] .text-white {
+  color: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   "SAPPHIRE" RESTYLE — design-system foundation
+   Additive layer: reusable tokens + utilities that realise the Sapphire handoff
+   (glass cards, ambient background, mono KPIs). Theme-aware via the existing
+   day/night token split; nothing here fabricates data or motion on data.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --sf-sapphire: #2f6bff;
+  --sf-sapphire-lift: #3f7bff;
+  --sf-sapphire-deep: #2050e6;
+  --sf-ice: #37d0f0;
+  --sf-violet: #583ce8;
+  /* Card filament + hover border — night values (light glints on dark glass). */
+  --sf-edge-light: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  --sf-hover-border: rgba(120, 160, 255, 0.35);
+  /* Partial glowing border: bright at the top-left, fading to nothing — only PART
+     of the ring lights up. Plus a soft glow behind the top filament. */
+  --sf-glow-border: linear-gradient(145deg, rgba(140, 180, 255, 0.85), rgba(120, 170, 255, 0.16) 42%, rgba(120, 170, 255, 0) 70%);
+  --sf-edge-glow: rgba(120, 170, 255, 0.5);
+  /* State tints */
+  --sf-pos: #3ee0a0;
+  --sf-pos-bg: rgba(62, 224, 160, 0.12);
+  --sf-neg: #ff8f7f;
+  --sf-neg-bg: rgba(255, 143, 127, 0.1);
+  --sf-warn: #ffd479;
+  --sf-warn-bg: rgba(255, 212, 121, 0.12);
+}
+:root[data-theme="day"],
+[data-theme="day"] {
+  /* On light glass a white filament vanishes — use a faint sapphire one instead. */
+  --sf-edge-light: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.22), transparent);
+  --sf-hover-border: rgba(47, 107, 255, 0.4);
+  --sf-glow-border: linear-gradient(145deg, rgba(47, 107, 255, 0.55), rgba(47, 107, 255, 0.1) 42%, rgba(47, 107, 255, 0) 70%);
+  --sf-edge-glow: rgba(47, 107, 255, 0.22);
+}
+
+/* Ambient background — three slow, blurred lights + a vignette. The one signature
+   element. Lives inside .shell-ambient so the existing day-mode dimming applies.
+   Transform-only animation (GPU); never animates blur or the gradient. */
+.sf-ambient { position: absolute; inset: 0; overflow: hidden; }
+.sf-light {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.sf-light-a {
+  width: 820px; height: 820px; left: -6%; top: -14%;
+  background: radial-gradient(circle, rgba(43, 96, 255, 0.5), transparent 68%);
+  filter: blur(70px);
+  animation: sf-driftA 26s ease-in-out infinite;
+}
+.sf-light-b {
+  width: 760px; height: 760px; right: -10%; top: 0;
+  background: radial-gradient(circle, rgba(20, 168, 232, 0.34), transparent 68%);
+  filter: blur(80px);
+  animation: sf-driftB 34s ease-in-out infinite;
+}
+.sf-light-c {
+  width: 900px; height: 700px; left: 26%; bottom: -26%;
+  background: radial-gradient(circle, rgba(88, 60, 232, 0.38), transparent 70%);
+  filter: blur(90px);
+  animation: sf-driftC 40s ease-in-out infinite;
+}
+.sf-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(6, 10, 24, 0) 38%, rgba(4, 7, 15, 0.88) 100%);
+}
+@keyframes sf-driftA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(6%, -4%, 0) scale(1.12); } }
+@keyframes sf-driftB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); } 50% { transform: translate3d(-7%, 5%, 0) scale(0.92); } }
+@keyframes sf-driftC { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(4%, 6%, 0); } }
+
+/* Card recipe — layered ON TOP of .glass (which supplies the theme-aware
+   translucent fill + blur + border), adding the sapphire radius + a 1px light
+   filament along the top edge, inset by the card padding. */
+.sf-card { position: relative; border-radius: 16px; }
+.sf-card--interactive { transition: border-color 0.15s ease; }
+.sf-card--interactive:hover { border-color: var(--sf-hover-border); }
+
+/* KPI / metric typography */
+.sf-eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 600; font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-faint, #5c6785);
+}
+.sf-value {
+  font-family: var(--font-mono);
+  font-weight: 700; font-size: 32px; letter-spacing: -0.03em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sf-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Delta / status pills */
+.sf-pill {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-family: var(--font-mono); font-weight: 600; font-size: 11px;
+  border-radius: 20px; padding: 3px 7px; font-variant-numeric: tabular-nums;
+}
+.sf-pill-pos { color: var(--sf-pos); background: var(--sf-pos-bg); }
+.sf-pill-neg { color: var(--sf-neg); background: var(--sf-neg-bg); }
+.sf-pill-neutral { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); }
+
+/* One 40%-wide diagonal glint that sweeps across a hero/plan/banner surface. */
+.sf-sweep { position: relative; overflow: hidden; }
+.sf-sweep::after {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  transform: translateX(-120%);
+  animation: sf-sweep 7s ease-in-out infinite;
+}
+@keyframes sf-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+
+/* Golden "elusive" glow border — a bright gold band that flows around a 1px
+   masked ring, for the Upgrade-to-PRO CTA. */
+.sf-gold { position: relative; }
+.sf-gold::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(115deg, rgba(245, 214, 123, 0) 22%, rgba(245, 214, 123, 0.95) 45%, rgba(230, 184, 77, 0.55) 60%, rgba(245, 214, 123, 0) 80%);
+  background-size: 250% 100%;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: sf-gold-flow 3.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes sf-gold-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-light-a, .sf-light-b, .sf-light-c, .sf-sweep::after, .sf-gold::before { animation: none !important; }
+}
+
+/* Dual-thumb range: two overlaid inputs on a shared track. The input surface is
+   click-through; only the thumbs capture the pointer so both handles are usable. */
+.sf-range {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
+.sf-range::-webkit-slider-runnable-track { background: transparent; height: 100%; }
+.sf-range::-moz-range-track { background: transparent; height: 100%; }
+.sf-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  height: 18px; width: 18px;
+  border-radius: 50%;
+  background: #d6e5ff;
+  border: 3px solid var(--accent-sapphire, #2f7cf6);
+  box-shadow: 0 0 12px rgba(47, 124, 246, 0.7);
+  cursor: pointer;
+  margin-top: -7px;
+}
+.sf-range::-moz-range-thumb {
+  pointer-events: auto;
+  height: 18px; width: 18px;
+  border-radius: 50%;
+  background: #d6e5ff;
+  border: 3px solid var(--accent-sapphire, #2f7cf6);
+  box-shadow: 0 0 12px rgba(47, 124, 246, 0.7);
+  cursor: pointer;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm 22mm;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .report-print-footer {
+    position: fixed;
+  }
+}

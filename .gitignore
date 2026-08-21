@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+.env.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.vercel
+
+# All local env files (publishable keys are safe, but keep env out of VCS)
+.env
+
+# Generated reports (regenerated on demand, not build inputs)
+docs/*.pdf
+docs/*.docx
+
+# Supabase CLI local state (project ref, pooler url)
+supabase/.temp
+
+# Local tooling
+.claude/
+
+# Private / confidential documents — never commit
+Catch-Business-Plan.pdf
+*.pdf
+HANDOVER.md
+docs/*.html
