@@ -1,0 +1,53 @@
+name: Deploy
+
+# Manual by default. Enable auto-deploy on main by uncommenting the push
+# trigger once you trust CI as the gate.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (branch, tag or SHA)'
+        default: main
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Install deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'admin' }}
+        run: |
+          echo "${{ github.sha }}" > .deployed-sha
+          deploy/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST" ~/.ssh/deploy_key
+
+      - name: Verify
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://catch-labs.com' }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS -m 15 "$SITE_URL/api/readyz"; then echo; echo "ready"; exit 0; fi
+            sleep 10
+          done
+          echo "API not ready after deploy"; exit 1

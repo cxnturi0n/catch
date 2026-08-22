@@ -9,6 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REMOTE_DIR=/opt/catch
 SSH="ssh -i $KEY -o StrictHostKeyChecking=accept-new $TARGET"
 
+# Record what is running (written by CI, harmless when absent).
 echo "== sync sources"
 rsync -az --delete \
   --exclude '.git' --exclude 'node_modules' --exclude 'dist' --exclude '.env' --exclude '.env.*' \
