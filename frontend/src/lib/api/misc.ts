@@ -254,3 +254,45 @@ export async function fetchAdminOverview<T>(): Promise<{ status: 'ok'; data: T }
     return { status: 'error', error: err instanceof Error ? err.message : 'Failed' }
   }
 }
+
+// ---- Intelligence report (deterministic, server-built) ----------------------
+export type ReportPeriod = '7d' | '30d' | '90d'
+export interface ReportMetric { id: string; label: string; value: number | null; prev: number | null; unit: 'count' | 'pct' | 'seconds' | 'hours' | 'usd' | 'ratio'; deltaPct: number | null }
+export interface ReportSeries { id: string; label: string; unit: ReportMetric['unit']; points: { t: string; v: number }[] }
+export interface ReportTable { id: string; label: string; columns: { key: string; label: string; unit?: ReportMetric['unit'] }[]; rows: Record<string, string | number | null>[] }
+export interface ReportInsight { id: string; sectionId: string; severity: 'info' | 'warning' | 'critical' | 'positive'; metricIds: string[]; text: string }
+export interface ReportSection {
+  id: string
+  title: string
+  state: 'ok' | 'no_data' | 'not_connected' | 'not_available'
+  stateReason: string | null
+  metrics: ReportMetric[]
+  series: ReportSeries[]
+  tables: ReportTable[]
+  insights: ReportInsight[]
+  note: string
+}
+export interface ReportRecommendation { id: string; title: string; rationale: string; priority: 'high' | 'medium' | 'low'; metricIds: string[]; insightIds: string[] }
+export interface IntelligenceReportDoc {
+  version: number
+  workspace: { id: string; name: string }
+  period: { kind: ReportPeriod; days: number; start: string; end: string; prevStart: string; prevEnd: string }
+  generatedAt: string
+  coverage: { platforms: { platform: string; status: string; lastSyncAt: string | null; lastError: string | null }[]; daysWithData: number; periodDays: number; moderators: number }
+  summary: string[]
+  sections: ReportSection[]
+  recommendations: ReportRecommendation[]
+  methodology: string[]
+  narrativeSource: 'rules' | 'llm'
+}
+export interface IntelligenceReportListItem { id: string; periodKind: ReportPeriod; periodStart: string; periodEnd: string; narrativeSource: 'rules' | 'llm'; createdAt: string }
+
+export function generateIntelligenceReport(workspaceId: WorkspaceId, period: ReportPeriod) {
+  return api<{ id: string; reused: boolean; report: IntelligenceReportDoc }>(`/workspaces/${workspaceId}/ai/report`, { method: 'POST', body: { period } })
+}
+export async function fetchIntelligenceReports(workspaceId: WorkspaceId): Promise<IntelligenceReportListItem[]> {
+  return (await api<{ reports: IntelligenceReportListItem[] }>(`/workspaces/${workspaceId}/ai/reports`)).reports
+}
+export function fetchIntelligenceReport(workspaceId: WorkspaceId, id: string) {
+  return api<{ id: string; report: IntelligenceReportDoc; createdAt: string }>(`/workspaces/${workspaceId}/ai/reports/${id}`)
+}
