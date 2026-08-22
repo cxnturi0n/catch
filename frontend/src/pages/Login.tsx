@@ -21,8 +21,9 @@ export function Login() {
     const r = await login(email.trim(), password)
     setLoading(false)
     if (!r.ok) return setError(r.error ?? 'Sign-in failed.')
+    const next = params.get('next')
     if (r.twoFactorRequired) return navigate('/two-factor', { replace: true })
-    navigate('/dashboard', { replace: true })
+    navigate(next && next.startsWith('/') ? next : '/dashboard', { replace: true })
   }
 
   return (

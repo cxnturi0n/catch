@@ -30,3 +30,17 @@ pick a ref); it needs repository secrets `DEPLOY_SSH_KEY` (private key of a
 dedicated ed25519 key whose public half is in `~admin/.ssh/authorized_keys`
 on the server) and `DEPLOY_HOST`, and optionally the variable `SITE_URL`.
 Rollback = run Deploy with the previous commit SHA.
+
+## Monitoring
+
+- `deploy/watchdog.sh` (installed by `install-watchdog.sh`, cron every 5 min,
+  root): checks `https://$SITE_ADDRESS/api/readyz`, disk ≥85 %, memory
+  <150 MB, stopped containers; restarts api/worker or `compose up -d` when
+  needed; e-mails `ALERT_TO` (fallback `DISCOVERY_NOTIFY_TO`) through Resend,
+  once per condition and again when it clears. Logs to syslog
+  (`journalctl -t catch-watchdog`).
+- Error tracking: set `SENTRY_DSN` (api + worker) and build the frontend with
+  `VITE_SENTRY_DSN`; both are no-ops when unset.
+- Recommended external check: a free uptime monitor (e.g. UptimeRobot) on
+  `https://catch-labs.com/api/readyz` every minute — catches the host itself
+  being down, which the watchdog cannot.

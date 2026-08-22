@@ -1,3 +1,5 @@
+import { initSentry, captureException } from './lib/sentry.js'
+initSentry('worker')
 import { closeDatabase, pingDatabase } from './db/client.js'
 import { createBoss, startWorker } from './jobs/scheduler.js'
 import { logger } from './logger.js'
@@ -20,6 +22,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  captureException(err)
   logger.error({ err }, 'worker failed to start')
   process.exit(1)
 })

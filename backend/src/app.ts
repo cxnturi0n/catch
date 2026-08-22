@@ -23,12 +23,14 @@ import { reportRoutes } from './modules/reports/routes.js'
 import { feedbackRoutes } from './modules/feedback/routes.js'
 import { discoveryRoutes } from './modules/discovery/routes.js'
 import { aiRoutes } from './modules/ai/routes.js'
+import { memberRoutes } from './modules/members/routes.js'
 import { fileRoutes } from './routes/files.js'
 import { webhookRoutes } from './routes/webhooks.js'
 import { eventRoutes } from './routes/events.js'
 import { devRoutes } from './routes/dev.js'
 import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
+import { captureException } from './lib/sentry.js'
 
 // Builds the Fastify instance without listening — reused by api.ts and by tests.
 export async function buildApp() {
@@ -73,7 +75,10 @@ export async function buildApp() {
     }
     const err = error as Partial<FastifyError> & { message?: string }
     const status = err.statusCode ?? 500
-    if (status >= 500) req.log.error({ err }, 'unhandled error')
+    if (status >= 500) {
+      req.log.error({ err }, 'unhandled error')
+      captureException(error, { url: req.url, method: req.method })
+    }
     reply.status(status).send({
       error: {
         code: err.code ?? (status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR'),
@@ -105,6 +110,7 @@ export async function buildApp() {
   await app.register(feedbackRoutes)
   await app.register(discoveryRoutes)
   await app.register(aiRoutes)
+  await app.register(memberRoutes)
   await app.register(fileRoutes)
   await app.register(webhookRoutes)
   await app.register(eventRoutes)

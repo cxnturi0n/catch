@@ -1,3 +1,5 @@
+import { initSentry } from './lib/sentry.js'
+initSentry('api')
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { closeDatabase } from './db/client.js'

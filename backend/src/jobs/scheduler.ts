@@ -4,6 +4,7 @@ import { config } from '../config.js'
 import { db } from '../db/client.js'
 import { integrations, integrationSyncState } from '../db/schema/index.js'
 import { logger } from '../logger.js'
+import { captureException } from '../lib/sentry.js'
 import { syncPlatform } from '../modules/integrations/service.js'
 import type { IntegrationPlatform } from '../integrations/index.js'
 import { syncDiscordActivity } from './discordActivity.js'
@@ -150,7 +151,11 @@ export async function startWorker(boss: PgBoss) {
     logger.info(await runRetention(), 'retention')
   })
 
-  boss.on('error', (err) => logger.error({ err }, 'pg-boss error'))
+  boss.on('error', (err) => {
+    logger.error({ err }, 'pg-boss error')
+    captureException(err)
+  })
+  boss.on('job-failed' as never, (ev: unknown) => captureException(new Error('job failed'), { job: ev }))
   logger.info('worker started: sync tick every minute, reports hourly, shift events 00:10 UTC, retention 03:00 UTC')
 }
 

@@ -99,6 +99,24 @@ export const workspaceMembers = pgTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.userId] }), index('workspace_members_user_idx').on(t.userId)],
 )
 
+// Pending invitations. The token is stored hashed; the clear token travels
+// only inside the e-mail link.
+export const workspaceInvites = pgTable(
+  'workspace_invites',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    email: text('email').notNull(),
+    role: text('role', { enum: ['admin', 'member'] }).notNull().default('member'),
+    tokenHash: text('token_hash').notNull().unique(),
+    invitedBy: userRefNullable('invited_by'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('workspace_invites_ws_email_key').on(t.workspaceId, t.email), index('workspace_invites_ws_idx').on(t.workspaceId)],
+)
+
 // --- Integrations -----------------------------------------------------------
 export const integrations = pgTable(
   'integrations',

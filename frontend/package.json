@@ -12,6 +12,7 @@
     "verify": "tsc -b && vite build"
   },
   "dependencies": {
+    "@sentry/react": "^10.70.0",
     "@tailwindcss/vite": "^4.3.3",
     "better-auth": "^1.7.1",
     "framer-motion": "^12.42.2",

@@ -43,6 +43,9 @@ const schema = z.object({
   ANTHROPIC_API_KEY: optionalSecret,
   LLM_MODEL: z.string().default('claude-opus-5'),
 
+  // Error tracking (optional)
+  SENTRY_DSN: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
+
   // Inbound webhooks
   TELEGRAM_WEBHOOK_SECRET: optionalSecret,
 

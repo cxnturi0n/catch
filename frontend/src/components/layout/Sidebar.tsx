@@ -133,6 +133,7 @@ export function Sidebar({
         label: 'Setup',
         items: [
           { to: '/dashboard/integrations', label: 'Integrations', icon: Plug },
+          { to: '/dashboard/members', label: 'Members', icon: Users },
           { to: '/dashboard/instructions', label: 'Catch Instructions', icon: BookOpen },
           // Owner-only pages — the routes/RLS also enforce this.
           ...(user?.email?.toLowerCase() === OWNER_EMAIL
