@@ -34,7 +34,6 @@ const KOLTracker = lazy(() => import('./components/modules/KOLTracker').then((m)
 const Tasks = lazy(() => import('./components/modules/Tasks').then((m) => ({ default: m.Tasks })))
 const Payments = lazy(() => import('./components/modules/Payments').then((m) => ({ default: m.Payments })))
 const Report = lazy(() => import('./components/modules/Report').then((m) => ({ default: m.Report })))
-const IntelligenceReport = lazy(() => import('./components/modules/IntelligenceReport').then((m) => ({ default: m.IntelligenceReport })))
 const Integrations = lazy(() => import('./components/modules/Integrations').then((m) => ({ default: m.Integrations })))
 const CatchLab = lazy(() => import('./components/modules/CatchLab').then((m) => ({ default: m.CatchLab })))
 const Instructions = lazy(() => import('./components/modules/Instructions').then((m) => ({ default: m.Instructions })))
@@ -160,14 +159,6 @@ function App() {
                     element={
                       <Suspense fallback={<PageFallback />}>
                         <Payments />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="intelligence"
-                    element={
-                      <Suspense fallback={<PageFallback />}>
-                        <IntelligenceReport />
                       </Suspense>
                     }
                   />

@@ -1,152 +1,29 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Info, Loader2, Minus, Printer, RotateCw, Sparkles } from 'lucide-react'
-import { Card } from '../ui/Card'
-import { Button } from '../ui/Button'
-import { Badge, type BadgeTone } from '../ui/Badge'
-import { useWorkspace } from '../../context/WorkspaceContext'
-import {
-  fetchIntelligenceReport,
-  fetchIntelligenceReports,
-  generateIntelligenceReport,
-  type IntelligenceReportDoc,
-  type IntelligenceReportListItem,
-  type ReportInsight,
-  type ReportMetric,
-  type ReportPeriod,
-  type ReportSection,
-  type ReportSeries,
-} from '../../lib/api/misc'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Info, Minus } from 'lucide-react'
+import { Card } from '../../ui/Card'
+import { Badge, type BadgeTone } from '../../ui/Badge'
+import type { IntelligenceReportDoc, ReportInsight, ReportMetric, ReportSection, ReportSeries } from '../../../lib/api/misc'
+import { formatMetricValue } from '../../../lib/intelligenceReport'
 
-// Deterministic report: the server builds a fixed document (same sections,
-// same metric ids every time) and this component only lays it out. Nothing
-// here computes a number.
+// Lays out the server-built report. The document's structure is fixed by the
+// backend (same sections and metric ids every time); nothing here computes a
+// number.
 
-const PERIODS: { id: ReportPeriod; label: string }[] = [
-  { id: '7d', label: 'Last 7 days' },
-  { id: '30d', label: 'Last 30 days' },
-  { id: '90d', label: 'Last 90 days' },
-]
-
-export function IntelligenceReport() {
-  const { activeWorkspaceId } = useWorkspace()
-  const [period, setPeriod] = useState<ReportPeriod>('30d')
-  const [doc, setDoc] = useState<IntelligenceReportDoc | null>(null)
-  const [history, setHistory] = useState<IntelligenceReportListItem[]>([])
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const loadHistory = useCallback(async () => {
-    if (!activeWorkspaceId) return
-    try {
-      setHistory(await fetchIntelligenceReports(activeWorkspaceId))
-    } catch {
-      /* history is optional */
-    }
-  }, [activeWorkspaceId])
-
-  useEffect(() => {
-    setDoc(null)
-    void loadHistory()
-  }, [loadHistory])
-
-  const generate = async () => {
-    if (!activeWorkspaceId) return
-    setBusy(true)
-    setError(null)
-    try {
-      const r = await generateIntelligenceReport(activeWorkspaceId, period)
-      setDoc(r.report)
-      void loadHistory()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not generate the report')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const open = async (id: string) => {
-    if (!activeWorkspaceId) return
-    setBusy(true)
-    try {
-      setDoc((await fetchIntelligenceReport(activeWorkspaceId, id)).report)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6 print:space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-[var(--text-primary)]">
-            <Sparkles size={22} className="text-[var(--accent-emerald)]" /> Intelligence Report
-          </h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Same structure every time; only the data changes. Every figure is computed from synced platform data for the period.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select value={period} onChange={(e) => setPeriod(e.target.value as ReportPeriod)} className="focus-ring h-10 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3 text-sm text-[var(--text-primary)] outline-none hover:border-white/20" aria-label="Period">
-            {PERIODS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <Button onClick={generate} disabled={busy || !activeWorkspaceId}>
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <RotateCw size={16} />} Generate report
-          </Button>
-          {doc && (
-            <Button variant="secondary" onClick={() => window.print()}>
-              <Printer size={16} /> Print / PDF
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
-
-      {!doc && (
-        <Card className="p-8 text-center">
-          <p className="text-[var(--text-secondary)]">Pick a period and generate the report. Previous reports stay available below.</p>
-        </Card>
-      )}
-
-      {doc && <ReportView doc={doc} />}
-
-      {history.length > 0 && (
-        <Card className="p-5 print:hidden">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Previous reports</h2>
-          <ul className="divide-y divide-[var(--border-card)]">
-            {history.map((h) => (
-              <li key={h.id} className="flex items-center justify-between py-2 text-sm">
-                <span>
-                  <span className="font-medium text-[var(--text-primary)]">{h.periodKind}</span> · {h.periodStart} → {h.periodEnd}
-                  <span className="ml-2 text-[var(--text-muted)]">{new Date(h.createdAt).toLocaleString()}</span>
-                </span>
-                <button onClick={() => open(h.id)} className="text-[var(--accent-emerald)] hover:underline">
-                  Open
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-    </div>
-  )
-}
-
-// ---- document -------------------------------------------------------------
-
-function ReportView({ doc }: { doc: IntelligenceReportDoc }) {
+export function ReportView({ doc }: { doc: IntelligenceReportDoc }) {
   return (
     <article className="space-y-6">
       <Card className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">{doc.workspace.name}</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              {doc.workspace.name}
+              {doc.platform && <span className="text-[var(--text-secondary)]"> · {doc.platform}</span>}
+            </h2>
             <p className="text-sm text-[var(--text-secondary)]">
               {doc.period.start} → {doc.period.end} ({doc.period.days} days), compared with {doc.period.prevStart} → {doc.period.prevEnd}
             </p>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">Generated {new Date(doc.generatedAt).toLocaleString()} · narrative: {doc.narrativeSource === 'llm' ? 'AI (validated)' : 'rules'}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Generated {new Date(doc.generatedAt).toLocaleString()} · {doc.scope} · narrative: {doc.narrativeSource === 'llm' ? 'AI (validated)' : 'rules'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {doc.coverage.platforms.map((p) => (
@@ -262,7 +139,7 @@ function SectionView({ s }: { s: ReportSection }) {
                     <tr key={i} className="border-t border-[var(--border-card)]">
                       {t.columns.map((c) => (
                         <td key={c.key} className="py-1.5 pr-4 text-[var(--text-primary)]">
-                          {fmtCell(r[c.key], c.unit)}
+                          {r[c.key] === null || r[c.key] === undefined ? '—' : typeof r[c.key] === 'number' ? formatMetricValue(r[c.key] as number, c.unit ?? 'count') : String(r[c.key])}
                         </td>
                       ))}
                     </tr>
@@ -303,26 +180,35 @@ function MetricTile({ m }: { m: ReportMetric }) {
   return (
     <div className="rounded-lg border border-[var(--border-card)] bg-[var(--bg-elevated)] p-3">
       <div className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">{m.label}</div>
-      <div className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{fmtValue(m.value, m.unit)}</div>
+      <div className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{formatMetricValue(m.value, m.unit)}</div>
       {m.prev !== null && (
         <div className={`mt-0.5 flex items-center gap-1 text-xs ${tone}`}>
-          <Arrow size={12} /> {d === null ? `prev ${fmtValue(m.prev, m.unit)}` : `${d > 0 ? '+' : ''}${d.toFixed(1)}% vs ${fmtValue(m.prev, m.unit)}`}
+          <Arrow size={12} /> {d === null ? `prev ${formatMetricValue(m.prev, m.unit)}` : `${d > 0 ? '+' : ''}${d.toFixed(1)}% vs ${formatMetricValue(m.prev, m.unit)}`}
         </div>
       )}
     </div>
   )
 }
 
-/** Minimal dependency-free bar strip; enough for a printable report. */
+/** Dependency-free bar strip; enough for a printable report. */
 function SeriesBars({ se }: { se: ReportSeries }) {
   if (se.points.length === 0) return null
-  const max = Math.max(...se.points.map((p) => p.v), 1)
+  const values = se.points.map((p) => p.v)
+  const max = Math.max(...values, 1)
+  // Membership series move a few percent over a period: scale from the
+  // minimum so the trend is visible, and say so in the label.
+  const min = Math.min(...values)
+  const zoom = se.id.startsWith('growth.') && min > 0 && (max - min) / max < 0.2
+  const floor = zoom ? min * 0.98 : 0
   return (
     <div className="mt-4">
-      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{se.label}</h4>
+      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+        {se.label}
+        {zoom && <span className="ml-2 normal-case tracking-normal text-[var(--text-muted)]">(axis from {formatMetricValue(Math.round(floor), se.unit)})</span>}
+      </h4>
       <div className="flex h-16 items-end gap-[2px]" role="img" aria-label={se.label}>
         {se.points.map((p) => (
-          <div key={p.t} title={`${p.t}: ${fmtValue(p.v, se.unit)}`} className="flex-1 rounded-t bg-[var(--accent-emerald)]/70" style={{ height: `${Math.max(2, (p.v / max) * 100)}%` }} />
+          <div key={p.t} title={`${p.t}: ${formatMetricValue(p.v, se.unit)}`} className="flex-1 rounded-t bg-[var(--accent-emerald)]/70" style={{ height: `${Math.max(2, ((p.v - floor) / (max - floor || 1)) * 100)}%` }} />
         ))}
       </div>
       <div className="mt-0.5 flex justify-between text-[10px] text-[var(--text-muted)]">
@@ -331,26 +217,4 @@ function SeriesBars({ se }: { se: ReportSeries }) {
       </div>
     </div>
   )
-}
-
-function fmtValue(v: number | null, unit: ReportMetric['unit']): string {
-  if (v === null) return '—'
-  switch (unit) {
-    case 'pct':
-      return `${v.toFixed(1)}%`
-    case 'usd':
-      return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    case 'hours':
-      return `${String(v).padStart(2, '0')}:00`
-    case 'ratio':
-      return v.toFixed(1)
-    case 'seconds':
-      return `${Math.round(v)}s`
-    default:
-      return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1)
-  }
-}
-function fmtCell(v: string | number | null, unit?: ReportMetric['unit']): string {
-  if (v === null || v === undefined) return '—'
-  return typeof v === 'number' ? fmtValue(v, unit ?? 'count') : v
 }

@@ -4,21 +4,19 @@ import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useAuth } from '../../context/AuthContext'
-import { buildReportData, reportDataToHtml, reportDataToPlainText, type BuildReportInput, type ReportData } from '../../lib/reportBuilder'
-import { formatCount, type ModeratorChartInput, type PaymentSummaryInput, type ReportType, type UnifiedOverview } from '../../lib/reportModel'
+import { reportDataToHtml, reportDataToPlainText, type ReportData } from '../../lib/reportBuilder'
 import type { IntegrationKey, Moderator } from '../../types'
-import { fetchConversionConfig, fetchIncidents, fetchKOLs, fetchMemberMessageTrend, fetchModeratorMetrics, fetchModerators, fetchPayments, fetchPlatformMetricRows, fetchPlatformMetrics, fetchPointsConfig, fetchTasks } from '../../lib/db'
-import { fetchActivityBuckets } from '../../lib/activityHeatmap'
-import { computeCoverageGaps, coverageGapReportLines } from '../../lib/coverageGap'
-import { cellKey } from './moderators/comp'
-import { buildRollup, rollupToActivityInput } from './moderators/report'
+import { fetchModerators } from '../../lib/db'
 import { useReportHistory, type ReportHistoryEntry } from '../../hooks/useReportHistory'
 import { PrintableReport } from './report/PrintableReport'
 import { ShareReportModal } from './report/ShareReportModal'
 import { ReportHistoryTable, type ReportContact } from './report/ReportHistoryTable'
-import { ReportPreview } from './report/ReportPreview'
+import { ReportView } from './report/ReportView'
+import { generateIntelligenceReport, type IntelligenceReportDoc } from '../../lib/api/misc'
+import { toReportData } from '../../lib/intelligenceReport'
 import { ReportScheduleControls } from './report/ReportScheduleControls'
-import { platformLabel, type ReportDataWithMeta, type UiReportKind } from './report/reportMeta'
+import { platformLabel, type UiReportKind } from './report/reportMeta'
+import type { ReportType } from '../../lib/reportModel'
 
 /** The three control-bar report kinds and their blurbs. */
 const UI_KINDS: { id: UiReportKind; label: string; blurb: string }[] = [
@@ -34,159 +32,11 @@ function reportTypeForKind(kind: UiReportKind): ReportType {
 
 const TIME_HORIZONS = [7, 14, 30, 60, 90]
 
-interface GeneralData {
-  moderatorActivity?: BuildReportInput['moderatorActivity']
-  moderator?: ModeratorChartInput
-  payments?: PaymentSummaryInput
-}
-
 /** Local YYYY-MM-DD for a date offset (used by the range inputs). */
 function isoDay(offsetDays = 0): string {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
   return d.toISOString().slice(0, 10)
-}
-
-/**
- * Best-effort: pull the moderator compensation rollup + payments and shape them
- * into both the text lines and the chart-ready inputs the general report uses.
- * Signed-in only.
- */
-async function loadGeneralData(workspaceId: string, periodStart: string, periodEnd: string): Promise<GeneralData> {
-  try {
-    const [moderators, metrics, conversion, metricValues, payments] = await Promise.all([
-      fetchModerators(workspaceId),
-      fetchPointsConfig(workspaceId),
-      fetchConversionConfig(workspaceId),
-      fetchModeratorMetrics(workspaceId),
-      fetchPayments(workspaceId).catch(() => []),
-    ])
-
-    const out: GeneralData = {}
-
-    if (moderators.length > 0) {
-      const values: Record<string, number> = {}
-      for (const v of metricValues) values[cellKey(v.moderatorId, v.metricKey)] = v.value
-      const rollup = buildRollup(moderators, metrics, values, conversion ?? { rate: 0.01, currency: 'USD' })
-      out.moderatorActivity = rollupToActivityInput(rollup) ?? undefined
-
-      const platformPoints = new Map<string, number>()
-      for (const rep of rollup.reports) {
-        for (const p of rep.platforms) platformPoints.set(p.platform, (platformPoints.get(p.platform) ?? 0) + p.points)
-      }
-      out.moderator = {
-        byModerator: rollup.reports.map((r) => ({ name: r.moderator.fullName, points: r.totalPoints, share: r.share })),
-        byPlatform: [...platformPoints.entries()].map(([platform, points]) => ({ platform, points })),
-        currency: rollup.currency,
-        totalMoney: rollup.totalMoney,
-        activeCount: rollup.activeCount,
-        totalCount: rollup.reports.length,
-      }
-    }
-
-    // Payments within the selected window, aggregated per moderator.
-    const nameById = new Map(moderators.map((m) => [m.id, m.fullName]))
-    const start = new Date(periodStart).getTime()
-    const end = new Date(periodEnd).getTime() + 86_400_000 - 1
-    const inRange = payments.filter((p) => {
-      const t = new Date(p.paidAt).getTime()
-      return !Number.isNaN(t) && t >= start && t <= end
-    })
-    if (inRange.length > 0) {
-      const byMod = new Map<string, number>()
-      for (const p of inRange) {
-        const name = nameById.get(p.moderatorId) ?? 'Unknown'
-        byMod.set(name, (byMod.get(name) ?? 0) + p.amount)
-      }
-      out.payments = {
-        totalPaid: inRange.reduce((s, p) => s + p.amount, 0),
-        currency: inRange[0].currency || 'USD',
-        count: inRange.length,
-        byModerator: [...byMod.entries()].map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount),
-      }
-    }
-
-    return out
-  } catch {
-    return {}
-  }
-}
-
-/**
- * Coverage-gap section: crosses community activity-by-hour with moderator shift
- * windows. Signed-in only; returns undefined when there's nothing to say so the
- * report simply omits the section.
- */
-async function loadCoverageGap(workspaceId: string): Promise<BuildReportInput['coverageGap'] | undefined> {
-  try {
-    const [buckets, moderators] = await Promise.all([
-      fetchActivityBuckets(workspaceId, 28).catch(() => []),
-      fetchModerators(workspaceId).catch(() => []),
-    ])
-    const result = computeCoverageGaps(buckets, moderators)
-    if (!result.hasActivityData && !result.hasShiftData) return undefined
-    return coverageGapReportLines(result)
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * Real community data from the API (members, messages, incidents, KOLs, tasks)
- * for a signed-in workspace, shaped into the report's `live` override. Falls
- * back to undefined on any failure so the builder uses the mock dataset instead.
- */
-async function loadLiveData(
-  workspaceId: string,
-  connected: IntegrationKey[],
-): Promise<BuildReportInput['live'] | undefined> {
-  try {
-    const [incidents, kols, tasks, metrics, msgTrend, platformRows] = await Promise.all([
-      fetchIncidents(workspaceId).catch(() => []),
-      fetchKOLs(workspaceId).catch(() => []),
-      fetchTasks(workspaceId).catch(() => []),
-      connected.length > 0 ? fetchPlatformMetrics(workspaceId, connected, 30).catch(() => null) : Promise.resolve(null),
-      fetchMemberMessageTrend(workspaceId, 30).catch(() => []),
-      connected.length > 0 ? fetchPlatformMetricRows(workspaceId, connected, 30).catch(() => []) : Promise.resolve([]),
-    ])
-
-    // Nothing real to show → let the mock fallback take over.
-    if (incidents.length === 0 && kols.length === 0 && tasks.length === 0 && !metrics && msgTrend.length === 0) {
-      return undefined
-    }
-
-    const membersTrend = metrics?.trend ?? []
-    const activeMembers = metrics?.latestMembers ?? (membersTrend.at(-1)?.value ?? 0)
-    const firstMembers = membersTrend[0]?.value ?? activeMembers
-    const activeMembersDelta =
-      firstMembers > 0 && membersTrend.length >= 2 ? Math.round(((activeMembers - firstMembers) / firstMembers) * 100) : null
-    const newMembers = Math.max(0, activeMembers - firstMembers)
-
-    const last7 = msgTrend.slice(-7).reduce((s, p) => s + p.value, 0)
-    const prev7 = msgTrend.slice(-14, -7).reduce((s, p) => s + p.value, 0)
-    const messagesDelta = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : null
-
-    return {
-      stats: {
-        activeMembers,
-        activeMembersDelta,
-        newMembers,
-        newMembersDelta: null,
-        messagesWeek: last7,
-        messagesDelta,
-        scamAlertsBlocked: incidents.length,
-        scamAlertsDelta: null,
-      },
-      incidents,
-      kols,
-      tasks,
-      membersTrend,
-      messagesTrend: msgTrend,
-      platformRows,
-    }
-  } catch {
-    return undefined
-  }
 }
 
 const ACTION_BTN =
@@ -199,6 +49,8 @@ export function Report() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [report, setReport] = useState<ReportData | null>(null)
+  const [doc, setDoc] = useState<IntelligenceReportDoc | null>(null)
+  const [genError, setGenError] = useState<string | null>(null)
   const [printData, setPrintData] = useState<ReportData | null>(null)
   const [copied, setCopied] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -207,7 +59,6 @@ export function Report() {
   const [rangeStart, setRangeStart] = useState(() => isoDay(-7))
   const [rangeEnd, setRangeEnd] = useState(() => isoDay(0))
   const [contacts, setContacts] = useState<ReportContact[]>([])
-  const timeoutRef = useRef<number | null>(null)
   const shouldPrintRef = useRef(false)
   const activeWorkspaceIdRef = useRef(activeWorkspaceId)
   activeWorkspaceIdRef.current = activeWorkspaceId
@@ -225,12 +76,10 @@ export function Report() {
   // Workspace switched — cancel any in-flight generation and clear the
   // stale report so we never render/apply a result for the wrong workspace.
   useEffect(() => {
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
-    }
     setLoading(false)
     setReport(null)
+    setDoc(null)
+    setGenError(null)
     setPrintData(null)
     setCopied(false)
     setSinglePlatform('')
@@ -262,12 +111,6 @@ export function Report() {
     }
   }, [activeWorkspaceId, user])
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) clearTimeout(timeoutRef.current)
-    }
-  }, [])
-
   // Print is invoked from an effect (not directly in the click handler) so
   // it always runs after `printData` has actually committed to the DOM.
   useEffect(() => {
@@ -290,63 +133,32 @@ export function Report() {
     const workspace = activeWorkspace
     const kind = uiKind
     const platform = kind === 'single' ? (singlePlatform as IntegrationKey) : null
-    // Guard against an inverted range (swap so periodStart <= periodEnd).
+    // Guard against an inverted range (swap so start <= end).
     const start = rangeStart <= rangeEnd ? rangeStart : rangeEnd
     const end = rangeStart <= rangeEnd ? rangeEnd : rangeStart
-    const periodStart = new Date(`${start}T00:00:00`).toISOString()
-    const periodEnd = new Date(`${end}T00:00:00`).toISOString()
-    const type = reportTypeForKind(kind)
-    const isModeration = kind === 'moderation'
     setLoading(true)
     setCopied(false)
+    setGenError(null)
 
-    // Moderation folds in moderator activity + payments (signed-in
-    // only); the community-mapped kinds use workspace analytics alone.
-    const dataPromise: Promise<GeneralData> =
-      isModeration && user ? loadGeneralData(workspace.id, periodStart, periodEnd) : Promise.resolve<GeneralData>({})
-    // Shift coverage is now implicit in Moderation — always computed there, never elsewhere.
-    const coveragePromise: Promise<BuildReportInput['coverageGap'] | undefined> =
-      isModeration && user ? loadCoverageGap(workspace.id) : Promise.resolve(undefined)
-    // Real community numbers from the DB for signed-in workspaces; falls back to
-    // mock when nothing real. Single-platform restricts metrics to the one platform.
-    const allConnected = user
-      ? LIVE_PLATFORMS.filter((p) => getWorkspaceIntegrations(workspace.id)[p]?.status === 'Connected')
-      : []
-    const connected = platform ? allConnected.filter((p) => p === platform) : allConnected
-    const livePromise: Promise<BuildReportInput['live'] | undefined> =
-      user ? loadLiveData(workspace.id, connected) : Promise.resolve(undefined)
-    const delay = new Promise<void>((resolve) => {
-      timeoutRef.current = window.setTimeout(resolve, 1400)
-    })
-
-    void Promise.all([dataPromise, coveragePromise, livePromise, delay]).then(([general, coverageGap, live]) => {
-      // Guard against a workspace switch mid-generation.
-      if (activeWorkspaceIdRef.current !== workspace.id) return
-      // Single-platform title/labels reflect the chosen platform.
-      const label = platform ? platformLabel(platform) : null
-      const builderWorkspace = label ? { ...workspace, name: `${workspace.name} · ${label}` } : workspace
-      const data = buildReportData(builderWorkspace, {
-        reportType: type,
-        periodStart,
-        periodEnd,
-        moderatorActivity: general.moderatorActivity,
-        coverageGap,
-        live,
-        moderator: general.moderator,
-        payments: general.payments,
+    // The server builds the whole document (fixed structure, SQL-computed
+    // numbers, rule insights); the client only lays it out. Platform filter
+    // applies to the platforms the backend tracks activity for.
+    const serverPlatform = platform === 'discord' || platform === 'telegram' ? platform : null
+    void generateIntelligenceReport(workspace.id, { period: 'custom', start, end, scope: kind === 'moderation' ? 'moderation' : 'overview', platform: serverPlatform })
+      .then(({ id, report: serverDoc }) => {
+        // Guard against a workspace switch mid-generation.
+        if (activeWorkspaceIdRef.current !== workspace.id) return
+        setDoc(serverDoc)
+        setReport(toReportData(serverDoc))
+        addEntry(id, serverDoc)
       })
-      // Attach presentation-only metadata so History can label the kind.
-      const enriched: ReportDataWithMeta = {
-        ...data,
-        uiKind: kind,
-        platform: platform ?? undefined,
-        platformLabel: label ?? undefined,
-      }
-      setReport(enriched)
-      addEntry(enriched)
-      setLoading(false)
-      timeoutRef.current = null
-    })
+      .catch((e: unknown) => {
+        if (activeWorkspaceIdRef.current !== workspace.id) return
+        setGenError(e instanceof Error ? e.message : 'Could not generate the report')
+      })
+      .finally(() => {
+        if (activeWorkspaceIdRef.current === workspace.id) setLoading(false)
+      })
   }
 
   async function handleCopy() {
@@ -554,9 +366,8 @@ export function Report() {
             </button>
           </div>
 
-          {report.model.unified && <UnifiedOverviewCard unified={report.model.unified} />}
 
-          <ReportPreview data={report} />
+          {doc ? <ReportView doc={doc} /> : null}
         </div>
       )}
 
@@ -567,6 +378,7 @@ export function Report() {
         contacts={contacts}
       />
 
+      {genError && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">{genError}</div>}
       <ShareReportModal open={shareOpen} onClose={() => setShareOpen(false)} data={report} />
 
       <PrintableReport data={printData} />
@@ -574,69 +386,3 @@ export function Report() {
   )
 }
 
-/**
- * Cross-platform "Unified overview" card — the discovery headline made concrete:
- * one panel that sums every connected platform. Renders ONLY from the real
- * `model.unified` rollup (built in reportModel from actual rows); the
- * total is honestly labelled as subscriptions, not unique users.
- */
-function UnifiedOverviewCard({ unified }: { unified: UnifiedOverview }) {
-  const maxMembers = Math.max(...unified.platforms.map((p) => p.members), 1)
-  return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--accent-cyan)]/30 bg-gradient-to-br from-[var(--accent-cyan)]/[0.06] via-[var(--bg-card)] to-[var(--bg-card)]">
-      <div className="flex flex-col gap-1 border-b border-[var(--border-card)] px-6 py-4">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent-cyan)]">Unified overview</span>
-        <h3 className="text-base font-bold text-white">One dashboard across {unified.platformCount} connected platforms</h3>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-[minmax(0,1fr)_auto]">
-        {/* Hero total */}
-        <div className="rounded-xl border border-[var(--border-card)] bg-white/[0.02] p-5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-secondary)]">Total subscriptions</div>
-          <div className="mt-1 font-mono text-3xl font-bold tabular-nums text-white">{formatCount(unified.totalMembers)}</div>
-          <div className="mt-1 text-[11px] leading-snug text-[var(--text-muted)]">{unified.totalMembersNote}</div>
-        </div>
-
-        {/* Combined message volume, only when a platform tracks it */}
-        {unified.combinedMessages !== undefined && (
-          <div className="rounded-xl border border-[var(--border-card)] bg-white/[0.02] p-5 sm:min-w-[11rem]">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-secondary)]">Combined messages</div>
-            <div className="mt-1 font-mono text-3xl font-bold tabular-nums text-white">{formatCount(unified.combinedMessages)}</div>
-            <div className="mt-1 text-[11px] leading-snug text-[var(--text-muted)]">{unified.messagesNote}</div>
-          </div>
-        )}
-      </div>
-
-      {/* Per-platform breakdown — bars sized by share of total subscriptions */}
-      <div className="flex flex-col gap-2.5 px-6 pb-6">
-        {unified.platforms.map((p) => {
-          const share = unified.totalMembers > 0 ? Math.round((p.members / unified.totalMembers) * 100) : 0
-          const width = Math.max(4, Math.round((p.members / maxMembers) * 100))
-          return (
-            <div key={p.platform} className="rounded-xl border border-[var(--border-card)] bg-white/[0.015] px-4 py-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
-                  <span className="truncate text-sm font-semibold text-white">{p.label}</span>
-                  <span className="shrink-0 text-[11px] uppercase tracking-wide text-[var(--text-secondary)]">{p.memberLabel}</span>
-                </div>
-                <div className="flex shrink-0 items-baseline gap-2">
-                  <span className="font-mono text-sm font-bold tabular-nums text-white">{formatCount(p.members)}</span>
-                  <span className="font-mono text-[11px] tabular-nums text-[var(--text-muted)]">{share}%</span>
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
-                <div className="h-full rounded-full" style={{ width: `${width}%`, backgroundColor: p.color }} />
-              </div>
-              {p.keyMetric && (
-                <div className="mt-1.5 text-[11px] text-[var(--text-secondary)]">
-                  {p.keyMetric.label}: <span className="font-mono tabular-nums text-slate-300">{formatCount(p.keyMetric.value)}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}

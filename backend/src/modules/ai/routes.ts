@@ -10,7 +10,7 @@ import { usageEvents } from '../../db/schema/index.js'
 import { HttpError } from '../../lib/errors.js'
 import type { PlanTier } from '../../lib/quota.js'
 import { buildReport, getReport, listReports } from './report/build.js'
-import { PERIOD_KINDS } from './report/template.js'
+import { PERIOD_KINDS, REPORT_PLATFORMS, SCOPES } from './report/template.js'
 
 // Catch Intelligence — the only generative call in the product. The model
 // sees a snapshot of numbers the client already computed and writes prose
@@ -96,9 +96,33 @@ export async function aiRoutes(app: FastifyInstance) {
   // in P1. Stored per workspace, deduped by input hash.
   r.post(
     '/workspaces/:workspaceId/ai/report',
-    { preHandler: app.requireWorkspace, config: { rateLimit: { max: 20, timeWindow: '1 minute' } }, schema: { params: z.object({ workspaceId: z.uuid() }), body: z.object({ period: z.enum(PERIOD_KINDS).default('30d') }) } },
+    {
+      preHandler: app.requireWorkspace,
+      config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+      schema: {
+        params: z.object({ workspaceId: z.uuid() }),
+        body: z
+          .object({
+            period: z.enum([...PERIOD_KINDS, 'custom']).default('30d'),
+            start: z.iso.date().optional(),
+            end: z.iso.date().optional(),
+            scope: z.enum(SCOPES).default('overview'),
+            platform: z.enum(REPORT_PLATFORMS).nullable().default(null),
+          })
+          .refine((b) => b.period !== 'custom' || (b.start && b.end && b.start <= b.end), { message: 'custom period needs start <= end' })
+          .refine((b) => b.period !== 'custom' || (Date.parse(b.end!) - Date.parse(b.start!)) / 86_400_000 < 365, { message: 'custom period must be under 365 days' }),
+      },
+    },
     async (req) => {
-      const { report, id, reused } = await buildReport({ workspace: { id: req.workspace.id, name: req.workspace.name }, period: req.body.period, userId: req.auth!.user.id })
+      const b = req.body
+      const { report, id, reused } = await buildReport({
+        workspace: { id: req.workspace.id, name: req.workspace.name },
+        period: b.period,
+        range: b.period === 'custom' ? { start: b.start!, end: b.end! } : undefined,
+        scope: b.scope,
+        platform: b.platform,
+        userId: req.auth!.user.id,
+      })
       return { id, reused, report }
     },
   )

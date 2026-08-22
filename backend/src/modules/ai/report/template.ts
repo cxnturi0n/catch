@@ -6,7 +6,17 @@
 export const REPORT_VERSION = 1
 
 export const PERIOD_KINDS = ['7d', '30d', '90d'] as const
-export type PeriodKind = (typeof PERIOD_KINDS)[number]
+export type PeriodKind = (typeof PERIOD_KINDS)[number] | 'custom'
+
+/** overview = every section; moderation = team/incidents/operations only. */
+export const SCOPES = ['overview', 'moderation'] as const
+export type Scope = (typeof SCOPES)[number]
+export const SCOPE_SECTIONS: Record<Scope, readonly SectionId[]> = {
+  overview: ['growth', 'engagement', 'sentiment', 'moderation', 'incidents', 'kols', 'operations'],
+  moderation: ['moderation', 'incidents', 'operations'],
+}
+export const REPORT_PLATFORMS = ['discord', 'telegram'] as const
+export type ReportPlatform = (typeof REPORT_PLATFORMS)[number]
 
 export const SECTION_IDS = ['growth', 'engagement', 'sentiment', 'moderation', 'incidents', 'kols', 'operations'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
@@ -101,6 +111,9 @@ export interface Report {
   version: number
   workspace: { id: string; name: string }
   period: { kind: PeriodKind; days: number; start: string; end: string; prevStart: string; prevEnd: string }
+  scope: Scope
+  /** Set when the report is restricted to one platform. */
+  platform: ReportPlatform | null
   generatedAt: string
   coverage: Coverage
   summary: string[]
@@ -110,7 +123,7 @@ export interface Report {
   narrativeSource: 'rules' | 'llm'
 }
 
-export const PERIOD_DAYS: Record<PeriodKind, number> = { '7d': 7, '30d': 30, '90d': 90 }
+export const PERIOD_DAYS: Record<Exclude<PeriodKind, 'custom'>, number> = { '7d': 7, '30d': 30, '90d': 90 }
 
 export function metric(id: string, label: string, unit: Unit, value: number | null, prev: number | null = null): Metric {
   const deltaPct = value !== null && prev !== null && prev !== 0 ? round(((value - prev) / Math.abs(prev)) * 100, 1) : null

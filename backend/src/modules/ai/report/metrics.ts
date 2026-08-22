@@ -34,6 +34,18 @@ export interface Window {
 
 export function windows(days: number, now = new Date()): { cur: Window; prev: Window } {
   const endTs = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+  return windowsEnding(days, endTs)
+}
+
+/** Explicit inclusive date range (YYYY-MM-DD, UTC). */
+export function windowsFor(start: string, end: string): { cur: Window; prev: Window } {
+  const s = Date.parse(`${start}T00:00:00Z`)
+  const e = Date.parse(`${end}T00:00:00Z`)
+  const days = Math.round((e - s) / 86_400_000) + 1
+  return windowsEnding(days, new Date(e + 86_400_000))
+}
+
+function windowsEnding(days: number, endTs: Date): { cur: Window; prev: Window } {
   const mk = (endExclusive: Date): Window => {
     const startTs = new Date(endExclusive.getTime() - days * 86_400_000)
     const lastDay = new Date(endExclusive.getTime() - 86_400_000)
@@ -111,11 +123,14 @@ export interface AllData {
   operations: OperationsData
 }
 
-export async function collect(workspaceId: string, cur: Window, prev: Window): Promise<AllData> {
+/** Platform filter: null = all platforms. Applies to growth/engagement/coverage. */
+export type PlatformFilter = string[] | null
+
+export async function collect(workspaceId: string, cur: Window, prev: Window, platforms: PlatformFilter = null): Promise<AllData> {
   const [coverage, growth, engagement, moderation, inc, kol, ops] = await Promise.all([
-    coverageOf(workspaceId, cur),
-    growthOf(workspaceId, cur, prev),
-    engagementOf(workspaceId, cur, prev),
+    coverageOf(workspaceId, cur, platforms),
+    growthOf(workspaceId, cur, prev, platforms),
+    engagementOf(workspaceId, cur, prev, platforms),
     moderationOf(workspaceId, cur, prev),
     incidentsOf(workspaceId, cur, prev),
     kolsOf(workspaceId, cur),
@@ -124,7 +139,7 @@ export async function collect(workspaceId: string, cur: Window, prev: Window): P
   return { coverage, growth, engagement, moderation, incidents: inc, kols: kol, operations: ops }
 }
 
-async function coverageOf(workspaceId: string, cur: Window): Promise<Coverage> {
+async function coverageOf(workspaceId: string, cur: Window, platforms: PlatformFilter): Promise<Coverage> {
   const [ints, states, [days], [mods]] = await Promise.all([
     db.select({ platform: integrations.platform, status: integrations.status, lastSync: integrations.lastSync }).from(integrations).where(eq(integrations.workspaceId, workspaceId)),
     db.select({ platform: integrationSyncState.platform, lastSuccessAt: integrationSyncState.lastSuccessAt, lastError: integrationSyncState.lastError }).from(integrationSyncState).where(eq(integrationSyncState.workspaceId, workspaceId)),
@@ -136,7 +151,7 @@ async function coverageOf(workspaceId: string, cur: Window): Promise<Coverage> {
   ])
   const stateBy = new Map(states.map((s) => [s.platform, s]))
   return {
-    platforms: ints.map((i) => {
+    platforms: ints.filter((i) => !platforms || platforms.includes(i.platform)).map((i) => {
       const st = stateBy.get(i.platform)
       const last = st?.lastSuccessAt ?? i.lastSync
       return { platform: i.platform, status: i.status, lastSyncAt: last ? last.toISOString() : null, lastError: st?.lastError ?? null }
@@ -147,11 +162,11 @@ async function coverageOf(workspaceId: string, cur: Window): Promise<Coverage> {
   }
 }
 
-async function membersSeries(workspaceId: string, w: Window): Promise<PlatformMembers[]> {
+async function membersSeries(workspaceId: string, w: Window, platforms: PlatformFilter): Promise<PlatformMembers[]> {
   const rows = await db
     .select({ platform: platformMetrics.platform, date: platformMetrics.date, members: sql<number | null>`(${platformMetrics.metrics}->>'members')::numeric` })
     .from(platformMetrics)
-    .where(and(eq(platformMetrics.workspaceId, workspaceId), gte(platformMetrics.date, w.start), sql`${platformMetrics.date} <= ${w.end}`))
+    .where(and(eq(platformMetrics.workspaceId, workspaceId), gte(platformMetrics.date, w.start), sql`${platformMetrics.date} <= ${w.end}`, ...(platforms ? [inArray(platformMetrics.platform, platforms)] : [])))
     .orderBy(asc(platformMetrics.platform), asc(platformMetrics.date))
   const by = new Map<string, PlatformMembers>()
   for (const r of rows) {
@@ -166,7 +181,8 @@ async function membersSeries(workspaceId: string, w: Window): Promise<PlatformMe
   return [...by.values()]
 }
 
-async function growthOf(workspaceId: string, cur: Window, prev: Window): Promise<GrowthData> {
+async function growthOf(workspaceId: string, cur: Window, prev: Window, platforms: PlatformFilter): Promise<GrowthData> {
+  const want = (p: string) => !platforms || platforms.includes(p)
   const tgCount = (w: Window) =>
     db
       .select({ eventType: telegramMembershipEvents.eventType, n: sql<number>`count(*)::int` })
@@ -178,32 +194,42 @@ async function growthOf(workspaceId: string, cur: Window, prev: Window): Promise
       .select({ joins: sql<number>`coalesce(sum(${discordMembershipSnapshots.newMembers}),0)::int`, leaves: sql<number>`coalesce(sum(${discordMembershipSnapshots.leftMembers}),0)::int`, n: sql<number>`count(*)::int` })
       .from(discordMembershipSnapshots)
       .where(and(eq(discordMembershipSnapshots.workspaceId, workspaceId), gte(discordMembershipSnapshots.capturedAt, w.startTs), lt(discordMembershipSnapshots.capturedAt, w.endTs)))
-  const [platforms, prevPlatforms, tgCur, tgPrev, [dcCur], [dcPrev]] = await Promise.all([membersSeries(workspaceId, cur), membersSeries(workspaceId, prev), tgCount(cur), tgCount(prev), dcCount(cur), dcCount(prev)])
+  const none = Promise.resolve([] as never[])
+  const [series, prevSeries, tgCur, tgPrev, [dcCur], [dcPrev]] = await Promise.all([
+    membersSeries(workspaceId, cur, platforms),
+    membersSeries(workspaceId, prev, platforms),
+    want('telegram') ? tgCount(cur) : none,
+    want('telegram') ? tgCount(prev) : none,
+    want('discord') ? dcCount(cur) : none,
+    want('discord') ? dcCount(prev) : none,
+  ])
   const tg = (rows: { eventType: string; n: number }[]) => Object.fromEntries(rows.map((r) => [r.eventType, r.n]))
   const tc = tg(tgCur)
   const tp = tg(tgPrev)
   const hasTg = tgCur.length > 0 || tgPrev.length > 0
   const hasDc = (dcCur?.n ?? 0) > 0 || (dcPrev?.n ?? 0) > 0
   return {
-    platforms,
-    prevPlatforms,
+    platforms: series,
+    prevPlatforms: prevSeries,
     telegram: hasTg ? { joins: tc.join ?? 0, leaves: tc.leave ?? 0, prevJoins: tp.join ?? 0, prevLeaves: tp.leave ?? 0 } : null,
     discord: hasDc ? { joins: dcCur?.joins ?? 0, leaves: dcCur?.leaves ?? 0, prevJoins: dcPrev?.joins ?? 0, prevLeaves: dcPrev?.leaves ?? 0 } : null,
   }
 }
 
-async function engagementOf(workspaceId: string, cur: Window, prev: Window): Promise<EngagementData> {
+async function engagementOf(workspaceId: string, cur: Window, prev: Window, platforms: PlatformFilter): Promise<EngagementData> {
+  const pf = platforms ? [inArray(memberMessages.platform, platforms as ('telegram' | 'discord')[])] : []
+  const af = platforms ? [inArray(messageActivity.platform, platforms as ('telegram' | 'discord')[])] : []
   const msgs = (w: Window) =>
     db
       .select({ n: sql<number>`coalesce(sum(${messageActivity.messageCount}),0)::int` })
       .from(messageActivity)
-      .where(and(eq(messageActivity.workspaceId, workspaceId), gte(messageActivity.bucketStart, w.startTs), lt(messageActivity.bucketStart, w.endTs)))
+      .where(and(eq(messageActivity.workspaceId, workspaceId), gte(messageActivity.bucketStart, w.startTs), lt(messageActivity.bucketStart, w.endTs), ...af))
   const active = (w: Window) =>
     db
       .select({ n: sql<number>`count(distinct ${memberMessages.platform} || ':' || ${memberMessages.memberRef})::int` })
       .from(memberMessages)
-      .where(and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, w.start), sql`${memberMessages.day} <= ${w.end}`))
-  const where = and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, cur.start), sql`${memberMessages.day} <= ${cur.end}`)
+      .where(and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, w.start), sql`${memberMessages.day} <= ${w.end}`, ...pf))
+  const where = and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, cur.start), sql`${memberMessages.day} <= ${cur.end}`, ...pf)
   const [[m], [pm], [a], [pa], daily, hourly, top] = await Promise.all([
     msgs(cur),
     msgs(prev),
@@ -218,7 +244,7 @@ async function engagementOf(workspaceId: string, cur: Window, prev: Window): Pro
     db
       .select({ h: sql<number>`extract(hour from ${messageActivity.bucketStart} at time zone 'UTC')::int`, n: sql<number>`sum(${messageActivity.messageCount})::int` })
       .from(messageActivity)
-      .where(and(eq(messageActivity.workspaceId, workspaceId), gte(messageActivity.bucketStart, cur.startTs), lt(messageActivity.bucketStart, cur.endTs)))
+      .where(and(eq(messageActivity.workspaceId, workspaceId), gte(messageActivity.bucketStart, cur.startTs), lt(messageActivity.bucketStart, cur.endTs), ...af))
       .groupBy(sql`1`),
     db
       .select({ handle: sql<string | null>`max(${memberMessages.displayName})`, platform: memberMessages.platform, messages: sql<number>`sum(${memberMessages.messageCount})::int` })
@@ -234,7 +260,7 @@ async function engagementOf(workspaceId: string, cur: Window, prev: Window): Pro
   const prevFromMembers = await db
     .select({ n: sql<number>`coalesce(sum(${memberMessages.messageCount}),0)::int` })
     .from(memberMessages)
-    .where(and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, prev.start), sql`${memberMessages.day} <= ${prev.end}`))
+    .where(and(eq(memberMessages.workspaceId, workspaceId), gte(memberMessages.day, prev.start), sql`${memberMessages.day} <= ${prev.end}`, ...pf))
   const hours = new Array<number>(24).fill(0)
   for (const r of hourly) hours[r.h] = r.n
   return {

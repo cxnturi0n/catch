@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart2, BookOpen, CheckSquare, ChevronDown, FileText, FlaskConical, FolderOpen, Gauge, Gem, Inbox, MessageSquare, Plug, Radar, Send, ShieldCheck, Sparkles, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { BarChart2, BookOpen, CheckSquare, ChevronDown, FileText, FlaskConical, FolderOpen, Gauge, Gem, Inbox, MessageSquare, Plug, Radar, Send, ShieldCheck, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { CatchLabGlyph, SECTION_GLYPH } from './sectionIcons'
@@ -113,7 +113,6 @@ export function Sidebar({
           })),
           { to: '/dashboard/listening', label: 'Listening', icon: Radar },
           { to: '/dashboard/report', label: 'Report', icon: FileText },
-          { to: '/dashboard/intelligence', label: 'Intelligence Report', icon: Sparkles },
         ],
       },
       {

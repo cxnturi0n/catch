@@ -6,13 +6,17 @@ import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../../../db/client.js'
 import { aiReports, type AiReportRow } from '../../../db/schema/index.js'
 import { runInsights, SEVERITY_RANK } from './insights.js'
-import { collect, windows } from './metrics.js'
+import { collect, windows, windowsFor } from './metrics.js'
 import { buildSections } from './sections.js'
-import { PERIOD_DAYS, REPORT_VERSION, SECTION_IDS, type Insight, type PeriodKind, type Recommendation, type Report, type Section, type SectionId } from './template.js'
+import { PERIOD_DAYS, REPORT_VERSION, SCOPE_SECTIONS, type Insight, type PeriodKind, type Recommendation, type Report, type ReportPlatform, type Scope, type Section, type SectionId } from './template.js'
 
 export interface BuildOptions {
   workspace: { id: string; name: string }
+  /** Preset period, or 'custom' with explicit range. */
   period: PeriodKind
+  range?: { start: string; end: string }
+  scope?: Scope
+  platform?: ReportPlatform | null
   userId: string | null
   now?: Date
   /** Reuse a stored report when the inputs have not changed (default true). */
@@ -21,19 +25,24 @@ export interface BuildOptions {
 
 export async function buildReport(o: BuildOptions): Promise<{ report: Report; id: string; reused: boolean }> {
   const now = o.now ?? new Date()
-  const { cur, prev } = windows(PERIOD_DAYS[o.period], now)
-  const data = await collect(o.workspace.id, cur, prev)
+  const scope = o.scope ?? 'overview'
+  const platform = o.platform ?? null
+  const { cur, prev } = o.period === 'custom' ? windowsFor(o.range!.start, o.range!.end) : windows(PERIOD_DAYS[o.period as Exclude<PeriodKind, 'custom'>], now)
+  const data = await collect(o.workspace.id, cur, prev, platform ? [platform] : null)
   const sections = buildSections(data)
-  const insights = runInsights(sections)
+  const included = new Set<SectionId>(SCOPE_SECTIONS[scope])
+  const insights = runInsights(sections).filter((i) => included.has(i.sectionId))
   for (const s of Object.values(sections)) {
     s.insights = insights.filter((i) => i.sectionId === s.id)
     s.note = ruleNote(s)
   }
-  const ordered = SECTION_IDS.map((id) => sections[id])
+  const ordered = SCOPE_SECTIONS[scope].map((id) => sections[id])
   const body = {
     version: REPORT_VERSION,
     workspace: o.workspace,
     period: { kind: o.period, days: cur.days, start: cur.start, end: cur.end, prevStart: prev.start, prevEnd: prev.end },
+    scope,
+    platform,
     coverage: data.coverage,
     summary: ruleSummary(ordered, insights),
     sections: ordered,
@@ -62,9 +71,9 @@ export async function buildReport(o: BuildOptions): Promise<{ report: Report; id
   return { report, id: row!.id, reused: false }
 }
 
-export async function listReports(workspaceId: string, limit = 20): Promise<Pick<AiReportRow, 'id' | 'periodKind' | 'periodStart' | 'periodEnd' | 'narrativeSource' | 'createdAt'>[]> {
+export async function listReports(workspaceId: string, limit = 20): Promise<Pick<AiReportRow, 'id' | 'periodKind' | 'periodStart' | 'periodEnd' | 'narrativeSource' | 'createdAt' | 'report'>[]> {
   return db
-    .select({ id: aiReports.id, periodKind: aiReports.periodKind, periodStart: aiReports.periodStart, periodEnd: aiReports.periodEnd, narrativeSource: aiReports.narrativeSource, createdAt: aiReports.createdAt })
+    .select({ id: aiReports.id, periodKind: aiReports.periodKind, periodStart: aiReports.periodStart, periodEnd: aiReports.periodEnd, narrativeSource: aiReports.narrativeSource, createdAt: aiReports.createdAt, report: aiReports.report })
     .from(aiReports)
     .where(eq(aiReports.workspaceId, workspaceId))
     .orderBy(desc(aiReports.createdAt))
