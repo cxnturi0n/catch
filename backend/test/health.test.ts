@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // unknown routes the uniform error envelope.
 vi.mock('../src/db/client.js', () => ({
   db: {},
+  pool: {},
   pingDatabase: async () => false,
   closeDatabase: async () => {},
 }))

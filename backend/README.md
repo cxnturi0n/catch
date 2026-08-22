@@ -95,6 +95,11 @@ PostgreSQL — no Redis.
 | `discord-members` | every 20 h | full member list → tenure + membership snapshot; missing intent recorded in `integration_sync_state` |
 | `retention` | 03:00 UTC | snapshots > 30 d, security events > 365 d, Telegram dedup > 7 d |
 
+Live updates: every writer calls `publish(workspaceId, topic)` (Postgres
+`NOTIFY`); the API listens and fans out over `GET /workspaces/:id/events`
+(Server-Sent Events, topics named after the tables that changed). The SPA
+refetches on `change` and keeps polling as a floor.
+
 Telegram is push: `POST /webhooks/telegram` (secret header, idempotent on `update_id`)
 counts messages per member/hour and join/leave transitions. Register with
 `setWebhook` using `allowed_updates=["message","chat_member"]`.

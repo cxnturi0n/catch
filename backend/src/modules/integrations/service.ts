@@ -4,6 +4,7 @@ import { integrations, integrationSyncState, platformMetricSnapshots, platformMe
 import { platformClients, PlatformError, type IntegrationPlatform } from '../../integrations/index.js'
 import { logger } from '../../logger.js'
 import * as repo from './repo.js'
+import { publishMany } from '../../lib/events.js'
 
 // Snapshot cadence: a new row only when the payload changed, plus a
 // heartbeat so short windows never go empty (BP §5).
@@ -22,6 +23,7 @@ export async function connect(workspaceId: string, platform: IntegrationPlatform
   const client = platformClients[platform] as (typeof platformClients)[IntegrationPlatform] & { connect(i: unknown): Promise<{ credentials: Record<string, string>; metadata: Record<string, unknown> }> }
   const result = await client.connect(input)
   await repo.upsertConnected(workspaceId, platform, result.credentials, result.metadata)
+  await publishMany(workspaceId, ['integrations'])
   await db.delete(integrationSyncState).where(and(eq(integrationSyncState.workspaceId, workspaceId), eq(integrationSyncState.platform, platform)))
   return result.metadata
 }
@@ -49,6 +51,7 @@ export async function syncPlatform(workspaceId: string, platform: IntegrationPla
     const client = platformClients[platform] as { sync(c: Record<string, string>): Promise<{ metrics: Record<string, unknown> }> }
     const { metrics } = await client.sync(credentials)
     await recordMetrics(workspaceId, platform, metrics, now)
+    await publishMany(workspaceId, ['platform_metrics', 'platform_metric_snapshots', 'integrations'])
     return { ok: true, metrics }
   } catch (err) {
     const message = err instanceof PlatformError ? err.message : 'Sync failed'

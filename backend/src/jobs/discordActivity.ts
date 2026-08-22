@@ -4,6 +4,7 @@ import { discordChannelCursors, messageActivity } from '../db/schema/index.js'
 import { snowflakeToDate } from '../integrations/discord.js'
 import { upstreamFetch } from '../integrations/types.js'
 import * as integrations from '../modules/integrations/repo.js'
+import { publish } from '../lib/events.js'
 
 // Counts human messages per hour across the guild's text channels using a
 // per-channel cursor, so history is never re-read. First run only anchors the
@@ -76,6 +77,7 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
     }
   }
   for (const [ms, count] of buckets) await bumpActivity(workspaceId, 'discord', new Date(ms), count)
+  if (total > 0) await publish(workspaceId, 'message_activity')
   return { channels: channels.length, messages: total }
 }
 

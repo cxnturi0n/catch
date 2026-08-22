@@ -3,6 +3,7 @@ import { db } from '../db/client.js'
 import { discordMembershipSnapshots, discordMemberTenure } from '../db/schema/index.js'
 import { upstreamFetch } from '../integrations/types.js'
 import * as integrations from '../modules/integrations/repo.js'
+import { publishMany } from '../lib/events.js'
 
 // Pages the full member list (needs the privileged SERVER MEMBERS intent),
 // records join dates and derives new/left counts against the previous run.
@@ -87,5 +88,6 @@ export async function syncDiscordMembers(workspaceId: string, opts: { force?: bo
     }
     await tx.insert(discordMembershipSnapshots).values({ workspaceId, capturedAt: runAt, totalMembers: seen.size, newMembers, leftMembers })
   })
+  await publishMany(workspaceId, ['discord_member_tenure', 'discord_membership_snapshots'])
   return { ok: true, total: seen.size, new: newMembers, left: leftMembers, truncated }
 }

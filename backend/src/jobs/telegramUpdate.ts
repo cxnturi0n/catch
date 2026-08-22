@@ -3,6 +3,7 @@ import { db } from '../db/client.js'
 import { integrations, memberMessages, processedTelegramUpdates, telegramMembershipEvents } from '../db/schema/index.js'
 import { decryptJson } from '../lib/crypto.js'
 import { bumpActivity, hourBucket } from './discordActivity.js'
+import { publishMany } from '../lib/events.js'
 
 // Telegram `message` and `chat_member` updates → counters. Message text is
 // never stored. Idempotent on update_id (Telegram redelivers until it sees 200).
@@ -87,6 +88,7 @@ export async function processTelegramUpdate(update: TgUpdate): Promise<TelegramO
         set: { messageCount: sql`${memberMessages.messageCount} + 1`, displayName: displayNameOf(msg.from), updatedAt: new Date() },
       })
     await bumpActivity(workspaceId, 'telegram', hourBucket(sentAt), 1)
+    await publishMany(workspaceId, ['member_messages', 'message_activity'])
     return 'message'
   }
 
@@ -108,6 +110,7 @@ export async function processTelegramUpdate(update: TgUpdate): Promise<TelegramO
           occurredAt: typeof cm.date === 'number' ? new Date(cm.date * 1000) : new Date(),
         })
         .onConflictDoNothing()
+      await publishMany(workspaceId, ['telegram_membership_events'])
       return eventType
     }
   }

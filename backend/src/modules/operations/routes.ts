@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { contentSchedule, incidents, kols, meetings, moderators, PLATFORMS, tasks } from '../../db/schema/index.js'
 import { badRequest, notFound } from '../../lib/errors.js'
+import { publish } from '../../lib/events.js'
 
 // Tasks, meetings and the content schedule: plain workspace-scoped CRUD.
 
@@ -83,12 +84,14 @@ export async function operationsRoutes(app: FastifyInstance) {
 
   r.post(`${ws}/tasks`, { preHandler: member, schema: { params, body: taskBody } }, async (req, reply) => {
     const [t] = await db.insert(tasks).values({ workspaceId: req.workspace.id, ...req.body }).returning()
+    await publish(req.workspace.id, 'tasks')
     return reply.status(201).send({ task: t })
   })
 
   r.patch(`${ws}/tasks/:id`, { preHandler: member, schema: { params: idParams, body: taskBody.partial() } }, async (req) => {
     const [t] = await db.update(tasks).set(req.body).where(and(eq(tasks.workspaceId, req.workspace.id), eq(tasks.id, req.params.id))).returning()
     if (!t) throw notFound('Task')
+    await publish(req.workspace.id, 'tasks')
     return { task: t }
   })
 

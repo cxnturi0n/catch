@@ -1,6 +1,7 @@
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { closeDatabase } from './db/client.js'
+import { closeEvents } from './lib/events.js'
 import { logger } from './logger.js'
 
 const app = await buildApp()
@@ -8,6 +9,7 @@ const app = await buildApp()
 async function shutdown(signal: string) {
   logger.info({ signal }, 'shutting down api')
   await app.close()
+  await closeEvents()
   await closeDatabase()
   process.exit(0)
 }

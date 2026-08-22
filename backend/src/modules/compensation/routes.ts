@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { compensationConfigs, conversionConfig, moderatorMetrics, moderators, payments, pointsConfig } from '../../db/schema/index.js'
 import { badRequest, notFound } from '../../lib/errors.js'
+import { publish } from '../../lib/events.js'
 
 const params = z.object({ workspaceId: z.uuid() })
 const money = z.number().finite().min(0).max(1_000_000_000)
@@ -152,6 +153,7 @@ export async function compensationRoutes(app: FastifyInstance) {
       .insert(payments)
       .values({ workspaceId: req.workspace.id, moderatorId: req.body.moderatorId, amount: String(req.body.amount), currency: req.body.currency, period: req.body.period ?? null, note: req.body.note ?? null, paidAt: req.body.paidAt ? new Date(req.body.paidAt) : new Date() })
       .returning()
+    await publish(req.workspace.id, 'payments')
     return reply.status(201).send({ payment: paymentOut(p!) })
   })
 
