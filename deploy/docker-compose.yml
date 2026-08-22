@@ -1,17 +1,21 @@
-# Catch — full stack on one host.
-#   docker compose --env-file .env up -d
-# Services: edge (Caddy, TLS), frontend (static SPA), api, worker, migrate
-# (one-shot), db (PostgreSQL 16). Only `edge` publishes ports.
-name: catch
+# Catch — one application stack (production OR staging) on a host.
+#   docker compose up -d
+# Services: frontend (static SPA), api, worker, migrate (one-shot), db
+# (PostgreSQL 16). Nothing publishes 80/443: the shared edge Caddy in
+# docker-compose.edge.yml (bring it up first) reaches this stack on the
+# external `catch-edge` network as ${STACK}-api / ${STACK}-frontend.
+# STACK (catch | catch-staging), APP_ENV and DB_PORT come from .env.
+name: ${STACK:-catch}
 
 x-backend: &backend
   build:
     context: ../backend
-  image: catch-backend:${IMAGE_TAG:-local}
+  image: ${STACK:-catch}-backend:${IMAGE_TAG:-local}
   restart: unless-stopped
   env_file: .env
   environment:
     NODE_ENV: production
+    APP_ENV: ${APP_ENV:-production}
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
   depends_on:
     db:
@@ -23,40 +27,33 @@ x-backend: &backend
     options: { max-size: "50m", max-file: "5" }
 
 services:
-  edge:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - api
-
   frontend:
     build:
       context: ../frontend
       args:
         VITE_API_URL: /api
-    image: catch-frontend:${IMAGE_TAG:-local}
+        VITE_APP_ENV: ${APP_ENV:-production}
+    image: ${STACK:-catch}-frontend:${IMAGE_TAG:-local}
     restart: unless-stopped
+    networks:
+      default:
+      edge:
+        aliases: ["${STACK:-catch}-frontend"]
 
   api:
     <<: *backend
     command: ["node", "dist/api.js"]
     environment:
       NODE_ENV: production
+      APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       STORAGE_LOCAL_ROOT: /data/storage
     volumes:
       - storage:/data/storage
+    networks:
+      default:
+      edge:
+        aliases: ["${STACK:-catch}-api"]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
       interval: 15s
@@ -70,7 +67,7 @@ services:
   migrate:
     build:
       context: ../backend
-    image: catch-backend:${IMAGE_TAG:-local}
+    image: ${STACK:-catch}-backend:${IMAGE_TAG:-local}
     env_file: .env
     environment:
       NODE_ENV: production
@@ -90,9 +87,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # Published only for local development; remove or bind to 127.0.0.1 on the server.
+    # Loopback only (local dev + psql on the server). Staging uses another DB_PORT.
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -100,8 +97,11 @@ services:
       retries: 10
     shm_size: 256mb
 
+networks:
+  edge:
+    external: true
+    name: catch-edge
+
 volumes:
   pgdata:
   storage:
-  caddy_data:
-  caddy_config:

@@ -1,36 +1,58 @@
 name: Deploy
 
-# Manual by default. Enable auto-deploy on main by uncommenting the push
-# trigger once you trust CI as the gate.
+# staging: automatic on every push to `develop`, or manual with environment=staging.
+# production: manual only (Actions → Deploy → Run workflow → environment=production),
+# gated by the `production` GitHub Environment (required reviewers).
 on:
+  push:
+    branches: [develop]
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Target'
+        type: choice
+        options: [staging, production]
+        default: staging
       ref:
-        description: 'Git ref to deploy (branch, tag or SHA)'
-        default: main
-  # push:
-  #   branches: [main]
+        description: 'Git ref to deploy (branch, tag or SHA); defaults to the selected branch'
+        default: ''
 
 concurrency:
-  group: deploy-production
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      TARGET_ENV: ${{ github.event.inputs.environment || 'staging' }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Resolve target
+        env:
+          VAR_DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          VAR_SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ "$TARGET_ENV" = production ]; then
+            echo "DEPLOY_DIR=${VAR_DEPLOY_DIR:-/opt/catch}" >> "$GITHUB_ENV"
+            echo "SITE_URL=${VAR_SITE_URL:-https://catch-labs.com}" >> "$GITHUB_ENV"
+          else
+            echo "DEPLOY_DIR=${VAR_DEPLOY_DIR:-/opt/catch-staging}" >> "$GITHUB_ENV"
+            echo "SITE_URL=${VAR_SITE_URL:-https://staging.catch-labs.com}" >> "$GITHUB_ENV"
+          fi
+          echo "Deploying ${{ github.sha }} to $TARGET_ENV"
 
       - name: Install deploy key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          if [ -z "$DEPLOY_HOST" ]; then echo "::error::Repository secret DEPLOY_HOST is not set"; exit 1; fi
-          if [ -z "$DEPLOY_SSH_KEY" ]; then echo "::error::Repository secret DEPLOY_SSH_KEY is not set"; exit 1; fi
+          if [ -z "$DEPLOY_HOST" ]; then echo "::error::Secret DEPLOY_HOST is not set (repository or '$TARGET_ENV' environment)"; exit 1; fi
+          if [ -z "$DEPLOY_SSH_KEY" ]; then echo "::error::Secret DEPLOY_SSH_KEY is not set"; exit 1; fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -46,11 +68,9 @@ jobs:
           deploy/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST" ~/.ssh/deploy_key
 
       - name: Verify
-        env:
-          SITE_URL: ${{ vars.SITE_URL || 'https://catch-labs.com' }}
         run: |
           for i in 1 2 3 4 5 6; do
-            if curl -fsS -m 15 "$SITE_URL/api/readyz"; then echo; echo "ready"; exit 0; fi
+            if curl -fsS -m 15 "$SITE_URL/api/readyz"; then echo; echo "ready: $SITE_URL"; exit 0; fi
             sleep 10
           done
           echo "API not ready after deploy"; exit 1

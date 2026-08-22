@@ -9,6 +9,7 @@ import { ToastProvider } from './context/ToastContext'
 import { ProtectedRoute, RedirectIfAuthenticated } from './components/auth/ProtectedRoute'
 import { MainLayout } from './components/layout/MainLayout'
 import { ConsentBanner } from './components/ConsentBanner'
+import { EnvBanner } from './components/EnvBanner'
 
 const Landing = lazy(() => import('./pages/Landing').then((m) => ({ default: m.Landing })))
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })))
@@ -249,6 +250,7 @@ function App() {
               </Routes>
             </Suspense>
             <ConsentBanner />
+            <EnvBanner />
             </ToastProvider>
           </WorkspaceProvider>
           </TimezoneProvider>

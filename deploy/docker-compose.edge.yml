@@ -1,0 +1,33 @@
+# Shared edge: one Caddy owning :80/:443 for every stack on this host
+# (production + staging). Lives in the production checkout; app stacks join
+# the `catch-edge` network and are reached as `<STACK>-api` / `<STACK>-frontend`.
+#   docker compose -f docker-compose.edge.yml up -d
+name: catch-edge
+
+services:
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      STAGING_ADDRESS: ${STAGING_ADDRESS:-staging.localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+
+networks:
+  edge:
+    name: catch-edge
+
+volumes:
+  caddy_data:
+  caddy_config:
