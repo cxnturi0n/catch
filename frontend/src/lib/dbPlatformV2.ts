@@ -7,10 +7,6 @@
 
 import { supabase } from './supabase'
 import type {
-  Resource,
-  ResourceKind,
-  ResourceVisibility,
-  ResourceWithStats,
   UsageEvent,
   UsageEventType,
   UsageRollup,
@@ -44,6 +40,7 @@ export {
   type NewContentInput,
   type NewMeetingInput,
 } from './api/operations'
+export { fetchResources, fetchResourcesWithStats, deleteResource, getResourceSignedUrl, logResourceView } from './api/resources'
 
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
@@ -54,152 +51,10 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
 
 // ── Resources drive (internal storage + external links + view log) ──
 
-interface ResourceRow {
-  id: string
-  workspace_id: string
-  kind: ResourceKind
-  title: string
-  description: string | null
-  storage_path: string | null
-  external_url: string | null
-  mime_type: string | null
-  size_bytes: number | null
-  visibility: ResourceVisibility
-  created_by: string | null
-  created_at: string
-  updated_at: string
-}
 
-function mapResource(r: ResourceRow): Resource {
-  return {
-    id: r.id,
-    workspaceId: r.workspace_id,
-    kind: r.kind,
-    title: r.title,
-    description: r.description,
-    storagePath: r.storage_path,
-    externalUrl: r.external_url,
-    mimeType: r.mime_type,
-    sizeBytes: r.size_bytes,
-    visibility: r.visibility,
-    createdBy: r.created_by,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }
-}
 
-export async function fetchResources(workspaceId: WorkspaceId): Promise<Resource[]> {
-  const result = await supabase
-    .from('resources')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
-  return unwrap<ResourceRow[]>(result).map(mapResource)
-}
 
-export async function fetchResourcesWithStats(workspaceId: WorkspaceId): Promise<ResourceWithStats[]> {
-  const [resources, views] = await Promise.all([
-    fetchResources(workspaceId),
-    supabase
-      .from('resource_views')
-      .select('resource_id, viewer_moderator_id, viewer_user_id, viewer_label, viewed_at')
-      .eq('workspace_id', workspaceId),
-  ])
-  const rows = (views.data ?? []) as Array<{
-    resource_id: string
-    viewer_moderator_id: string | null
-    viewer_user_id: string | null
-    viewer_label: string | null
-    viewed_at: string
-  }>
-  const byResource = new Map<string, { count: number; last: string | null; viewers: Set<string> }>()
-  for (const v of rows) {
-    const bucket = byResource.get(v.resource_id) ?? { count: 0, last: null, viewers: new Set<string>() }
-    bucket.count += 1
-    bucket.last = !bucket.last || v.viewed_at > bucket.last ? v.viewed_at : bucket.last
-    bucket.viewers.add(v.viewer_moderator_id ?? v.viewer_user_id ?? v.viewer_label ?? 'anon')
-    byResource.set(v.resource_id, bucket)
-  }
-  return resources.map((r) => {
-    const b = byResource.get(r.id)
-    return { ...r, viewCount: b?.count ?? 0, lastViewedAt: b?.last ?? null, uniqueViewers: b?.viewers.size ?? 0 }
-  })
-}
 
-export interface NewResourceInput {
-  workspaceId: WorkspaceId
-  kind: ResourceKind
-  title: string
-  description?: string | null
-  storagePath?: string | null
-  externalUrl?: string | null
-  mimeType?: string | null
-  sizeBytes?: number | null
-  visibility?: ResourceVisibility
-  createdBy?: string | null
-}
-
-export async function insertResource(input: NewResourceInput): Promise<Resource> {
-  const row = {
-    workspace_id: input.workspaceId,
-    kind: input.kind,
-    title: input.title,
-    description: input.description ?? null,
-    storage_path: input.storagePath ?? null,
-    external_url: input.externalUrl ?? null,
-    mime_type: input.mimeType ?? null,
-    size_bytes: input.sizeBytes ?? null,
-    visibility: input.visibility ?? 'team',
-    created_by: input.createdBy ?? null,
-  }
-  const result = await supabase.from('resources').insert(row).select('*').single()
-  return mapResource(unwrap<ResourceRow>(result))
-}
-
-export async function deleteResource(id: string, storagePath?: string | null): Promise<void> {
-  if (storagePath) {
-    await supabase.storage.from('resources').remove([storagePath])
-  }
-  const { error } = await supabase.from('resources').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-export async function uploadResourceFile(
-  workspaceId: WorkspaceId,
-  file: File,
-): Promise<{ path: string; sizeBytes: number; mimeType: string }> {
-  const safeName = file.name.replace(/[^\w.\-]+/g, '_')
-  const path = `${workspaceId}/${Date.now()}_${safeName}`
-  const { error } = await supabase.storage.from('resources').upload(path, file, {
-    upsert: false,
-    contentType: file.type,
-  })
-  if (error) throw new Error(error.message)
-  return { path, sizeBytes: file.size, mimeType: file.type }
-}
-
-export async function getResourceSignedUrl(storagePath: string, expiresIn = 300): Promise<string> {
-  const { data, error } = await supabase.storage.from('resources').createSignedUrl(storagePath, expiresIn)
-  if (error || !data) throw new Error(error?.message ?? 'Failed to sign resource URL.')
-  return data.signedUrl
-}
-
-export async function logResourceView(input: {
-  resourceId: string
-  workspaceId: WorkspaceId
-  viewerUserId?: string | null
-  viewerModeratorId?: string | null
-  viewerLabel?: string | null
-}): Promise<void> {
-  const { error } = await supabase.from('resource_views').insert({
-    resource_id: input.resourceId,
-    workspace_id: input.workspaceId,
-    viewer_user_id: input.viewerUserId ?? null,
-    viewer_moderator_id: input.viewerModeratorId ?? null,
-    viewer_label: input.viewerLabel ?? null,
-  })
-  if (error) throw new Error(error.message)
-}
 
 // ── Content schedule (CM-owned calendar items visible to moderators) ──
 

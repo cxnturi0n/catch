@@ -13,7 +13,7 @@ import { EmptyState } from '../../ui/Card'
 import { FormField, inputClass } from '../../ui/FormControls'
 import { Modal } from '../../ui/Modal'
 import { formatRelativeTime } from '../../../lib/format'
-import { deleteResource, getResourceSignedUrl, uploadResourceFile } from '../../../lib/dbPlatformV2'
+import { deleteResource, getResourceSignedUrl } from '../../../lib/dbPlatformV2'
 import { fetchFolderFiles, insertFolderResource, type FolderFile } from '../../../lib/resourceFolders'
 import type { WorkspaceId } from '../../../types'
 import { sectionMeta } from './sectionMeta'
@@ -93,7 +93,7 @@ export function FolderView({
     setOpeningId(f.id)
     try {
       let signed = f.externalUrl ?? ''
-      if (f.kind === 'file' && f.storagePath) signed = await getResourceSignedUrl(f.storagePath)
+      if (f.kind === 'file' && f.storagePath) signed = await getResourceSignedUrl(workspaceId, f.id)
       if (!signed) throw new Error('No URL available for this resource.')
       window.open(signed, '_blank', 'noopener,noreferrer')
     } catch (err) {
@@ -107,16 +107,12 @@ export function FolderView({
     if (!file || !fileTitle.trim() || !userId || target.id === null) return
     setSaving(true)
     try {
-      const uploaded = await uploadResourceFile(workspaceId, file)
       await insertFolderResource({
         workspaceId,
         folderId: target.id,
         kind: 'file',
         title: fileTitle.trim(),
-        storagePath: uploaded.path,
-        mimeType: uploaded.mimeType,
-        sizeBytes: uploaded.sizeBytes,
-        createdBy: userId,
+        file,
       })
       showToast('File imported.', 'success')
       resetForms()
@@ -155,7 +151,7 @@ export function FolderView({
   async function removeFile(f: FolderFile) {
     setSaving(true)
     try {
-      await deleteResource(f.id, f.storagePath)
+      await deleteResource(workspaceId, f.id)
       setFiles((prev) => prev.filter((x) => x.id !== f.id))
       showToast('Removed.', 'success')
       onChanged()

@@ -29,7 +29,6 @@ import {
   type FolderFilePreview,
   type FolderWithStats,
 } from '../../lib/resourceFolders'
-import { uploadResourceFile } from '../../lib/dbPlatformV2'
 import { FolderCard } from './resources/FolderCard'
 import { FolderTable, type FolderRowVM } from './resources/FolderTable'
 import { FolderView, type FolderTarget } from './resources/FolderView'
@@ -225,16 +224,12 @@ export function Resources() {
     if (!uploadDraft?.file || !uploadDraft.title.trim() || !user) return
     setSavingResource(true)
     try {
-      const uploaded = await uploadResourceFile(activeWorkspaceId, uploadDraft.file)
       await insertFolderResource({
         workspaceId: activeWorkspaceId,
         folderId: null,
         kind: 'file',
         title: uploadDraft.title.trim(),
-        storagePath: uploaded.path,
-        mimeType: uploaded.mimeType,
-        sizeBytes: uploaded.sizeBytes,
-        createdBy: user.id,
+        file: uploadDraft.file,
       })
       showToast('File uploaded to Unfiled.', 'success')
       setUploadDraft(null)
@@ -273,7 +268,7 @@ export function Resources() {
     // optimistic
     setFolders((prev) => prev.map((x) => (x.id === f.id ? { ...x, pinned: !f.pinned } : x)))
     try {
-      await togglePinFolder(f.id, !f.pinned)
+      await togglePinFolder(activeWorkspaceId, f.id, !f.pinned)
     } catch (err) {
       setFolders((prev) => prev.map((x) => (x.id === f.id ? { ...x, pinned: f.pinned } : x)))
       showToast(err instanceof Error ? err.message : 'Failed to update pin.', 'error')
@@ -284,7 +279,7 @@ export function Resources() {
     if (!confirmDelete || confirmDelete.id === null) return
     setSavingDelete(true)
     try {
-      await deleteFolder(confirmDelete.id)
+      await deleteFolder(activeWorkspaceId, confirmDelete.id)
       showToast('Section deleted. Its files moved to Unfiled.', 'success')
       setConfirmDelete(null)
       await refresh()
