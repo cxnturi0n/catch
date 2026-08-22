@@ -12,7 +12,7 @@ if (!email) throw new Error('DEMO_USER_EMAIL is required')
 const owner = await db.query.user.findFirst({ where: eq(s.user.email, email) })
 if (!owner) throw new Error(`no user with email ${email}`)
 
-const NAME = 'Aurelia Protocol (Demo)'
+const NAME = 'Demo Workspace'
 const DAYS = 30
 const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10)
 const at = (ago: number, h: number, m = 0) => {
@@ -36,8 +36,8 @@ await db.transaction(async (tx) => {
   // Integrations marked connected with demo metadata but NO credentials: the
   // worker skips them (getCredentials → null) and nothing real is called.
   await tx.insert(s.integrations).values([
-    { workspaceId: W, platform: 'discord', status: 'connected', credentialsEnc: null, metadata: { server_name: 'Aurelia Protocol', member_count: 12_840, demo: true }, lastSync: new Date() },
-    { workspaceId: W, platform: 'telegram', status: 'connected', credentialsEnc: null, metadata: { group_name: 'Aurelia Community', member_count: 8_312, demo: true }, lastSync: new Date() },
+    { workspaceId: W, platform: 'discord', status: 'connected', credentialsEnc: null, metadata: { server_name: 'Demo Server', member_count: 12_840, demo: true }, lastSync: new Date() },
+    { workspaceId: W, platform: 'telegram', status: 'connected', credentialsEnc: null, metadata: { group_name: 'Demo Community', member_count: 8_312, demo: true }, lastSync: new Date() },
   ])
 
   // Daily rollups + hourly snapshots for the last 30 days.
@@ -124,9 +124,9 @@ await db.transaction(async (tx) => {
   ])
   const [folder] = await tx.insert(s.resourceFolders).values({ workspaceId: W, name: 'Playbooks', sectionType: 'Playbook', pinned: true, createdBy: owner.id }).returning()
   await tx.insert(s.resources).values([
-    { workspaceId: W, folderId: folder!.id, kind: 'external_link', title: 'Moderation SOP', externalUrl: 'https://www.notion.so/aurelia/moderation-sop', createdBy: owner.id },
-    { workspaceId: W, folderId: folder!.id, kind: 'external_link', title: 'Brand kit', externalUrl: 'https://drive.google.com/drive/folders/aurelia-brand', createdBy: owner.id },
-    { workspaceId: W, kind: 'external_link', title: 'Scam report form', externalUrl: 'https://forms.gle/aurelia-scam', createdBy: owner.id },
+    { workspaceId: W, folderId: folder!.id, kind: 'external_link', title: 'Moderation SOP', externalUrl: 'https://www.notion.so/demo/moderation-sop', createdBy: owner.id },
+    { workspaceId: W, folderId: folder!.id, kind: 'external_link', title: 'Brand kit', externalUrl: 'https://drive.google.com/drive/folders/demo-brand', createdBy: owner.id },
+    { workspaceId: W, kind: 'external_link', title: 'Scam report form', externalUrl: 'https://forms.gle/demo-scam', createdBy: owner.id },
   ])
 
   logger.info({ workspaceId: W, moderators: mods.length, memberRows: mm.length }, 'demo workspace created')
