@@ -6,6 +6,8 @@ import { PlatformError } from '../../integrations/index.js'
 import { HttpError } from '../../lib/errors.js'
 import * as repo from './repo.js'
 import * as service from './service.js'
+import { syncDiscordMembers } from '../../jobs/discordMembers.js'
+import { syncDiscordActivity } from '../../jobs/discordActivity.js'
 
 const params = z.object({ workspaceId: z.uuid() })
 const platformParams = params.extend({ platform: z.enum(INTEGRATION_PLATFORMS) })
@@ -70,6 +72,30 @@ export async function integrationRoutes(app: FastifyInstance) {
         throw new HttpError(status, `PLATFORM_${out.code}`, out.error ?? 'Sync failed')
       }
       return { platform: req.params.platform, metrics: out.metrics }
+    },
+  )
+
+  // Manual Discord member-list sync (otherwise daily in the worker).
+  r.post(
+    '/workspaces/:workspaceId/integrations/discord/members-sync',
+    { preHandler: manage, config: { rateLimit: { max: 3, timeWindow: '10 minutes' } }, schema: { params } },
+    async (req) => {
+      const out = await syncDiscordMembers(req.workspace.id, { force: true })
+      if (!out.ok) {
+        const status = out.code === 'NOT_CONNECTED' ? 400 : out.code === 'MISSING_MEMBERS_INTENT' ? 422 : 502
+        throw new HttpError(status, out.code, out.message)
+      }
+      return out
+    },
+  )
+
+  r.post(
+    '/workspaces/:workspaceId/integrations/discord/activity-sync',
+    { preHandler: manage, config: { rateLimit: { max: 6, timeWindow: '1 minute' } }, schema: { params } },
+    async (req) => {
+      const out = await syncDiscordActivity(req.workspace.id)
+      if (!out) throw new HttpError(400, 'NOT_CONNECTED', 'Discord is not connected')
+      return out
     },
   )
 

@@ -1,26 +1,22 @@
 import { closeDatabase, pingDatabase } from './db/client.js'
+import { createBoss, startWorker } from './jobs/scheduler.js'
 import { logger } from './logger.js'
 
-// Worker entrypoint. Step 1 only proves the process boots and reaches the
-// database; the pg-boss scheduler and the integration sync jobs arrive in a
-// later step. Kept as a separate process so it can run on its own container
-// or host without the API.
+// Background worker: pg-boss scheduler on the same PostgreSQL. Runs as its own
+// process so it can live on another container or host than the API.
 async function main() {
-  const dbOk = await pingDatabase()
-  if (!dbOk) throw new Error('database unreachable')
-  logger.info('worker started (no jobs registered yet)')
+  if (!(await pingDatabase())) throw new Error('database unreachable')
+  const boss = createBoss()
+  await startWorker(boss)
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'shutting down worker')
+    await boss.stop({ graceful: true, timeout: 20_000 }).catch(() => undefined)
     await closeDatabase()
     process.exit(0)
   }
   process.on('SIGTERM', () => void shutdown('SIGTERM'))
   process.on('SIGINT', () => void shutdown('SIGINT'))
-
-  // A pending promise alone does not keep Node alive once the pg pool goes
-  // idle; hold a timer handle until the scheduler (next step) owns the loop.
-  setInterval(() => {}, 60_000)
 }
 
 main().catch((err) => {

@@ -5,7 +5,7 @@ Fastify API + background worker sharing one codebase and one Docker image.
 ```
 src/
   api.ts        HTTP entrypoint (npm run start:api)
-  worker.ts     background jobs entrypoint (npm run start:worker)
+  worker.ts     background jobs entrypoint (npm run start:worker) — pg-boss scheduler
   app.ts        Fastify instance: plugins, error envelope, routes
   config.ts     env validation (Zod) — the only place process.env is read
   logger.ts     pino, redacts secrets
@@ -15,7 +15,9 @@ src/
   db/           Drizzle client, schema (auth + app), migration runner
   lib/          crypto (secrets at rest), quota (plan limits), typed errors
   modules/      one folder per domain: routes.ts (Zod schemas) · service.ts · repo.ts
-  routes/       cross-cutting routes (health, /auth/*, /me)
+  routes/       cross-cutting routes (health, /auth/*, /me, /files, /webhooks)
+  integrations/ platform clients (Discord, Telegram, Galxe, Zealy) shared by API and worker
+  jobs/         scheduler + job functions (sync tick, Discord activity/members, Telegram updates, retention)
 scripts/        seed-demo.ts (never part of migrations)
 drizzle/        generated SQL migrations (npm run db:generate)
 ```
@@ -79,3 +81,20 @@ and session revocations.
   response schema.
 - Tables that carry a `moderator_id` use a composite FK `(workspace_id,
   moderator_id)` so a moderator can only be attached to its own workspace.
+
+## Background worker
+
+`npm run dev:worker` / `node dist/worker.js`. pg-boss (schema `pgboss`) on the same
+PostgreSQL — no Redis.
+
+| Queue | When | What |
+|---|---|---|
+| `sync-tick` | every minute | enqueues due `(workspace, platform)` jobs: Discord/Telegram floor 60 s, Galxe/Zealy 300 s, throttled on last *attempt*, deterministic jitter ≤45 s per workspace, singleton key per pair |
+| `sync-platform` | on demand | member counts etc. → `platform_metrics` daily rollup + snapshot on change (30-min heartbeat) |
+| `discord-activity` | every minute | per-channel cursor message counting → `message_activity` |
+| `discord-members` | every 20 h | full member list → tenure + membership snapshot; missing intent recorded in `integration_sync_state` |
+| `retention` | 03:00 UTC | snapshots > 30 d, security events > 365 d, Telegram dedup > 7 d |
+
+Telegram is push: `POST /webhooks/telegram` (secret header, idempotent on `update_id`)
+counts messages per member/hour and join/leave transitions. Register with
+`setWebhook` using `allowed_updates=["message","chat_member"]`.

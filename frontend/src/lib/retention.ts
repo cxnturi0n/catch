@@ -16,9 +16,17 @@
 import { fetchTenure, fetchMembershipSnapshots, type TenureRecord, type MembershipSnapshotRow } from './api/metrics'
 export { fetchTenure, fetchMembershipSnapshots, type TenureRecord, type MembershipSnapshotRow }
 
-/** Member list sync runs in the worker (daily). Manual trigger arrives with it. */
-export async function syncDiscordMembers(_workspaceId: string): Promise<MembersSyncResult> {
-  return { success: false, error: 'NOT_AVAILABLE', message: 'Member sync runs automatically once the background worker is enabled.' }
+import { api, isApiError } from './api/client'
+
+/** Member list sync runs daily in the worker; this forces a run now. */
+export async function syncDiscordMembers(workspaceId: string): Promise<MembersSyncResult> {
+  try {
+    const r = await api<{ total: number; new: number; left: number; truncated: boolean }>(`/workspaces/${workspaceId}/integrations/discord/members-sync`, { method: 'POST' })
+    return { success: true, ...r }
+  } catch (err) {
+    if (isApiError(err)) return { success: false, error: err.code, message: err.message }
+    return { success: false, error: 'UPSTREAM', message: err instanceof Error ? err.message : 'Sync failed' }
+  }
 }
 
 

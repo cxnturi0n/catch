@@ -20,6 +20,7 @@ import { operationsRoutes } from './modules/operations/routes.js'
 import { resourceRoutes } from './modules/resources/routes.js'
 import { metricsRoutes } from './modules/metrics/routes.js'
 import { fileRoutes } from './routes/files.js'
+import { webhookRoutes } from './routes/webhooks.js'
 import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 
@@ -95,6 +96,7 @@ export async function buildApp() {
   await app.register(resourceRoutes)
   await app.register(metricsRoutes)
   await app.register(fileRoutes)
+  await app.register(webhookRoutes)
 
   return app
 }
