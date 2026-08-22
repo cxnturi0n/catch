@@ -45,3 +45,7 @@ Catch-Business-Plan.pdf
 HANDOVER.md
 docs/*.html
 deploy/.env
+
+# Private keys — never commit
+*.pem
+*.key
