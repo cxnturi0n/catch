@@ -29,10 +29,13 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then echo "::error::Repository secret DEPLOY_HOST is not set"; exit 1; fi
+          if [ -z "$DEPLOY_SSH_KEY" ]; then echo "::error::Repository secret DEPLOY_SSH_KEY is not set"; exit 1; fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null 2>&1; then echo "::error::DEPLOY_SSH_KEY is not a valid private key (paste the whole file incl. BEGIN/END lines)"; exit 1; fi
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || { echo "::error::Cannot reach $DEPLOY_HOST on port 22"; exit 1; }
 
       - name: Deploy
         env:
