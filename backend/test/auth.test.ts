@@ -93,7 +93,7 @@ describe('email + password', () => {
 
   it('rejects a wrong password and rate-limits after repeated failures', async () => {
     const statuses: number[] = []
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 52; i++) {
       const r = await post('/auth/sign-in/email', { email: EMAIL, password: 'wrong-password-xx' }, '')
       statuses.push(r.statusCode)
     }

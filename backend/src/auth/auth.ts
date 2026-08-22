@@ -165,12 +165,15 @@ export const auth = betterAuth({
     storage: 'database',
     window: 60,
     max: 60,
+    // Production values; development/test multiply them so local E2E runs
+    // (many sign-ups from one IP) are not throttled. Brute-force tests in the
+    // backend suite reset the table explicitly.
     customRules: {
-      '/sign-in/email': { window: 60, max: 5 },
-      '/sign-up/email': { window: 60, max: 3 },
-      '/request-password-reset': { window: 60, max: 3 },
-      '/two-factor/verify-totp': { window: 60, max: 5 },
-      '/two-factor/verify-backup-code': { window: 60, max: 3 },
+      '/sign-in/email': { window: 60, max: isProduction ? 5 : 50 },
+      '/sign-up/email': { window: 60, max: isProduction ? 3 : 30 },
+      '/request-password-reset': { window: 60, max: isProduction ? 3 : 30 },
+      '/two-factor/verify-totp': { window: 60, max: isProduction ? 5 : 50 },
+      '/two-factor/verify-backup-code': { window: 60, max: isProduction ? 3 : 30 },
     },
   },
 

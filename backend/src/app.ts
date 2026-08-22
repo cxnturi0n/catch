@@ -26,6 +26,7 @@ import { aiRoutes } from './modules/ai/routes.js'
 import { fileRoutes } from './routes/files.js'
 import { webhookRoutes } from './routes/webhooks.js'
 import { eventRoutes } from './routes/events.js'
+import { devRoutes } from './routes/dev.js'
 import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 
@@ -107,6 +108,7 @@ export async function buildApp() {
   await app.register(fileRoutes)
   await app.register(webhookRoutes)
   await app.register(eventRoutes)
+  await app.register(devRoutes)
 
   return app
 }

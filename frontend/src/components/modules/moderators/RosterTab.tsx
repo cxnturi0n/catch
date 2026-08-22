@@ -405,9 +405,16 @@ export function RosterTab({
 
   if (moderators.length === 0) {
     return (
-      <Card className="flex flex-col items-center gap-2 p-16 text-center text-[var(--text-secondary)]">
+      <Card className="flex flex-col items-center gap-3 p-16 text-center text-[var(--text-secondary)]">
         <Users size={28} className="text-slate-600" />
         No moderators added yet for this workspace
+        <button
+          type="button"
+          onClick={onInvite}
+          className="focus-ring mt-1 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#3F7BFF] to-[#2050E6] px-3 py-1.5 text-[12.5px] font-semibold text-white transition hover:brightness-110"
+        >
+          <UserPlus size={14} /> Invite
+        </button>
       </Card>
     )
   }
