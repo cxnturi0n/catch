@@ -3,7 +3,7 @@
 // to offer. Every (platform × metric × window) combination the UI shows MUST be
 // declared here AND actually be backed by data we currently hold. Nothing is
 // synthesised: the dropdowns are driven off this matrix intersected with the
-// data really fetched from Supabase (or the imported X CSV).
+// data really fetched from the API (or the imported X CSV).
 //
 // Data sources:
 //   snapshot-delta      → platform_metric_snapshots (hourly rows) → value now − value N hours ago

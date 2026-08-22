@@ -38,7 +38,7 @@ export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Guest mode: never touch Supabase, just render the explanatory empty state.
+    // Guest mode: never touch the API, just render the explanatory empty state.
     if (!user) {
       setBuckets([])
       setLoading(false)

@@ -50,7 +50,7 @@ const INTENT_STEPS: ReactNode[] = [
 ]
 
 /**
- * A missing Supabase table surfaces as raw "Could not find the table … in the
+ * A missing table surfaces as raw "Could not find the table … in the
  * schema cache" text — useless to the user. Treat those as "no data yet" so the
  * panel shows the friendly setup steps instead of the internal error string.
  */
@@ -126,7 +126,7 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
   const [missingIntent, setMissingIntent] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  // Guest-safe: signed-out users never hit Supabase from here.
+  // Guest-safe: signed-out users never hit the API from here.
   const canQuery = Boolean(user && workspaceId)
 
   const load = useCallback(async () => {

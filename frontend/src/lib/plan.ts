@@ -55,7 +55,8 @@ export function isPlanTier(v: unknown): v is PlanTier {
 const OVERRIDE_KEY = 'catch:planOverride'
 
 export function getPlanOverride(): PlanTier | null {
-  if (typeof window === 'undefined') return null
+  // Demo override exists only in development builds; production trusts the server.
+  if (!import.meta.env.DEV || typeof window === 'undefined') return null
   const v = window.localStorage.getItem(OVERRIDE_KEY)
   return isPlanTier(v) ? v : null
 }

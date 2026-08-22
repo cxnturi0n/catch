@@ -53,15 +53,12 @@ const PRESENCE_TOLERANCE_MS = 5 * 60 * 1000
 // ── Fetching ────────────────────────────────────────────────────────────────
 
 /**
- * All tenure rows for a workspace. Paged, because Supabase caps a single select
+ * All tenure rows for a workspace (served by the API)
  * at 1000 rows and a Discord guild can be far larger than that.
  */
 /** Sync-run snapshots (oldest → newest) for the last `sinceDays` days. */
 /**
- * Kick off a members sync. Mirrors lib/functions.ts's invoke(): supabase-js hides
- * the function's real error behind a generic message, so dig the body out. The
- * MISSING_MEMBERS_INTENT case is returned by the function with a 200 status, so
- * it arrives here as normal data rather than a thrown error.
+ * Kick off a members sync through the API.
  */
 // ── Pure aggregators ────────────────────────────────────────────────────────
 

@@ -75,3 +75,24 @@ export interface ProfilePatch {
 export function updateProfile(patch: ProfilePatch) {
   return api<{ ok: true }>('/me/profile', { method: 'PATCH', body: patch })
 }
+
+export interface ProfileRow {
+  timezone: string | null
+  layout_prompt_seen_at: string | null
+  onboarded_at: string | null
+}
+
+/** Profile extras (timezone, onboarding flags) from GET /me. */
+export async function getProfile(_userId: string): Promise<ProfileRow | null> {
+  const me = await api<{ profile: { timezone: string | null; layoutPromptSeenAt: string | null; onboardedAt: string | null } | null }>('/me')
+  if (!me.profile) return null
+  return { timezone: me.profile.timezone, layout_prompt_seen_at: me.profile.layoutPromptSeenAt, onboarded_at: me.profile.onboardedAt }
+}
+
+export async function updateProfileTimezone(_userId: string, timezone: string): Promise<void> {
+  await updateProfile({ timezone })
+}
+
+export async function markLayoutPromptSeen(_userId: string): Promise<void> {
+  await updateProfile({ layoutPromptSeen: true })
+}

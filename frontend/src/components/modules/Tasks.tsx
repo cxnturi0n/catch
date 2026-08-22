@@ -9,7 +9,7 @@ import { Select } from '../ui/FormControls'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
-import { useSupabaseData } from '../../hooks/useSupabaseData'
+import { useWorkspaceData } from '../../hooks/useWorkspaceData'
 import { TaskBoard } from './tasks/TaskBoard'
 import { TaskTable } from './tasks/TaskTable'
 import { TaskTimeCalendar, type CalendarFilter } from './tasks/TaskTimeCalendar'
@@ -38,7 +38,7 @@ export function Tasks() {
   const { activeWorkspaceId } = useWorkspace()
   const { user } = useAuth()
   const { showToast } = useToast()
-  const { data: tasks, setData: setTasks, loading } = useSupabaseData(
+  const { data: tasks, setData: setTasks, loading } = useWorkspaceData(
     activeWorkspaceId,
     fetchTasks,
     seedTasks,

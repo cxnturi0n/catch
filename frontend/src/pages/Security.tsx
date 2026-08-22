@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Copy, KeyRound, Link2, Loader2, LogOut, Monitor, ShieldCheck, ShieldOff, Unlink } from 'lucide-react'
+import { Copy, KeyRound, Link2, Loader2, LogOut, Monitor, ShieldCheck, ShieldOff, Trash2, Unlink } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { authClient, authErrorMessage, PROVIDER_LABELS, type SocialProvider } from '../lib/api/auth'
@@ -64,6 +64,11 @@ export function Security() {
 
   // --- sessions & accounts --------------------------------------------------
   const [sessions, setSessions] = useState<SessionRow[]>([])
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletePw, setDeletePw] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteSent, setDeleteSent] = useState(false)
   const [accounts, setAccounts] = useState<AccountRow[]>([])
 
   const load = useCallback(async () => {
@@ -168,6 +173,16 @@ export function Security() {
     if (error) return showToast(authErrorMessage(error))
     showToast(`${PROVIDER_LABELS[providerId as SocialProvider] ?? providerId} unlinked`)
     void load()
+  }
+
+  async function requestDeletion(e: FormEvent) {
+    e.preventDefault()
+    setDeleteError('')
+    setDeleteBusy(true)
+    const { error } = await authClient.deleteUser({ ...(hasPassword ? { password: deletePw } : {}), callbackURL: `${window.location.origin}/` })
+    setDeleteBusy(false)
+    if (error) return setDeleteError(authErrorMessage(error))
+    setDeleteSent(true)
   }
 
   const copyCodes = () => {
@@ -285,6 +300,30 @@ export function Security() {
           </div>
         )}
       </SectionCard>
+
+      <SectionCard title="Delete account" icon={<Trash2 size={16} />}>
+        <p className="mb-3 text-sm text-[var(--text-secondary)]">
+          Permanently removes your account, your workspaces and everything in them (moderators, metrics, files, reports). You will receive a confirmation email before anything is deleted.
+        </p>
+        <Button variant="danger" size="sm" onClick={() => setDeleteOpen(true)}>
+          Delete my account
+        </Button>
+      </SectionCard>
+
+      <Modal open={deleteOpen} onClose={() => { setDeleteOpen(false); setDeletePw(''); setDeleteError(''); setDeleteSent(false) }} title="Delete account">
+        {deleteSent ? (
+          <p className="text-sm text-[var(--text-secondary)]">Check your inbox: open the confirmation link to complete the deletion. The link expires in one hour.</p>
+        ) : (
+          <form onSubmit={requestDeletion} className="flex flex-col gap-3">
+            <p className="text-sm text-[var(--text-secondary)]">This cannot be undone. {hasPassword ? 'Confirm your password to continue.' : 'A confirmation email will be sent to your address.'}</p>
+            {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+            {hasPassword && <input type="password" autoComplete="current-password" required value={deletePw} onChange={(e) => setDeletePw(e.target.value)} className={inputClass} placeholder="Password" />}
+            <Button type="submit" variant="danger" loading={deleteBusy}>
+              Send confirmation email
+            </Button>
+          </form>
+        )}
+      </Modal>
 
       {/* ---- 2FA modals ---- */}
       <Modal open={tfaModal === 'enable'} onClose={closeTfa} title="Enable two-factor authentication">

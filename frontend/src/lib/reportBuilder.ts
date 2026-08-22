@@ -52,7 +52,7 @@ export interface BuildReportInput {
   moderatorActivity?: ModeratorActivityInput
   /** Optional shift-coverage-gap section the CM can toggle into the report. */
   coverageGap?: { summaryLine: string; lines: string[]; recommendation?: string }
-  /** Real workspace data from Supabase — overrides the mock getters when present
+  /** Real workspace data from the API — overrides the empty defaults when present
    * (so signed-in / demo workspaces report their actual numbers). */
   live?: {
     stats: WorkspaceStats
@@ -108,7 +108,7 @@ export function buildReportData(workspace: Workspace, input: BuildReportInput): 
   const { reportType, periodStart, periodEnd } = input
   const isGeneral = reportType === 'general'
 
-  // Real Supabase data when provided (signed-in / demo workspaces), else the
+  // Real data when provided, else the
   // deterministic mock dataset (guest sessions).
   const stats = input.live?.stats ?? getStats(workspace.id)
   const allIncidents = input.live?.incidents ?? getIncidents(workspace.id)

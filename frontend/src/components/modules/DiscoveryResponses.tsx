@@ -186,7 +186,7 @@ export function DiscoveryResponses() {
     setError(null)
     const res = await fetchAllDiscoveryResponses()
     if (res.status === 'ok') setRows(res.rows)
-    else setError(res.status === 'unconfigured' ? 'Supabase is not configured on this deployment.' : res.error)
+    else setError(res.status === 'unconfigured' ? 'The API is not reachable on this deployment.' : res.error)
     setLoading(false)
   }
 

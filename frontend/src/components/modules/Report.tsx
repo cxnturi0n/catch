@@ -50,7 +50,7 @@ function isoDay(offsetDays = 0): string {
 /**
  * Best-effort: pull the moderator compensation rollup + payments and shape them
  * into both the text lines and the chart-ready inputs the general report uses.
- * Signed-in only — never fires a Supabase call for a guest session.
+ * Signed-in only.
  */
 async function loadGeneralData(workspaceId: string, periodStart: string, periodEnd: string): Promise<GeneralData> {
   try {
@@ -132,7 +132,7 @@ async function loadCoverageGap(workspaceId: string): Promise<BuildReportInput['c
 }
 
 /**
- * Real community data from Supabase (members, messages, incidents, KOLs, tasks)
+ * Real community data from the API (members, messages, incidents, KOLs, tasks)
  * for a signed-in workspace, shaped into the report's `live` override. Falls
  * back to undefined on any failure so the builder uses the mock dataset instead.
  */
@@ -300,7 +300,7 @@ export function Report() {
     setLoading(true)
     setCopied(false)
 
-    // Moderation folds in Supabase-backed moderator activity + payments (signed-in
+    // Moderation folds in moderator activity + payments (signed-in
     // only); the community-mapped kinds use workspace analytics alone.
     const dataPromise: Promise<GeneralData> =
       isModeration && user ? loadGeneralData(workspace.id, periodStart, periodEnd) : Promise.resolve<GeneralData>({})
@@ -577,7 +577,7 @@ export function Report() {
 /**
  * Cross-platform "Unified overview" card — the discovery headline made concrete:
  * one panel that sums every connected platform. Renders ONLY from the real
- * `model.unified` rollup (built in reportModel from actual Supabase rows); the
+ * `model.unified` rollup (built in reportModel from actual rows); the
  * total is honestly labelled as subscriptions, not unique users.
  */
 function UnifiedOverviewCard({ unified }: { unified: UnifiedOverview }) {

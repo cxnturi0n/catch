@@ -983,7 +983,6 @@ function LiveAnalyticsView({
   const connectedKey = connected.join(',')
 
   // Pull every real source in parallel. Guest-safe: `connected` is empty for
-  // signed-out users, so this never fires a Supabase call for them.
   useEffect(() => {
     if (!workspaceId || connected.length === 0) {
       setDataset(null)

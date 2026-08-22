@@ -1,66 +1,79 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageSquare, Search, ThumbsUp, Trophy, Zap } from 'lucide-react'
-import { getLeaderboard } from '../../data/leaderboardData'
+import { MessageSquare, Search, Trophy } from 'lucide-react'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useToast } from '../../context/ToastContext'
-import { Card } from '../ui/Card'
+import { Card, EmptyState } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { formatCompactNumber } from '../../lib/format'
-import type { LeaderboardPlatform } from '../../types'
+import { api } from '../../lib/api/client'
+import { initials } from '../../data/moderatorsData'
 
-type Filter = 'All' | LeaderboardPlatform
+// Community leaderboard on REAL per-member message counts (Telegram via the
+// webhook, Discord via the channel poller). Reactions and "days active" are
+// not measurable from the connected sources, so they are not shown.
 
-const FILTERS: Filter[] = ['All', 'Discord', 'Telegram']
-
-const PLATFORM_TONE = {
-  Discord: 'purple',
-  Telegram: 'cyan',
-} as const
+type Platform = 'telegram' | 'discord'
+interface Row {
+  memberRef: string
+  displayName: string
+  platform: Platform
+  messages: number
+}
+const PLATFORM_LABEL: Record<Platform, string> = { telegram: 'Telegram', discord: 'Discord' }
+const PLATFORM_TONE = { telegram: 'cyan', discord: 'purple' } as const
+const WINDOW_DAYS = 30
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1)
-    return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-lg" title="1st">
-        🥇
-      </span>
-    )
-  if (rank === 2)
-    return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-lg" title="2nd">
-        🥈
-      </span>
-    )
-  if (rank === 3)
-    return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-lg" title="3rd">
-        🥉
-      </span>
-    )
-  return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-sm font-bold text-[var(--text-secondary)]">
-      {rank}
-    </span>
+  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+  return medal ? (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-lg">{medal}</span>
+  ) : (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-sm font-bold text-[var(--text-secondary)]">{rank}</span>
   )
 }
 
 export function Leaderboard() {
-  const { activeWorkspaceId } = useWorkspace()
+  const { activeWorkspaceId, getWorkspaceIntegrations } = useWorkspace()
   const { showToast } = useToast()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState<Filter>('All')
+  const [filter, setFilter] = useState<'All' | Platform>('All')
   const [search, setSearch] = useState('')
+  const [rows, setRows] = useState<Row[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const all = useMemo(() => getLeaderboard(activeWorkspaceId), [activeWorkspaceId])
+  const integrations = getWorkspaceIntegrations(activeWorkspaceId)
+  const connected = (['telegram', 'discord'] as Platform[]).filter((p) => integrations[p].status === 'Connected')
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return
+    let cancelled = false
+    setLoading(true)
+    Promise.all(
+      connected.map((platform) =>
+        api<{ members: Array<{ memberRef: string; displayName: string | null; messages: number }> }>(`/workspaces/${activeWorkspaceId}/metrics/member-messages?days=${WINDOW_DAYS}&platform=${platform}`)
+          .then((r) => r.members.map((m) => ({ memberRef: m.memberRef, displayName: m.displayName ?? m.memberRef, platform, messages: m.messages })))
+          .catch(() => [] as Row[]),
+      ),
+    ).then((lists) => {
+      if (cancelled) return
+      setRows(lists.flat().sort((a, b) => b.messages - a.messages))
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspaceId, connected.join(',')])
 
   const visible = useMemo(() => {
-    let list = filter === 'All' ? all : all.filter((m) => m.platform === filter)
+    let list = filter === 'All' ? rows : rows.filter((m) => m.platform === filter)
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter((m) => m.username.toLowerCase().includes(q))
+      list = list.filter((m) => m.displayName.toLowerCase().includes(q))
     }
-    return list
-  }, [all, filter, search])
+    return list.slice(0, 100)
+  }, [rows, filter, search])
 
   function handlePromote(username: string) {
     showToast(`Open Moderators → Add Moderator and search for "${username}"`)
@@ -71,138 +84,68 @@ export function Leaderboard() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-bold text-white">Community Leaderboard</h1>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Top members by engagement score — identify candidates for your moderation team.
-        </p>
+        <p className="text-sm text-[var(--text-secondary)]">Most active members over the last {WINDOW_DAYS} days, by messages counted on your connected platforms.</p>
       </div>
 
-      {/* Score formula explainer */}
-      <Card className="flex flex-wrap items-center gap-6 border-[var(--accent-purple)]/20 bg-[var(--accent-purple)]/[0.04] px-5 py-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Score formula
-        </span>
-        <div className="flex flex-wrap gap-4 text-xs text-slate-300">
-          <span className="flex items-center gap-1.5">
-            <MessageSquare size={13} className="text-[var(--accent-cyan)]" />
-            Messages × 1
-          </span>
-          <span className="flex items-center gap-1.5">
-            <ThumbsUp size={13} className="text-[var(--accent-emerald)]" />
-            Reactions × 3
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Zap size={13} className="text-yellow-400" />
-            Days active × 2
-          </span>
-        </div>
-        <span className="ml-auto text-xs text-[var(--text-secondary)]">
-          Based on mock data — live data via Discord / Telegram bot
-        </span>
-      </Card>
-
-      {/* Filters + search */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] p-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                filter === f
-                  ? 'bg-gradient-to-r from-[var(--accent-purple)] to-[var(--accent-cyan)] text-white'
-                  : 'text-[var(--text-secondary)] hover:text-white'
-              }`}
-            >
-              {f}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 rounded-xl border border-[var(--border-card)] p-1">
+          {(['All', 'telegram', 'discord'] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${filter === f ? 'bg-[var(--surface-2)] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}>
+              {f === 'All' ? 'All' : PLATFORM_LABEL[f]}
             </button>
           ))}
         </div>
-
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-          <input
-            type="text"
-            placeholder="Search member…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] py-2 pl-9 pr-4 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-purple)]"
-          />
-        </div>
+        <label className="flex items-center gap-2 rounded-xl border border-[var(--border-card)] px-3 py-1.5 text-sm">
+          <Search size={14} className="text-[var(--text-secondary)]" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search members" className="bg-transparent text-white outline-none placeholder:text-[var(--text-muted)]" />
+        </label>
       </div>
 
-      {/* Table */}
-      <Card className="overflow-hidden p-0">
-        {/* Header row */}
-        <div className="grid grid-cols-[40px_1fr_110px_100px_110px_90px_110px] items-center gap-3 border-b border-[var(--border-card)] px-5 py-3">
-          <span />
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Member</span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Platform</span>
-          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Messages</span>
-          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Reactions</span>
-          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Days active</span>
-          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Score</span>
-        </div>
-
-        {visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <Trophy size={32} className="text-[var(--text-secondary)]" />
-            <p className="text-sm text-[var(--text-secondary)]">No members found</p>
-          </div>
-        ) : (
-          <div className="flex flex-col divide-y divide-[var(--border-card)]">
-            {visible.map((member) => {
-              const globalRank = all.indexOf(member) + 1
-              return (
-                <div
-                  key={member.id}
-                  className={`grid grid-cols-[40px_1fr_110px_100px_110px_90px_110px] items-center gap-3 px-5 py-3.5 transition-colors hover:bg-white/[0.02] ${
-                    globalRank <= 3 ? 'bg-[var(--accent-purple)]/[0.025]' : ''
-                  }`}
-                >
-                  <RankBadge rank={globalRank} />
-
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--accent-purple)] to-[var(--accent-cyan)] text-xs font-bold text-white">
-                      {member.avatarInitials}
+      {connected.length === 0 ? (
+        <EmptyState icon={<Trophy size={28} />} title="No message source connected" description="Connect Telegram or Discord in Integrations to rank members by real activity." />
+      ) : loading ? (
+        <div className="text-sm text-[var(--text-secondary)]">Loading…</div>
+      ) : visible.length === 0 ? (
+        <EmptyState icon={<MessageSquare size={28} />} title="No activity recorded yet" description="Counting starts from the moment the platform is connected; check back after some activity." />
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-[var(--text-secondary)]">
+              <tr>
+                <th className="px-4 py-3">#</th>
+                <th className="px-4 py-3">Member</th>
+                <th className="px-4 py-3">Platform</th>
+                <th className="px-4 py-3 text-right">Messages</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((m, i) => (
+                <tr key={`${m.platform}:${m.memberRef}`} className="border-t border-[var(--border-card)]">
+                  <td className="px-4 py-2">
+                    <RankBadge rank={i + 1} />
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-white">{initials(m.displayName)}</div>
+                      <div className="truncate text-sm font-medium text-white">{m.displayName}</div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-white">{member.username}</div>
-                      <div className="text-xs text-[var(--text-secondary)]">
-                        Joined {member.joinedDate}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Badge tone={PLATFORM_TONE[member.platform]}>{member.platform}</Badge>
-                  </div>
-
-                  <div className="text-right text-sm text-white">
-                    {formatCompactNumber(member.messagesCount)}
-                  </div>
-                  <div className="text-right text-sm text-white">
-                    {formatCompactNumber(member.reactionsReceived)}
-                  </div>
-                  <div className="text-right text-sm text-white">{member.daysActive}d</div>
-
-                  <div className="flex items-center justify-end gap-2">
-                    <span className="text-sm font-semibold text-[var(--accent-emerald)]">
-                      {formatCompactNumber(member.engagementScore)}
-                    </span>
-                    <button
-                      onClick={() => handlePromote(member.username)}
-                      title="Promote to moderator"
-                      className="rounded-lg border border-[var(--border-card)] px-2 py-0.5 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
-                    >
-                      +Mod
+                  </td>
+                  <td className="px-4 py-2">
+                    <Badge tone={PLATFORM_TONE[m.platform]}>{PLATFORM_LABEL[m.platform]}</Badge>
+                  </td>
+                  <td className="px-4 py-2 text-right text-white">{formatCompactNumber(m.messages)}</td>
+                  <td className="px-4 py-2 text-right">
+                    <button onClick={() => handlePromote(m.displayName)} className="text-xs text-[var(--accent-emerald-bright)] hover:underline">
+                      Promote
                     </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </div>
   )
 }

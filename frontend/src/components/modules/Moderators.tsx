@@ -81,7 +81,7 @@ export function Moderators() {
       setTab('directory')
 
       if (!user) {
-        // Guest mode — never touch Supabase; render mock data directly.
+        // Guest mode — never touch the API.
         if (!cancelled) setModerators(getSeedModerators(activeWorkspaceId))
         if (!cancelled) setLoading(false)
         return
@@ -146,7 +146,7 @@ export function Moderators() {
     const wasEditing = editing !== null
 
     if (!user) {
-      // Guest mode — keep the moderator in memory only, no Supabase write.
+      // Guest mode — keep the moderator in memory only, no API write.
       const local: Moderator = wasEditing ? m : { ...m, id: `local-${Date.now()}` }
       setModerators((prev) => (prev.some((x) => x.id === local.id) ? prev.map((x) => (x.id === local.id ? local : x)) : [local, ...prev]))
       closeAddModal()
@@ -172,7 +172,7 @@ export function Moderators() {
     const newWarnings = [...target.warnings, warning]
 
     if (!user) {
-      // Guest mode — update in-memory state only, no Supabase write.
+      // Guest mode — update in-memory state only, no API write.
       setModerators((prev) =>
         prev.map((m) => (m.id === target.id ? { ...m, warnings: newWarnings, rating: applyWarningPenalty(m.rating, warning.severity) } : m)),
       )
@@ -198,7 +198,7 @@ export function Moderators() {
     const targetId = removeTarget.id
 
     if (!user) {
-      // Guest mode — remove from in-memory state only, no Supabase write.
+      // Guest mode — remove from in-memory state only, no API write.
       setModerators((prev) => prev.filter((m) => m.id !== targetId))
       setRemoveTarget(null)
       showToast('Moderator removed')

@@ -1,7 +1,7 @@
 // Email-automation schedule persistence for the Report module (#6).
 //
 // One schedule row per workspace (unique workspace_id → upsert). Guest-safe by
-// construction: every function here talks to Supabase, so callers must only
+// construction: every function here talks to the API, so callers must only
 // invoke them for a signed-in user with a real (non-local) workspace. Backed by
 // migration 014 (owner RLS + grants). The UI stores schedules even before the
 // `send-report` edge function / RESEND_API_KEY exist — dispatch is a separate,

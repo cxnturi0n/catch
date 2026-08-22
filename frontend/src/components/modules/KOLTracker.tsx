@@ -10,7 +10,7 @@ import { Modal } from '../ui/Modal'
 import { FormField, Select, inputClass } from '../ui/FormControls'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useAuth } from '../../context/AuthContext'
-import { useSupabaseData } from '../../hooks/useSupabaseData'
+import { useWorkspaceData } from '../../hooks/useWorkspaceData'
 import { formatCompactNumber, formatRelativeTime } from '../../lib/format'
 
 const STATUS_TONE: Record<KOLStatus, BadgeTone> = {
@@ -32,7 +32,7 @@ const emptyForm = {
 export function KOLTracker() {
   const { activeWorkspaceId } = useWorkspace()
   const { user } = useAuth()
-  const { data: kols, setData: setKols, loading } = useSupabaseData(activeWorkspaceId, fetchKOLs, seedKOLs, getSeedKols, !!user)
+  const { data: kols, setData: setKols, loading } = useWorkspaceData(activeWorkspaceId, fetchKOLs, seedKOLs, getSeedKols, !!user)
   const [statusFilter, setStatusFilter] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -80,7 +80,7 @@ export function KOLTracker() {
     }
 
     if (!user) {
-      // Guest mode — keep the KOL in memory only, no Supabase write.
+      // Guest mode — keep the KOL in memory only, no API write.
       const localKol: KOL = { id: `local-${Date.now()}`, ...kolInput }
       setKols((prev) => [localKol, ...prev])
       closeModal()

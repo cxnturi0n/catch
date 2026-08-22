@@ -105,7 +105,7 @@ export interface PaymentSummaryInput {
  * The structured, chart-ready view of a report. Sections are optional so the
  * same shape covers the "community" type (analytics only) and "general"
  * (analytics + moderation + moderators + payments + tasks), and so guest
- * sessions — which have no Supabase-backed moderator/payment data — simply omit
+ * sessions — which have no moderator/payment data — simply omit
  * those blocks instead of rendering empty charts.
  */
 export interface ReportModel {

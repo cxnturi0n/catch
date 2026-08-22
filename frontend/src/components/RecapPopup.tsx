@@ -151,7 +151,7 @@ export function RecapPopup() {
     }
   }, [maybeShow])
 
-  // ── Load real data whenever the popup opens (guest-safe: no Supabase call
+  // ── Load real data whenever the popup opens (guest-safe: no API call
   // when there's no signed-in user). ────────────────────────────────────────
   const integrations = user && activeWorkspaceId ? getWorkspaceIntegrations(activeWorkspaceId) : null
   const connectedKey = integrations

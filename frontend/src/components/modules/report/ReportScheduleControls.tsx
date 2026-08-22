@@ -23,7 +23,7 @@ const CADENCES: { id: ReportCadence; label: string }[] = [
  * Email-automation cadence UI (#6). Sits to the RIGHT of the date-range selector.
  * Guest-safe: when `canPersist` is false (no signed-in user / local workspace)
  * the controls stay interactive but saving is disabled with an inline hint,
- * since schedules live in Supabase. Saving here only stores the schedule — the
+ * since schedules live on the server. Saving here only stores the schedule — the
  * `send-report` edge function + RESEND_API_KEY are what actually dispatch it.
  */
 export function ReportScheduleControls({
