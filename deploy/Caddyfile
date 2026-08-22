@@ -1,6 +1,18 @@
-# Edge reverse proxy. SITE_ADDRESS=localhost gives a self-signed local cert;
-# a real hostname gets an automatic Let's Encrypt certificate.
-{$SITE_ADDRESS} {
+# Shared edge (see docker-compose.edge.yml). One site block per stack; each
+# stack's containers are reachable on the catch-edge network as
+# <stack>-api / <stack>-frontend.
+#
+# Cloudflare proxy in front: real client IP comes from CF-Connecting-IP and is
+# only honoured when the request arrives from a Cloudflare range, then handed
+# to the API as a single-value X-Forwarded-For. Direct hits get their socket IP.
+{
+	servers {
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+(site) {
 	encode zstd gzip
 
 	header {
@@ -13,10 +25,24 @@
 
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy api:3000
+		reverse_proxy {args[0]}-api:3000 {
+			header_up X-Forwarded-For {client_ip}
+			header_up X-Real-IP {client_ip}
+			# SSE: stream without buffering.
+			flush_interval -1
+		}
 	}
 
 	handle {
-		reverse_proxy frontend:80
+		reverse_proxy {args[0]}-frontend:80
 	}
+}
+
+{$SITE_ADDRESS} {
+	import site catch
+}
+
+{$STAGING_ADDRESS} {
+	header X-Robots-Tag "noindex, nofollow"
+	import site catch-staging
 }

@@ -2,11 +2,16 @@
 // section has something to show. Deterministic, idempotent (re-running
 // replaces the demo workspace). Never part of migrations.
 //   DEMO_USER_EMAIL=you@example.com npm run seed:demo
+// Refused when APP_ENV=production unless ALLOW_DEMO_SEED=1 (staging is fine).
 import { and, eq } from 'drizzle-orm'
+import { config } from '../src/config.js'
 import { db, closeDatabase } from '../src/db/client.js'
 import * as s from '../src/db/schema/index.js'
 import { logger } from '../src/logger.js'
 
+if (config.APP_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1') {
+  throw new Error('refusing to seed demo data on APP_ENV=production (set ALLOW_DEMO_SEED=1 to override)')
+}
 const email = process.env.DEMO_USER_EMAIL
 if (!email) throw new Error('DEMO_USER_EMAIL is required')
 const owner = await db.query.user.findFirst({ where: eq(s.user.email, email) })

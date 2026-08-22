@@ -3,7 +3,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 ARG VITE_API_URL=/api
-ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_APP_ENV=production
+ENV VITE_API_URL=$VITE_API_URL VITE_APP_ENV=$VITE_APP_ENV
 COPY package.json package-lock.json ./
 RUN npm install -g npm@11 && npm ci
 COPY . .
