@@ -116,7 +116,7 @@ describe('workspaces', () => {
     await db.update(schema.user).set({ role: 'admin' }).where(eq(schema.user.email, alice.email))
     const r2 = await app.inject({ method: 'GET', url: '/admin/overview', headers: { cookie: alice.cookie } })
     expect(r2.statusCode).toBe(200)
-    expect(r2.json().workspaces).toBeGreaterThan(0)
+    expect(r2.json().workspaces.total).toBeGreaterThan(0)
   })
 
   it('owner can delete; cascade removes members and integrations', async () => {

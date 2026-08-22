@@ -11,7 +11,7 @@
 // the deterministic narrative from buildRecapInsights, so the panel always has
 // something true to show.
 
-import { supabase } from './supabase'
+import { requestStatusUpdate } from './api/misc'
 import { buildRecapInsights, RECAP_PLATFORMS, type RecapData } from './recapData'
 import type { IntegrationKey, Moderator, WorkspaceIntegrations } from '../types'
 
@@ -156,12 +156,6 @@ export interface StatusUpdate {
   model?: string
 }
 
-interface FnResponse {
-  ok: boolean
-  update?: { headline: string; body: string; watch: string[] }
-  model?: string
-  error?: string
-}
 
 /**
  * Ask the edge function for the briefing, degrading to the deterministic
@@ -169,6 +163,7 @@ interface FnResponse {
  * usable update in every case and can surface `fromAI` if they want to say so.
  */
 export async function writeStatusUpdate(
+  workspaceId: string,
   snapshot: StatusSnapshot,
   recap: RecapData,
   lang: string,
@@ -184,10 +179,8 @@ export async function writeStatusUpdate(
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke<FnResponse>('status-update', {
-      body: { snapshot, lang },
-    })
-    if (error || !data?.ok || !data.update) return deterministic()
+    const data = await requestStatusUpdate(workspaceId, snapshot, lang)
+    if (!data.ok || !data.update) return deterministic()
     return { ...data.update, watch: data.update.watch ?? [], fromAI: true, model: data.model }
   } catch {
     return deterministic()

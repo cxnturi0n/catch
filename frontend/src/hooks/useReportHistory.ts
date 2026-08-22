@@ -1,53 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { WorkspaceId } from '../types'
 import type { ReportData } from '../lib/reportBuilder'
+import { fetchReportRuns, saveReportRun } from '../lib/api/misc'
 
 export interface ReportHistoryEntry {
   id: string
   data: ReportData
 }
 
-const HISTORY_KEY = 'catch:reportHistory'
-const MAX_PER_WORKSPACE = 20
-
-function readAll(): ReportHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as ReportHistoryEntry[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function writeAll(entries: ReportHistoryEntry[]) {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries))
-  } catch {
-    // ignore persistence failures
-  }
-}
-
+// Generated reports are stored server-side (report_runs), so history follows
+// the workspace instead of the browser.
 export function useReportHistory(workspaceId: WorkspaceId) {
-  const [entries, setEntries] = useState<ReportHistoryEntry[]>(() =>
-    readAll().filter((e) => e.data.workspaceId === workspaceId),
-  )
+  const [entries, setEntries] = useState<ReportHistoryEntry[]>([])
 
-  // Workspace switched — reload this workspace's own history slice.
   useEffect(() => {
-    setEntries(readAll().filter((e) => e.data.workspaceId === workspaceId))
+    let cancelled = false
+    if (!workspaceId) {
+      setEntries([])
+      return
+    }
+    fetchReportRuns<ReportData>(workspaceId)
+      .then((runs) => !cancelled && setEntries(runs.map((r) => ({ id: r.id, data: r.data }))))
+      .catch(() => !cancelled && setEntries([]))
+    return () => {
+      cancelled = true
+    }
   }, [workspaceId])
 
-  function addEntry(data: ReportData) {
-    const newEntry: ReportHistoryEntry = { id: `report-${Date.now()}`, data }
-    const all = readAll()
-    const forThisWorkspace = all.filter((e) => e.data.workspaceId === data.workspaceId)
-    const others = all.filter((e) => e.data.workspaceId !== data.workspaceId)
-    const updatedForWorkspace = [newEntry, ...forThisWorkspace].slice(0, MAX_PER_WORKSPACE)
-    writeAll([...others, ...updatedForWorkspace])
-    setEntries(updatedForWorkspace)
-  }
+  const addEntry = useCallback(
+    (data: ReportData) => {
+      const optimistic: ReportHistoryEntry = { id: `local-${Date.now()}`, data }
+      setEntries((prev) => [optimistic, ...prev])
+      const period = (d: ReportData) => {
+        const any = d as unknown as { periodStart?: string; periodEnd?: string; range?: { start?: string; end?: string } }
+        const start = any.periodStart ?? any.range?.start ?? new Date().toISOString()
+        const end = any.periodEnd ?? any.range?.end ?? new Date().toISOString()
+        return { start: start.slice(0, 10), end: end.slice(0, 10) }
+      }
+      const p = period(data)
+      void saveReportRun(workspaceId, { reportType: String((data as unknown as { reportType?: string }).reportType ?? 'general'), periodStart: p.start, periodEnd: p.end, data: data as unknown as Record<string, unknown> })
+        .then((run) => setEntries((prev) => prev.map((e) => (e.id === optimistic.id ? { id: run.id, data } : e))))
+        .catch(() => undefined)
+    },
+    [workspaceId],
+  )
 
   return { entries, addEntry }
 }

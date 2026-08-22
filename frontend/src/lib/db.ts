@@ -1,13 +1,7 @@
 import { supabase } from './supabase'
 import type {
-  FeedbackCategory,
-  FeedbackEntry,
-  FeedbackRole,
   IntegrationConnection,
   IntegrationKey,
-  KOL,
-  ModerationIncident,
-  NewFeedbackInput,
   Workspace,
   WorkspaceId,
   WorkspaceIntegrations,
@@ -34,6 +28,18 @@ export {
   type PointsMetricInput,
 } from './api/moderators'
 export { fetchTasks, addTask, updateTaskStatus, seedTasks } from './api/operations'
+export {
+  submitFeedback,
+  fetchRoadmapFeedback,
+  fetchAllFeedback,
+  updateFeedbackStatus,
+  fetchIncidents,
+  addIncident,
+  seedIncidents,
+  fetchKOLs,
+  addKOL,
+  seedKOLs,
+} from './api/misc'
 export {
   fetchPlatformMetrics,
   fetchPlatformMetricRows,
@@ -306,137 +312,11 @@ export async function disconnectIntegrationDb(workspaceId: WorkspaceId, key: Int
  * is per-member/day; this sums members to a single daily volume trend). */
 // ── Incidents ──
 
-interface IncidentRow {
-  id: string
-  workspace_id: string
-  date: string
-  type: string
-  channel: string
-  action_taken: string | null
-  status: string | null
-  created_at: string
-}
 
-function mapIncident(row: IncidentRow): ModerationIncident {
-  return {
-    id: row.id,
-    date: row.date,
-    type: row.type as ModerationIncident['type'],
-    channel: row.channel as ModerationIncident['channel'],
-    actionTaken: row.action_taken ?? '',
-    status: (row.status ?? 'Open') as ModerationIncident['status'],
-  }
-}
-
-export async function fetchIncidents(workspaceId: WorkspaceId): Promise<ModerationIncident[]> {
-  const result = await supabase.from('incidents').select('*').eq('workspace_id', workspaceId).order('date', { ascending: false })
-  return unwrap<IncidentRow[]>(result).map(mapIncident)
-}
-
-export async function addIncident(workspaceId: WorkspaceId, data: Omit<ModerationIncident, 'id'>): Promise<ModerationIncident> {
-  const result = await supabase
-    .from('incidents')
-    .insert({
-      workspace_id: workspaceId,
-      date: data.date,
-      type: data.type,
-      channel: data.channel,
-      action_taken: data.actionTaken,
-      status: data.status,
-    })
-    .select('*')
-    .single()
-  return mapIncident(unwrap<IncidentRow>(result))
-}
-
-export async function seedIncidents(workspaceId: WorkspaceId, incidents: ModerationIncident[]): Promise<ModerationIncident[]> {
-  if (incidents.length === 0) return []
-  const result = await supabase
-    .from('incidents')
-    .insert(
-      incidents.map((i) => ({
-        workspace_id: workspaceId,
-        date: i.date,
-        type: i.type,
-        channel: i.channel,
-        action_taken: i.actionTaken,
-        status: i.status,
-      })),
-    )
-    .select('*')
-  return unwrap<IncidentRow[]>(result).map(mapIncident)
-}
 
 // ── KOLs ──
 
-interface KolRow {
-  id: string
-  workspace_id: string
-  name: string
-  handle: string | null
-  channel: string | null
-  reach: number | null
-  status: string | null
-  last_activity: string | null
-  notes: string | null
-  created_at: string
-}
 
-function mapKol(row: KolRow): KOL {
-  return {
-    id: row.id,
-    name: row.name,
-    handle: row.handle ?? '',
-    channel: (row.channel ?? 'Twitter') as KOL['channel'],
-    reach: row.reach ?? 0,
-    status: (row.status ?? 'Pending') as KOL['status'],
-    lastActivity: row.last_activity ?? row.created_at.slice(0, 10),
-    notes: row.notes ?? '',
-  }
-}
-
-export async function fetchKOLs(workspaceId: WorkspaceId): Promise<KOL[]> {
-  const result = await supabase.from('kols').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false })
-  return unwrap<KolRow[]>(result).map(mapKol)
-}
-
-export async function addKOL(workspaceId: WorkspaceId, data: Omit<KOL, 'id'>): Promise<KOL> {
-  const result = await supabase
-    .from('kols')
-    .insert({
-      workspace_id: workspaceId,
-      name: data.name,
-      handle: data.handle,
-      channel: data.channel,
-      reach: data.reach,
-      status: data.status,
-      last_activity: data.lastActivity,
-      notes: data.notes,
-    })
-    .select('*')
-    .single()
-  return mapKol(unwrap<KolRow>(result))
-}
-
-export async function seedKOLs(workspaceId: WorkspaceId, kols: KOL[]): Promise<KOL[]> {
-  if (kols.length === 0) return []
-  const result = await supabase
-    .from('kols')
-    .insert(
-      kols.map((k) => ({
-        workspace_id: workspaceId,
-        name: k.name,
-        handle: k.handle,
-        channel: k.channel,
-        reach: k.reach,
-        status: k.status,
-        last_activity: k.lastActivity,
-        notes: k.notes,
-      })),
-    )
-    .select('*')
-  return unwrap<KolRow[]>(result).map(mapKol)
-}
 
 // ── Tasks ──
 
@@ -468,63 +348,9 @@ export async function seedKOLs(workspaceId: WorkspaceId, kols: KOL[]): Promise<K
  * 026 has not been run yet, so the app keeps working pre-migration. */
 // ── Feedback (CatchLab) ──
 
-interface FeedbackRow {
-  id: string
-  user_id: string | null
-  category: string
-  title: string
-  description: string
-  rating: number | null
-  role: string | null
-  status: string
-  created_at: string
-}
 
-function mapFeedback(row: FeedbackRow): FeedbackEntry {
-  return {
-    id: row.id,
-    category: row.category as FeedbackCategory,
-    title: row.title,
-    description: row.description,
-    rating: row.rating,
-    role: row.role as FeedbackRole | null,
-    status: (row.status ?? 'pending') as FeedbackEntry['status'],
-    createdAt: row.created_at,
-  }
-}
-
-export async function submitFeedback(userId: string, input: NewFeedbackInput): Promise<void> {
-  const { error } = await supabase.from('feedback').insert({
-    user_id: userId,
-    category: input.category,
-    title: input.title,
-    description: input.description,
-    rating: input.rating,
-    role: input.role,
-  })
-  if (error) throw new Error(error.message)
-}
 
 /** Public roadmap — items the whole community can see (planned/in_progress/shipped). */
-export async function fetchRoadmapFeedback(): Promise<FeedbackEntry[]> {
-  const result = await supabase
-    .from('feedback')
-    .select('*')
-    .in('status', ['planned', 'in_progress', 'shipped'])
-    .order('created_at', { ascending: false })
-  return unwrap<FeedbackRow[]>(result).map(mapFeedback)
-}
-
 /** Owner-only request log — every submission including the pending inbox.
  * Returns [] for non-owners (RLS blocks the rows). */
-export async function fetchAllFeedback(): Promise<FeedbackEntry[]> {
-  const result = await supabase.from('feedback').select('*').order('created_at', { ascending: false })
-  if (result.error) return []
-  return (result.data ?? []).map((r) => mapFeedback(r as FeedbackRow))
-}
-
 /** Owner moves an item across the roadmap. */
-export async function updateFeedbackStatus(id: string, status: FeedbackEntry['status']): Promise<void> {
-  const { error } = await supabase.from('feedback').update({ status }).eq('id', id)
-  if (error) throw new Error(error.message)
-}

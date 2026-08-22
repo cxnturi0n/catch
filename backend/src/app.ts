@@ -19,6 +19,10 @@ import { compensationRoutes } from './modules/compensation/routes.js'
 import { operationsRoutes } from './modules/operations/routes.js'
 import { resourceRoutes } from './modules/resources/routes.js'
 import { metricsRoutes } from './modules/metrics/routes.js'
+import { reportRoutes } from './modules/reports/routes.js'
+import { feedbackRoutes } from './modules/feedback/routes.js'
+import { discoveryRoutes } from './modules/discovery/routes.js'
+import { aiRoutes } from './modules/ai/routes.js'
 import { fileRoutes } from './routes/files.js'
 import { webhookRoutes } from './routes/webhooks.js'
 import multipart from '@fastify/multipart'
@@ -95,6 +99,10 @@ export async function buildApp() {
   await app.register(operationsRoutes)
   await app.register(resourceRoutes)
   await app.register(metricsRoutes)
+  await app.register(reportRoutes)
+  await app.register(feedbackRoutes)
+  await app.register(discoveryRoutes)
+  await app.register(aiRoutes)
   await app.register(fileRoutes)
   await app.register(webhookRoutes)
 

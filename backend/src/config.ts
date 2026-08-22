@@ -36,6 +36,13 @@ const schema = z.object({
   TWITTER_CLIENT_ID: optionalSecret,
   TWITTER_CLIENT_SECRET: optionalSecret,
 
+  // Where discovery-form submissions are announced (optional).
+  DISCOVERY_NOTIFY_TO: z.preprocess((v) => (v === '' ? undefined : v), z.email().optional()),
+
+  // LLM (status update summary)
+  ANTHROPIC_API_KEY: optionalSecret,
+  LLM_MODEL: z.string().default('claude-opus-5'),
+
   // Inbound webhooks
   TELEGRAM_WEBHOOK_SECRET: optionalSecret,
 

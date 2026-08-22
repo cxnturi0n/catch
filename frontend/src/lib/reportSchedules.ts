@@ -7,9 +7,7 @@
 // `send-report` edge function / RESEND_API_KEY exist — dispatch is a separate,
 // server-side concern.
 
-import { supabase } from './supabase'
 import type { ReportType } from './reportModel'
-import type { WorkspaceId } from '../types'
 
 export type ReportCadence = 'off' | 'daily' | 'weekly'
 
@@ -57,66 +55,9 @@ export function guessTimezone(): string {
   }
 }
 
-interface ScheduleRow {
-  workspace_id: string
-  report_type: string
-  cadence: string
-  weekday: number | null
-  time: string
-  timezone: string
-  email: string | null
-  enabled: boolean
-  slack_webhook_url: string | null
-  notion_token: string | null
-  notion_page_id: string | null
-}
 
-function mapRow(row: ScheduleRow): ReportSchedule {
-  return {
-    reportType: (row.report_type === 'community' ? 'community' : 'general') as ReportType,
-    cadence: (['off', 'daily', 'weekly'].includes(row.cadence) ? row.cadence : 'off') as ReportCadence,
-    weekday: row.weekday ?? 0,
-    time: row.time ?? '21:00',
-    timezone: row.timezone ?? 'UTC',
-    email: row.email ?? '',
-    enabled: Boolean(row.enabled),
-    slackWebhookUrl: row.slack_webhook_url ?? '',
-    notionToken: row.notion_token ?? '',
-    notionPageId: row.notion_page_id ?? '',
-  }
-}
 
 /** Load the workspace's schedule, or null when none has been saved yet. */
-export async function fetchReportSchedule(workspaceId: WorkspaceId): Promise<ReportSchedule | null> {
-  const { data, error } = await supabase
-    .from('report_schedules')
-    .select(
-      'workspace_id, report_type, cadence, weekday, time, timezone, email, enabled, slack_webhook_url, notion_token, notion_page_id',
-    )
-    .eq('workspace_id', workspaceId)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  return data ? mapRow(data as ScheduleRow) : null
-}
-
 /** Create or update the workspace's schedule (one row per workspace). */
-export async function upsertReportSchedule(workspaceId: WorkspaceId, schedule: ReportSchedule): Promise<void> {
-  const { error } = await supabase.from('report_schedules').upsert(
-    {
-      workspace_id: workspaceId,
-      report_type: schedule.reportType,
-      cadence: schedule.cadence,
-      weekday: schedule.cadence === 'weekly' ? schedule.weekday : null,
-      time: schedule.time,
-      timezone: schedule.timezone,
-      email: schedule.email || null,
-      enabled: schedule.enabled && schedule.cadence !== 'off',
-      slack_webhook_url: schedule.slackWebhookUrl?.trim() || null,
-      notion_token: schedule.notionToken?.trim() || null,
-      notion_page_id: schedule.notionPageId?.trim() || null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'workspace_id' },
-  )
-  if (error) throw new Error(error.message)
-}
+
+export { fetchReportSchedule, upsertReportSchedule, sendReportNow, SECRET_KEPT } from './api/misc'

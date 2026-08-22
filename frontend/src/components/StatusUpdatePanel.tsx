@@ -55,7 +55,7 @@ export function StatusUpdatePanel({ open, onClose }: { open: boolean; onClose: (
       setRecap(data)
       setModerators(mods)
       const snapshot = buildSnapshot(workspaceName, data, integrations, mods)
-      setUpdate(await writeStatusUpdate(snapshot, data, lang))
+      setUpdate(await writeStatusUpdate(activeWorkspaceId, snapshot, data, lang))
     } finally {
       setLoading(false)
     }

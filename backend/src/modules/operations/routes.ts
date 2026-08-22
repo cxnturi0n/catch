@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.js'
-import { contentSchedule, meetings, moderators, PLATFORMS, tasks } from '../../db/schema/index.js'
+import { contentSchedule, incidents, kols, meetings, moderators, PLATFORMS, tasks } from '../../db/schema/index.js'
 import { badRequest, notFound } from '../../lib/errors.js'
 
 // Tasks, meetings and the content schedule: plain workspace-scoped CRUD.
@@ -35,6 +35,23 @@ const meetingBody = z
     provider: z.enum(['google', 'outlook', 'other']).default('google'),
   })
   .refine((m) => new Date(m.endsAt) > new Date(m.startsAt), { message: 'endsAt must be after startsAt', path: ['endsAt'] })
+
+const incidentBody = z.object({
+  date: isoDate.optional(),
+  type: z.string().trim().min(1).max(60),
+  channel: z.string().trim().min(1).max(60),
+  actionTaken: z.string().trim().max(2000).nullish(),
+  status: z.enum(['Open', 'Resolved', 'Escalated']).default('Open'),
+})
+const kolBody = z.object({
+  name: z.string().trim().min(1).max(120),
+  handle: z.string().trim().max(120).nullish(),
+  channel: z.string().trim().max(40).nullish(),
+  reach: z.number().int().min(0).max(1_000_000_000).default(0),
+  status: z.string().trim().max(40).default('Pending'),
+  lastActivity: isoDate.nullish(),
+  notes: z.string().trim().max(5000).nullish(),
+})
 
 const contentBody = z.object({
   title: z.string().trim().min(1).max(300),
@@ -142,6 +159,44 @@ export async function operationsRoutes(app: FastifyInstance) {
   r.delete(`${ws}/content/:id`, { preHandler: member, schema: { params: idParams } }, async (req, reply) => {
     const d = await db.delete(contentSchedule).where(and(eq(contentSchedule.workspaceId, req.workspace.id), eq(contentSchedule.id, req.params.id))).returning({ id: contentSchedule.id })
     if (d.length === 0) throw notFound('Content item')
+    return reply.status(204).send()
+  })
+
+  // --- incidents -----------------------------------------------------------
+  r.get(`${ws}/incidents`, { preHandler: member, schema: { params } }, async (req) => ({
+    incidents: await db.select().from(incidents).where(eq(incidents.workspaceId, req.workspace.id)).orderBy(desc(incidents.date), desc(incidents.createdAt)),
+  }))
+  r.post(`${ws}/incidents`, { preHandler: member, schema: { params, body: incidentBody } }, async (req, reply) => {
+    const [i] = await db.insert(incidents).values({ workspaceId: req.workspace.id, ...req.body }).returning()
+    return reply.status(201).send({ incident: i })
+  })
+  r.patch(`${ws}/incidents/:id`, { preHandler: member, schema: { params: idParams, body: incidentBody.partial() } }, async (req) => {
+    const [i] = await db.update(incidents).set(req.body).where(and(eq(incidents.workspaceId, req.workspace.id), eq(incidents.id, req.params.id))).returning()
+    if (!i) throw notFound('Incident')
+    return { incident: i }
+  })
+  r.delete(`${ws}/incidents/:id`, { preHandler: member, schema: { params: idParams } }, async (req, reply) => {
+    const d = await db.delete(incidents).where(and(eq(incidents.workspaceId, req.workspace.id), eq(incidents.id, req.params.id))).returning({ id: incidents.id })
+    if (d.length === 0) throw notFound('Incident')
+    return reply.status(204).send()
+  })
+
+  // --- KOLs ----------------------------------------------------------------
+  r.get(`${ws}/kols`, { preHandler: member, schema: { params } }, async (req) => ({
+    kols: await db.select().from(kols).where(eq(kols.workspaceId, req.workspace.id)).orderBy(desc(kols.createdAt)),
+  }))
+  r.post(`${ws}/kols`, { preHandler: member, schema: { params, body: kolBody } }, async (req, reply) => {
+    const [k] = await db.insert(kols).values({ workspaceId: req.workspace.id, ...req.body }).returning()
+    return reply.status(201).send({ kol: k })
+  })
+  r.patch(`${ws}/kols/:id`, { preHandler: member, schema: { params: idParams, body: kolBody.partial() } }, async (req) => {
+    const [k] = await db.update(kols).set(req.body).where(and(eq(kols.workspaceId, req.workspace.id), eq(kols.id, req.params.id))).returning()
+    if (!k) throw notFound('KOL')
+    return { kol: k }
+  })
+  r.delete(`${ws}/kols/:id`, { preHandler: member, schema: { params: idParams } }, async (req, reply) => {
+    const d = await db.delete(kols).where(and(eq(kols.workspaceId, req.workspace.id), eq(kols.id, req.params.id))).returning({ id: kols.id })
+    if (d.length === 0) throw notFound('KOL')
     return reply.status(204).send()
   })
 }
