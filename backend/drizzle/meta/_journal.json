@@ -15,6 +15,13 @@
       "when": 1787353464299,
       "tag": "0001_app_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787423237422,
+      "tag": "0002_member_message_times",
+      "breakpoints": true
     }
   ]
 }

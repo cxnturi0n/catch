@@ -4,7 +4,8 @@ import { discordChannelCursors, messageActivity } from '../db/schema/index.js'
 import { snowflakeToDate } from '../integrations/discord.js'
 import { upstreamFetch } from '../integrations/types.js'
 import * as integrations from '../modules/integrations/repo.js'
-import { publish } from '../lib/events.js'
+import { publishMany } from '../lib/events.js'
+import { recordMemberMessage } from './memberMessages.js'
 
 // Counts human messages per hour across the guild's text channels using a
 // per-channel cursor, so history is never re-read. First run only anchors the
@@ -46,6 +47,7 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
   const cursorRows = await db.select().from(discordChannelCursors).where(eq(discordChannelCursors.workspaceId, workspaceId))
   const cursors = new Map(cursorRows.map((r) => [r.channelId, r.lastMessageId]))
   const buckets = new Map<number, number>()
+  const perMember: Array<{ ref: string; name: string | null; at: Date }> = []
   let total = 0
 
   for (const channel of channels) {
@@ -55,7 +57,7 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
     for (let page = 0; page < PAGE_CAP; page++) {
       const res = await upstreamFetch(`${API}/channels/${channel.id}/messages?limit=100${after ? `&after=${after}` : ''}`, { headers })
       if (!res.ok) break // 403: channel not visible to the bot
-      const messages = (await res.json()) as Array<{ id: string; timestamp?: string; author?: { bot?: boolean } }>
+      const messages = (await res.json()) as Array<{ id: string; timestamp?: string; author?: { id?: string; username?: string; bot?: boolean } }>
       if (messages.length === 0) break
       for (const m of messages) {
         if (newest === null || BigInt(m.id) > BigInt(newest)) newest = m.id
@@ -65,6 +67,7 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
         const key = hourBucket(at).getTime()
         buckets.set(key, (buckets.get(key) ?? 0) + 1)
         total++
+        if (m.author?.id) perMember.push({ ref: m.author.id, name: m.author.username ?? null, at })
       }
       if (messages.length < 100 || !after) break
       after = newest
@@ -77,7 +80,8 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
     }
   }
   for (const [ms, count] of buckets) await bumpActivity(workspaceId, 'discord', new Date(ms), count)
-  if (total > 0) await publish(workspaceId, 'message_activity')
+  for (const m of perMember) await recordMemberMessage(workspaceId, 'discord', m.ref, m.name, m.at)
+  if (total > 0) await publishMany(workspaceId, ['message_activity', 'member_messages'])
   return { channels: channels.length, messages: total }
 }
 

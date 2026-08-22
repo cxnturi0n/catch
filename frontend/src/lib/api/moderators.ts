@@ -72,7 +72,8 @@ function mapModerator(m: ApiModerator): Moderator {
     shift: shiftLabel(m.shiftStartUtc),
     platforms: m.platforms as Moderator['platforms'],
     status: m.status as Moderator['status'],
-    // Performance counters have no source yet (worker step); shown as n/a.
+    // Filled by fetchModerators from measured activity; bans/timeouts/response
+    // time have no per-moderator source and stay n/a.
     messagesThisMonth: 0,
     bansExecuted: 0,
     timeoutsGiven: 0,
@@ -82,7 +83,7 @@ function mapModerator(m: ApiModerator): Moderator {
     shiftsAssigned: 0,
     warnings: m.warnings ?? [],
     notes: m.notes ?? '',
-    rating: 0,
+    rating: 5,
     bio: m.bio ?? undefined,
     skills: m.skills,
     languages: m.languages,
@@ -128,9 +129,48 @@ function toBody(m: Partial<ModeratorInput>) {
 
 const base = (ws: WorkspaceId) => `/workspaces/${ws}/moderators`
 
+interface PerformanceRow {
+  moderatorId: string
+  messages: number
+  activeDays: number
+  lastActiveAt: string | null
+  platforms: string[]
+}
+interface ShiftEventRow {
+  moderatorId: string
+  day: string
+  wasOnTime: boolean | null
+  firstActivityUtc: string | null
+}
+
+// Roster + measured activity (30 days) + punctuality (30 days), merged. The
+// counters stay 0 / '—' when no handle matches platform members.
 export async function fetchModerators(workspaceId: WorkspaceId): Promise<Moderator[]> {
-  const r = await api<{ moderators: ApiModerator[] }>(base(workspaceId))
-  return r.moderators.map(mapModerator)
+  const [list, perf, shifts] = await Promise.all([
+    api<{ moderators: ApiModerator[] }>(base(workspaceId)),
+    api<{ rows: PerformanceRow[] }>(`${base(workspaceId)}/performance?sinceDays=30`).catch(() => ({ rows: [] as PerformanceRow[] })),
+    api<{ events: ShiftEventRow[] }>(`${base(workspaceId)}/shift-events?sinceDays=30`).catch(() => ({ events: [] as ShiftEventRow[] })),
+  ])
+  const perfBy = new Map(perf.rows.map((r) => [r.moderatorId, r]))
+  const shiftBy = new Map<string, { assigned: number; completed: number }>()
+  for (const e of shifts.events) {
+    const s = shiftBy.get(e.moderatorId) ?? { assigned: 0, completed: 0 }
+    s.assigned++
+    if (e.firstActivityUtc) s.completed++
+    shiftBy.set(e.moderatorId, s)
+  }
+  return list.moderators.map((m) => {
+    const p = perfBy.get(m.id)
+    const sh = shiftBy.get(m.id)
+    const mapped = mapModerator(m)
+    return {
+      ...mapped,
+      messagesThisMonth: p?.messages ?? 0,
+      lastActiveDate: p?.lastActiveAt ? p.lastActiveAt.slice(0, 10) : mapped.lastActiveDate,
+      shiftsAssigned: sh?.assigned ?? 0,
+      shiftsCompleted: sh?.completed ?? 0,
+    }
+  })
 }
 
 export async function addModerator(workspaceId: WorkspaceId, data: ModeratorInput): Promise<Moderator> {

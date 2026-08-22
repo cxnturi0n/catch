@@ -1,8 +1,9 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
-import { integrations, memberMessages, processedTelegramUpdates, telegramMembershipEvents } from '../db/schema/index.js'
+import { integrations, processedTelegramUpdates, telegramMembershipEvents } from '../db/schema/index.js'
 import { decryptJson } from '../lib/crypto.js'
 import { bumpActivity, hourBucket } from './discordActivity.js'
+import { recordMemberMessage } from './memberMessages.js'
 import { publishMany } from '../lib/events.js'
 
 // Telegram `message` and `chat_member` updates → counters. Message text is
@@ -79,14 +80,7 @@ export async function processTelegramUpdate(update: TgUpdate): Promise<TelegramO
   const msg = update.message
   if (msg?.from && !msg.from.is_bot) {
     const sentAt = typeof msg.date === 'number' ? new Date(msg.date * 1000) : new Date()
-    const day = sentAt.toISOString().slice(0, 10)
-    await db
-      .insert(memberMessages)
-      .values({ workspaceId, platform: 'telegram', memberRef: String(msg.from.id), displayName: displayNameOf(msg.from), day, messageCount: 1 })
-      .onConflictDoUpdate({
-        target: [memberMessages.workspaceId, memberMessages.platform, memberMessages.memberRef, memberMessages.day],
-        set: { messageCount: sql`${memberMessages.messageCount} + 1`, displayName: displayNameOf(msg.from), updatedAt: new Date() },
-      })
+    await recordMemberMessage(workspaceId, 'telegram', String(msg.from.id), displayNameOf(msg.from), sentAt)
     await bumpActivity(workspaceId, 'telegram', hourBucket(sentAt), 1)
     await publishMany(workspaceId, ['member_messages', 'message_activity'])
     return 'message'

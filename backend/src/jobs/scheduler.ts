@@ -10,6 +10,7 @@ import { syncDiscordActivity } from './discordActivity.js'
 import { lastMembersRun, MEMBERS_MIN_INTERVAL_MS, syncDiscordMembers } from './discordMembers.js'
 import { runRetention } from './retention.js'
 import { dispatchDueReports } from '../modules/reports/dispatch.js'
+import { recordShiftEventsForAll } from './moderatorPerformance.js'
 
 // Scheduling rules (BP §5): per-platform floor, deterministic jitter per
 // workspace, throttle on the last ATTEMPT (a rejected call still spent quota).
@@ -31,6 +32,7 @@ export const QUEUES = {
   members: 'discord-members',
   retention: 'retention',
   reports: 'report-dispatch',
+  shifts: 'shift-events',
 } as const
 
 // FNV-1a → stable offset inside the minute so workspaces do not all fire at :00.
@@ -99,6 +101,7 @@ export async function startWorker(boss: PgBoss) {
   await boss.schedule(QUEUES.tick, '* * * * *', {}, { tz: 'UTC' })
   await boss.schedule(QUEUES.retention, '0 3 * * *', {}, { tz: 'UTC' })
   await boss.schedule(QUEUES.reports, '0 * * * *', {}, { tz: 'UTC' })
+  await boss.schedule(QUEUES.shifts, '10 0 * * *', {}, { tz: 'UTC' })
 
   await boss.work(QUEUES.tick, { batchSize: 1 }, async () => {
     const r = await enqueueDueSyncs(boss)
@@ -139,12 +142,16 @@ export async function startWorker(boss: PgBoss) {
     if (r.sent || r.errors.length) logger.info(r, 'report dispatch')
   })
 
+  await boss.work(QUEUES.shifts, { batchSize: 1 }, async () => {
+    logger.info(await recordShiftEventsForAll(), 'shift events')
+  })
+
   await boss.work(QUEUES.retention, { batchSize: 1 }, async () => {
     logger.info(await runRetention(), 'retention')
   })
 
   boss.on('error', (err) => logger.error({ err }, 'pg-boss error'))
-  logger.info('worker started: sync tick every minute, reports hourly, retention daily 03:00 UTC')
+  logger.info('worker started: sync tick every minute, reports hourly, shift events 00:10 UTC, retention 03:00 UTC')
 }
 
 export const _eq = and

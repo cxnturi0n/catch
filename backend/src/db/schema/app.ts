@@ -184,6 +184,9 @@ export const memberMessages = pgTable(
     displayName: text('display_name'),
     day: date('day').notNull().default(sql`current_date`),
     messageCount: integer('message_count').notNull().default(0),
+    // Earliest/latest message of the day: punctuality needs the first one.
+    firstMessageAt: timestamp('first_message_at', { withTimezone: true }),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
     updatedAt: updatedAt(),
   },
   (t) => [

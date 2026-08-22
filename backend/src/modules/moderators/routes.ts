@@ -9,6 +9,7 @@ import { downloadUrl, sanitizeFilename, storage } from '../../lib/storage/index.
 import { config } from '../../config.js'
 import * as repo from './repo.js'
 import { moderatorBody, moderatorOut } from './schemas.js'
+import { moderatorPerformance, recordShiftEvents } from '../../jobs/moderatorPerformance.js'
 
 const params = z.object({ workspaceId: z.uuid() })
 const idParams = params.extend({ id: z.uuid() })
@@ -89,7 +90,24 @@ export async function moderatorRoutes(app: FastifyInstance) {
     return repo.toOut(updated!)
   })
 
-  // --- Performance data (written by the worker in a later step) -----------
+  // --- Performance (derived from member_messages via handle matching) ------
+  r.get('/workspaces/:workspaceId/moderators/performance', { preHandler: app.requireWorkspace, schema: { params, querystring: z.object({ sinceDays: z.coerce.number().int().min(1).max(365).default(30) }) } }, async (req) => ({
+    sinceDays: req.query.sinceDays,
+    rows: await moderatorPerformance(req.workspace.id, req.query.sinceDays),
+  }))
+
+  // Recompute punctuality for the last N days (the worker does yesterday nightly).
+  r.post('/workspaces/:workspaceId/moderators/shift-events/recompute', { preHandler: manage, config: { rateLimit: { max: 3, timeWindow: '10 minutes' } }, schema: { params, body: z.object({ days: z.number().int().min(1).max(31).default(7) }).default({ days: 7 }) } }, async (req) => {
+    let events = 0
+    for (let i = 1; i <= req.body.days; i++) {
+      const d = new Date()
+      d.setUTCDate(d.getUTCDate() - i)
+      events += await recordShiftEvents(req.workspace.id, d.toISOString().slice(0, 10))
+    }
+    return { events }
+  })
+
+  // --- Shift events / response metrics ------------------------------------
   r.get('/workspaces/:workspaceId/moderators/shift-events', { preHandler: app.requireWorkspace, schema: { params, querystring: sinceQuery } }, async (req) => ({
     events: await repo.shiftEvents(req.workspace.id, req.query.sinceDays, req.query.moderatorId),
   }))
