@@ -656,6 +656,29 @@ export const reportRuns = pgTable(
   (t) => [index('report_runs_ws_idx').on(t.workspaceId, t.createdAt)],
 )
 
+// Deterministic intelligence reports (modules/ai/report). The `report` blob is
+// the full typed document; `input_hash` dedupes regeneration on unchanged data.
+export const aiReports = pgTable(
+  'ai_reports',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    periodKind: text('period_kind').notNull(),
+    periodStart: date('period_start').notNull(),
+    periodEnd: date('period_end').notNull(),
+    inputHash: text('input_hash').notNull(),
+    report: jsonb('report').$type<Record<string, unknown>>().notNull(),
+    narrativeSource: text('narrative_source', { enum: ['rules', 'llm'] }).notNull().default('rules'),
+    model: text('model'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    createdBy: userRefNullable('created_by'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('ai_reports_ws_idx').on(t.workspaceId, t.createdAt), index('ai_reports_ws_hash_idx').on(t.workspaceId, t.inputHash)],
+)
+export type AiReportRow = typeof aiReports.$inferSelect
+
 // --- Governance -------------------------------------------------------------
 export const usageEvents = pgTable(
   'usage_events',

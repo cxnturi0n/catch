@@ -9,6 +9,8 @@ import { db } from '../../db/client.js'
 import { usageEvents } from '../../db/schema/index.js'
 import { HttpError } from '../../lib/errors.js'
 import type { PlanTier } from '../../lib/quota.js'
+import { buildReport, getReport, listReports } from './report/build.js'
+import { PERIOD_KINDS } from './report/template.js'
 
 // Catch Intelligence — the only generative call in the product. The model
 // sees a snapshot of numbers the client already computed and writes prose
@@ -88,4 +90,24 @@ export async function aiRoutes(app: FastifyInstance) {
       return { ok: true, update: response.parsed_output, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens }, quota: { used: used + 1, limit: DAILY_QUOTA[plan] } }
     },
   )
+
+  // ---- Deterministic intelligence report (docs/AI_REPORTS_AND_CHAT_PLAN.md).
+  // Structure is fixed by code; numbers come from SQL; narrative is rule-based
+  // in P1. Stored per workspace, deduped by input hash.
+  r.post(
+    '/workspaces/:workspaceId/ai/report',
+    { preHandler: app.requireWorkspace, config: { rateLimit: { max: 20, timeWindow: '1 minute' } }, schema: { params: z.object({ workspaceId: z.uuid() }), body: z.object({ period: z.enum(PERIOD_KINDS).default('30d') }) } },
+    async (req) => {
+      const { report, id, reused } = await buildReport({ workspace: { id: req.workspace.id, name: req.workspace.name }, period: req.body.period, userId: req.auth!.user.id })
+      return { id, reused, report }
+    },
+  )
+
+  r.get('/workspaces/:workspaceId/ai/reports', { preHandler: app.requireWorkspace, schema: { params: z.object({ workspaceId: z.uuid() }) } }, async (req) => ({ reports: await listReports(req.workspace.id) }))
+
+  r.get('/workspaces/:workspaceId/ai/reports/:id', { preHandler: app.requireWorkspace, schema: { params: z.object({ workspaceId: z.uuid(), id: z.uuid() }) } }, async (req) => {
+    const row = await getReport(req.workspace.id, req.params.id)
+    if (!row) throw new HttpError(404, 'NOT_FOUND', 'Report not found')
+    return { id: row.id, report: row.report, narrativeSource: row.narrativeSource, createdAt: row.createdAt }
+  })
 }
