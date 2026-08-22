@@ -43,8 +43,8 @@ deploy/deploy.sh admin@HOST key.pem                              # production (a
 DEPLOY_DIR=/opt/catch-staging deploy/deploy.sh admin@HOST key.pem # staging
 ```
 
-Demo data on staging only: `docker compose exec api node --import tsx
-scripts/seed-demo.ts` is refused when `APP_ENV=production`.
+Demo data on staging only (refused when `APP_ENV=production`):
+`docker compose exec -e DEMO_USER_EMAIL=you@example.com api node dist/scripts/seed-demo.js`.
 
 GitHub Actions: `CI` runs typecheck, tests (real Postgres), lint and image
 builds on every push/PR. `Deploy` deploys to **staging** on every push to

@@ -1,13 +1,14 @@
 // Creates a fully populated demo workspace for an existing user so every
 // section has something to show. Deterministic, idempotent (re-running
 // replaces the demo workspace). Never part of migrations.
-//   DEMO_USER_EMAIL=you@example.com npm run seed:demo
+//   DEMO_USER_EMAIL=you@example.com npm run seed:demo        (dev)
+//   docker compose exec -e DEMO_USER_EMAIL=... api node dist/scripts/seed-demo.js  (staging)
 // Refused when APP_ENV=production unless ALLOW_DEMO_SEED=1 (staging is fine).
 import { and, eq } from 'drizzle-orm'
-import { config } from '../src/config.js'
-import { db, closeDatabase } from '../src/db/client.js'
-import * as s from '../src/db/schema/index.js'
-import { logger } from '../src/logger.js'
+import { config } from '../config.js'
+import { db, closeDatabase } from '../db/client.js'
+import * as s from '../db/schema/index.js'
+import { logger } from '../logger.js'
 
 if (config.APP_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1') {
   throw new Error('refusing to seed demo data on APP_ENV=production (set ALLOW_DEMO_SEED=1 to override)')
@@ -138,7 +139,7 @@ await db.transaction(async (tx) => {
 })
 
 // Punctuality events for the last 7 days, derived from the seeded activity.
-const { recordShiftEvents } = await import('../src/jobs/moderatorPerformance.js')
+const { recordShiftEvents } = await import('../jobs/moderatorPerformance.js')
 const demo = await db.query.workspaces.findFirst({ where: and(eq(s.workspaces.ownerId, owner.id), eq(s.workspaces.name, NAME)) })
 for (let i = 1; i <= 7; i++) await recordShiftEvents(demo!.id, day(i))
 
