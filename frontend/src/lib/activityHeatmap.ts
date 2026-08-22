@@ -1,4 +1,5 @@
-import { supabase } from './supabase'
+import { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform } from './api/metrics'
+export { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform }
 
 /**
  * Community activity heatmap — real message volume per UTC hour × weekday.
@@ -15,49 +16,14 @@ import { supabase } from './supabase'
  * the grid or an explanatory empty state.
  */
 
-export type ActivityPlatform = 'telegram' | 'discord'
 
-export interface ActivityBucket {
-  /** ISO timestamp truncated to the hour, UTC. */
-  bucketStart: string
-  platform: ActivityPlatform
-  count: number
-}
 
-interface ActivityRow {
-  platform: string
-  bucket_start: string
-  message_count: number
-}
 
 /**
  * Reads raw hour buckets for a workspace over the last `sinceDays` days.
  * Pass `platform` to narrow to a single source; omit it for everything.
  * Caller is responsible for not calling this when there is no signed-in user.
  */
-export async function fetchActivityBuckets(
-  workspaceId: string,
-  sinceDays = 28,
-  platform?: ActivityPlatform,
-): Promise<ActivityBucket[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString()
-  let query = supabase
-    .from('message_activity')
-    .select('platform, bucket_start, message_count')
-    .eq('workspace_id', workspaceId)
-    .gte('bucket_start', since)
-    .order('bucket_start', { ascending: true })
-  if (platform) query = query.eq('platform', platform)
-
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return ((data ?? []) as ActivityRow[]).map((r) => ({
-    bucketStart: r.bucket_start,
-    platform: (r.platform === 'discord' ? 'discord' : 'telegram') as ActivityPlatform,
-    count: Number(r.message_count) || 0,
-  }))
-}
-
 // ── Aggregation ──
 
 /** The three moderator shifts, mirrored from ModeratorShift in ../types. */

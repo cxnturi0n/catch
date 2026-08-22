@@ -389,7 +389,13 @@ function XAnalyticsSection({ workspaceId }: { workspaceId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setData(loadXAnalytics(workspaceId))
+    let cancelled = false
+    loadXAnalytics(workspaceId)
+      .then((d) => !cancelled && setData(d))
+      .catch(() => !cancelled && setData(null))
+    return () => {
+      cancelled = true
+    }
   }, [workspaceId])
 
   async function handleFile(file: File) {
@@ -397,7 +403,7 @@ function XAnalyticsSection({ workspaceId }: { workspaceId: string }) {
     setImportError(null)
     try {
       const parsed = await parseXAnalyticsCsvFile(file)
-      saveXAnalytics(workspaceId, parsed)
+      await saveXAnalytics(workspaceId, parsed)
       setData(parsed)
       setModalOpen(false)
     } catch (err) {
@@ -414,7 +420,7 @@ function XAnalyticsSection({ workspaceId }: { workspaceId: string }) {
   }
 
   function handleClear() {
-    clearXAnalytics(workspaceId)
+    void clearXAnalytics(workspaceId)
     setData(null)
   }
 
@@ -612,7 +618,7 @@ export function Analytics() {
       const stats = getStats(activeWorkspaceId)
       const trend = getActiveMembersTrend(activeWorkspaceId).slice(-period)
       const messages = getDailyMessages(activeWorkspaceId).slice(-Math.min(period, 14))
-      const xData = loadXAnalytics(activeWorkspaceId)
+      const xData = await loadXAnalytics(activeWorkspaceId).catch(() => null)
 
       const sheets = [
         {
@@ -998,14 +1004,15 @@ function LiveAnalyticsView({
       connected.includes('discord')
         ? fetchMembershipSnapshots(workspaceId, 30).catch(() => [] as MembershipSnapshotRow[])
         : Promise.resolve([] as MembershipSnapshotRow[]),
-    ]).then(([daily, snapshots, memberMessages, tenure, membershipSnapshots]) => {
+      loadXAnalytics(workspaceId).catch(() => null),
+    ]).then(([daily, snapshots, memberMessages, tenure, membershipSnapshots, x]) => {
       if (cancelled) return
       setDataset({
         connected: connected as AnalyticsPlatformId[],
         daily,
         snapshots,
         memberMessages,
-        x: loadXAnalytics(workspaceId),
+        x,
         tenure,
         membershipSnapshots,
       })

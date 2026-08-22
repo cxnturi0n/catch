@@ -8,7 +8,6 @@ import type {
   KOL,
   ModerationIncident,
   NewFeedbackInput,
-  TrendPoint,
   Workspace,
   WorkspaceId,
   WorkspaceIntegrations,
@@ -35,6 +34,19 @@ export {
   type PointsMetricInput,
 } from './api/moderators'
 export { fetchTasks, addTask, updateTaskStatus, seedTasks } from './api/operations'
+export {
+  fetchPlatformMetrics,
+  fetchPlatformMetricRows,
+  fetchMemberMessageTrend,
+  fetchMetricSnapshots,
+  fetchMemberMessages,
+  fetchTelegramMembershipCounts,
+  type LiveMetrics,
+  type PlatformMetricDay,
+  type MetricSnapshot,
+  type MemberMessageStat,
+  type MembershipEventCounts,
+} from './api/metrics'
 
 
 // ── Shared helpers ──
@@ -285,111 +297,13 @@ export async function disconnectIntegrationDb(workspaceId: WorkspaceId, key: Int
 
 // ── Platform metrics ──
 
-interface PlatformMetricRow {
-  id: string
-  workspace_id: string
-  platform: string
-  date: string
-  metrics: Record<string, number>
-  created_at: string
-}
 
-export interface LiveMetrics {
-  trend: TrendPoint[]
-  latestMembers: number | null
-  latestBans7d: number | null
-}
-
-export async function fetchPlatformMetrics(
-  workspaceId: WorkspaceId,
-  platforms: IntegrationKey[],
-  days: number,
-): Promise<LiveMetrics | null> {
-  if (platforms.length === 0) return null
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const result = await supabase
-    .from('platform_metrics')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .in('platform', platforms)
-    .gte('date', since.toISOString().slice(0, 10))
-    .order('date', { ascending: true })
-  const rows = unwrap<PlatformMetricRow[]>(result)
-  if (rows.length === 0) return null
-
-  const byDate = new Map<string, number>()
-  for (const row of rows) {
-    const members = typeof row.metrics.members === 'number' ? row.metrics.members : 0
-    byDate.set(row.date, (byDate.get(row.date) ?? 0) + members)
-  }
-  const trend: TrendPoint[] = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }))
-
-  const latestByPlatform = new Map<string, PlatformMetricRow>()
-  for (const row of rows) {
-    const current = latestByPlatform.get(row.platform)
-    if (!current || row.date > current.date) latestByPlatform.set(row.platform, row)
-  }
-  let latestMembers = 0
-  let latestBans7d = 0
-  let hasBans = false
-  for (const row of latestByPlatform.values()) {
-    if (typeof row.metrics.members === 'number') latestMembers += row.metrics.members
-    if (typeof row.metrics.bans_7d === 'number') {
-      latestBans7d += row.metrics.bans_7d
-      hasBans = true
-    }
-  }
-
-  return { trend, latestMembers, latestBans7d: hasBans ? latestBans7d : null }
-}
 
 /** Raw daily rollup rows (metrics jsonb intact) so callers can read ANY metric
  * key per platform — the capability matrix drives which keys it reads. */
-export interface PlatformMetricDay {
-  platform: string
-  date: string
-  metrics: Record<string, number>
-}
-
-export async function fetchPlatformMetricRows(
-  workspaceId: WorkspaceId,
-  platforms: IntegrationKey[],
-  days: number,
-): Promise<PlatformMetricDay[]> {
-  if (platforms.length === 0) return []
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const result = await supabase
-    .from('platform_metrics')
-    .select('platform, date, metrics')
-    .eq('workspace_id', workspaceId)
-    .in('platform', platforms)
-    .gte('date', since.toISOString().slice(0, 10))
-    .order('date', { ascending: true })
-  return unwrap<{ platform: string; date: string; metrics: Record<string, number> }[]>(result).map((r) => ({
-    platform: r.platform,
-    date: r.date,
-    metrics: r.metrics ?? {},
-  }))
-}
 
 /** Telegram messages rolled up to a per-day total time series (member_messages
  * is per-member/day; this sums members to a single daily volume trend). */
-export async function fetchMemberMessageTrend(workspaceId: WorkspaceId, sinceDays = 30): Promise<TrendPoint[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
-  const result = await supabase
-    .from('member_messages')
-    .select('day, message_count')
-    .eq('workspace_id', workspaceId)
-    .eq('platform', 'telegram')
-    .gte('day', since)
-  const rows = unwrap<{ day: string; message_count: number }[]>(result)
-  const byDay = new Map<string, number>()
-  for (const r of rows) byDay.set(r.day, (byDay.get(r.day) ?? 0) + Number(r.message_count))
-  return [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }))
-}
-
 // ── Incidents ──
 
 interface IncidentRow {
@@ -532,102 +446,26 @@ export async function seedKOLs(workspaceId: WorkspaceId, kols: KOL[]): Promise<K
 
 // ── Metric snapshots — 1h / 5h / 24h windows (#4 granularity) ──
 
-export interface MetricSnapshot {
-  platform: string
-  capturedAt: string
-  metrics: Record<string, number>
-}
 
 /**
  * Read the hourly metric snapshots for a workspace over the last `sinceHours`.
  * The caller computes deltas (e.g. now vs 1h/5h ago) for "last hour / 5 hours"
  * views; the daily rollup in `platform_metrics` still powers the 7-day view.
  */
-export async function fetchMetricSnapshots(
-  workspaceId: WorkspaceId,
-  sinceHours = 24,
-  platform?: string,
-): Promise<MetricSnapshot[]> {
-  const since = new Date(Date.now() - sinceHours * 3_600_000).toISOString()
-  let query = supabase
-    .from('platform_metric_snapshots')
-    .select('platform, captured_at, metrics')
-    .eq('workspace_id', workspaceId)
-    .gte('captured_at', since)
-    .order('captured_at', { ascending: true })
-  if (platform) query = query.eq('platform', platform)
-  const result = await query
-  return unwrap<{ platform: string; captured_at: string; metrics: Record<string, number> }[]>(result).map((r) => ({
-    platform: r.platform,
-    capturedAt: r.captured_at,
-    metrics: r.metrics ?? {},
-  }))
-}
-
 // ── Messages per member (#1) ──
 
-export interface MemberMessageStat {
-  memberRef: string
-  displayName: string
-  messages: number
-}
 
-interface MemberMessageRow {
-  member_ref: string
-  display_name: string | null
-  message_count: number
-}
 
 /** Aggregate Telegram messages-per-member over the last `sinceDays`, top first. */
-export async function fetchMemberMessages(workspaceId: WorkspaceId, sinceDays = 30): Promise<MemberMessageStat[]> {
-  const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
-  const result = await supabase
-    .from('member_messages')
-    .select('member_ref, display_name, message_count')
-    .eq('workspace_id', workspaceId)
-    .eq('platform', 'telegram')
-    .gte('day', since)
-  const rows = unwrap<MemberMessageRow[]>(result)
-  const map = new Map<string, MemberMessageStat>()
-  for (const r of rows) {
-    const entry = map.get(r.member_ref) ?? { memberRef: r.member_ref, displayName: r.display_name ?? r.member_ref, messages: 0 }
-    entry.messages += Number(r.message_count)
-    if (r.display_name) entry.displayName = r.display_name
-    map.set(r.member_ref, entry)
-  }
-  return [...map.values()].sort((a, b) => b.messages - a.messages)
-}
-
 // ── Telegram joins & leaves (#26) ──
 
 /** Gross joins and leaves over a window. These are EXACT (one row per real
  * Telegram `chat_member` transition), unlike the net delta derived from the
  * hourly member-count poll. `since` is when the window starts — anything before
  * webhook activation is unknown, not zero, so callers should say so. */
-export interface MembershipEventCounts {
-  joins: number
-  leaves: number
-  since: string
-}
 
 /** Counts Telegram joins/leaves for the last `hours`. Returns zeroes if migration
  * 026 has not been run yet, so the app keeps working pre-migration. */
-export async function fetchTelegramMembershipCounts(workspaceId: WorkspaceId, hours = 24): Promise<MembershipEventCounts> {
-  const since = new Date(Date.now() - hours * 3_600_000).toISOString()
-  const result = await supabase
-    .from('telegram_membership_events')
-    .select('event_type')
-    .eq('workspace_id', workspaceId)
-    .gte('occurred_at', since)
-  if (result.error) return { joins: 0, leaves: 0, since }
-  const rows = (result.data ?? []) as { event_type: string }[]
-  return {
-    joins: rows.filter((r) => r.event_type === 'join').length,
-    leaves: rows.filter((r) => r.event_type === 'leave').length,
-    since,
-  }
-}
-
 // ── Feedback (CatchLab) ──
 
 interface FeedbackRow {

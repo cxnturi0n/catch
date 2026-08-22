@@ -13,22 +13,15 @@
 //      available once ≥2 sync runs exist — until then it reports hasData: false
 //      instead of guessing.
 
-import { supabase } from './supabase'
+import { fetchTenure, fetchMembershipSnapshots, type TenureRecord, type MembershipSnapshotRow } from './api/metrics'
+export { fetchTenure, fetchMembershipSnapshots, type TenureRecord, type MembershipSnapshotRow }
 
-export interface TenureRecord {
-  memberRef: string
-  /** Join date to the guild. Null when Discord did not return one. */
-  joinedAt: string | null
-  firstSeen: string
-  lastSeen: string
+/** Member list sync runs in the worker (daily). Manual trigger arrives with it. */
+export async function syncDiscordMembers(_workspaceId: string): Promise<MembersSyncResult> {
+  return { success: false, error: 'NOT_AVAILABLE', message: 'Member sync runs automatically once the background worker is enabled.' }
 }
 
-export interface MembershipSnapshotRow {
-  capturedAt: string
-  totalMembers: number
-  newMembers: number
-  leftMembers: number
-}
+
 
 export interface MembersSyncResult {
   success: boolean
@@ -48,8 +41,6 @@ const DAY_MS = 86_400_000
 // A sync run stamps every member it saw with the same timestamp, so "still in
 // the server" means "last_seen belongs to the most recent run".
 const PRESENCE_TOLERANCE_MS = 5 * 60 * 1000
-const DB_PAGE = 1000
-const MAX_PAGES = 20
 
 // ── Fetching ────────────────────────────────────────────────────────────────
 
@@ -57,73 +48,13 @@ const MAX_PAGES = 20
  * All tenure rows for a workspace. Paged, because Supabase caps a single select
  * at 1000 rows and a Discord guild can be far larger than that.
  */
-export async function fetchTenure(workspaceId: string): Promise<TenureRecord[]> {
-  const out: TenureRecord[] = []
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const from = page * DB_PAGE
-    const { data, error } = await supabase
-      .from('discord_member_tenure')
-      .select('member_ref, joined_at, first_seen, last_seen')
-      .eq('workspace_id', workspaceId)
-      .order('joined_at', { ascending: true })
-      .range(from, from + DB_PAGE - 1)
-    if (error) throw new Error(error.message)
-    const rows = (data ?? []) as { member_ref: string; joined_at: string | null; first_seen: string; last_seen: string }[]
-    for (const r of rows) {
-      out.push({ memberRef: r.member_ref, joinedAt: r.joined_at, firstSeen: r.first_seen, lastSeen: r.last_seen })
-    }
-    if (rows.length < DB_PAGE) break
-  }
-  return out
-}
-
 /** Sync-run snapshots (oldest → newest) for the last `sinceDays` days. */
-export async function fetchMembershipSnapshots(workspaceId: string, sinceDays = 90): Promise<MembershipSnapshotRow[]> {
-  const since = new Date(Date.now() - sinceDays * DAY_MS).toISOString()
-  const { data, error } = await supabase
-    .from('discord_membership_snapshots')
-    .select('captured_at, total_members, new_members, left_members')
-    .eq('workspace_id', workspaceId)
-    .gte('captured_at', since)
-    .order('captured_at', { ascending: true })
-  if (error) throw new Error(error.message)
-  return ((data ?? []) as { captured_at: string; total_members: number; new_members: number; left_members: number }[]).map(
-    (r) => ({
-      capturedAt: r.captured_at,
-      totalMembers: Number(r.total_members ?? 0),
-      newMembers: Number(r.new_members ?? 0),
-      leftMembers: Number(r.left_members ?? 0),
-    }),
-  )
-}
-
 /**
  * Kick off a members sync. Mirrors lib/functions.ts's invoke(): supabase-js hides
  * the function's real error behind a generic message, so dig the body out. The
  * MISSING_MEMBERS_INTENT case is returned by the function with a 200 status, so
  * it arrives here as normal data rather than a thrown error.
  */
-export async function syncDiscordMembers(workspaceId: string): Promise<MembersSyncResult> {
-  const { data, error } = await supabase.functions.invoke<MembersSyncResult>('discord-members-sync', {
-    body: { workspace_id: workspaceId },
-  })
-  if (error) {
-    let message = error.message
-    try {
-      const ctx = (error as { context?: { json?: () => Promise<MembersSyncResult> } }).context
-      if (ctx?.json) {
-        const parsed = await ctx.json()
-        if (parsed?.error) return parsed
-      }
-    } catch {
-      /* keep the generic message */
-    }
-    throw new Error(message)
-  }
-  if (!data) throw new Error('No response from discord-members-sync.')
-  return data
-}
-
 // ── Pure aggregators ────────────────────────────────────────────────────────
 
 export interface TenureBucket {

@@ -1,36 +1,5 @@
 import type { XAnalyticsData } from '../types'
-
-const STORAGE_KEY_PREFIX = 'catch:x-analytics:'
-
-function storageKey(workspaceId: string): string {
-  return `${STORAGE_KEY_PREFIX}${workspaceId}`
-}
-
-export function loadXAnalytics(workspaceId: string): XAnalyticsData | null {
-  try {
-    const raw = localStorage.getItem(storageKey(workspaceId))
-    if (!raw) return null
-    return JSON.parse(raw) as XAnalyticsData
-  } catch {
-    return null
-  }
-}
-
-export function saveXAnalytics(workspaceId: string, data: XAnalyticsData): void {
-  try {
-    localStorage.setItem(storageKey(workspaceId), JSON.stringify(data))
-  } catch {
-    // localStorage full or unavailable
-  }
-}
-
-export function clearXAnalytics(workspaceId: string): void {
-  try {
-    localStorage.removeItem(storageKey(workspaceId))
-  } catch {
-    // ignore
-  }
-}
+export { loadXAnalytics, saveXAnalytics, clearXAnalytics } from './api/metrics'
 
 function parseCsvLine(line: string): string[] {
   const result: string[] = []

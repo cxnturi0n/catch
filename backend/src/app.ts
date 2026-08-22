@@ -18,6 +18,7 @@ import { moderatorRoutes } from './modules/moderators/routes.js'
 import { compensationRoutes } from './modules/compensation/routes.js'
 import { operationsRoutes } from './modules/operations/routes.js'
 import { resourceRoutes } from './modules/resources/routes.js'
+import { metricsRoutes } from './modules/metrics/routes.js'
 import { fileRoutes } from './routes/files.js'
 import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
@@ -92,6 +93,7 @@ export async function buildApp() {
   await app.register(compensationRoutes)
   await app.register(operationsRoutes)
   await app.register(resourceRoutes)
+  await app.register(metricsRoutes)
   await app.register(fileRoutes)
 
   return app
