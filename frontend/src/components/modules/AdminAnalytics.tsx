@@ -239,6 +239,62 @@ export function AdminAnalytics() {
         </Panel>
       </div>
 
+      {/* AI spend and volume, last 30 days */}
+      {data.ai && (
+        <Panel>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <CardTitle>AI usage, last 30 days</CardTitle>
+            <span className="font-mono text-[12px] text-[var(--text-secondary)]">
+              {data.ai.totalCalls} calls · est. ${data.ai.totalUsd.toFixed(2)}
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr]">
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.ai.byDay}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#7E8AA6' }} tickFormatter={(d: string) => d.slice(5)} />
+                  <YAxis tick={{ fontSize: 10, fill: '#7E8AA6' }} width={40} tickFormatter={(v: number) => `$${v}`} />
+                  <Tooltip formatter={(v) => [`$${Number(v).toFixed(3)}`, "est. cost"]} contentStyle={{ background: '#0c1424', border: '1px solid #1c2b47', borderRadius: 10, fontSize: 12 }} />
+                  <Bar dataKey="usd" fill="#E6B84D" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <Eyebrow>By feature</Eyebrow>
+                <ul className="mt-1 space-y-1 text-[13px]">
+                  {data.ai.byType.map((t) => (
+                    <li key={t.type} className="flex justify-between gap-3">
+                      <span className="text-[var(--text-secondary)]">{t.type.replace(/^ai_/, '').replace(/_/g, ' ')}</span>
+                      <span className="font-mono text-[var(--text-primary)]">
+                        {t.calls} · {Math.round(t.tokens / 1000)}k tok · ${t.usd.toFixed(2)}
+                      </span>
+                    </li>
+                  ))}
+                  {data.ai.byType.length === 0 && <li className="text-[var(--text-muted)]">No AI calls yet.</li>}
+                </ul>
+              </div>
+              {data.ai.topWorkspaces.length > 0 && (
+                <div>
+                  <Eyebrow>Top workspaces</Eyebrow>
+                  <ul className="mt-1 space-y-1 text-[13px]">
+                    {data.ai.topWorkspaces.slice(0, 5).map((w) => (
+                      <li key={w.workspaceId ?? w.name} className="flex justify-between gap-3">
+                        <span className="truncate text-[var(--text-secondary)]">{w.name}</span>
+                        <span className="font-mono text-[var(--text-primary)]">
+                          {w.calls} · ${w.usd.toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
+
       {/* Content volume strip */}
       <Panel>
         <CardTitle>Content across the platform</CardTitle>

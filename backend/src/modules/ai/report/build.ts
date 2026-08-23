@@ -3,6 +3,7 @@
 // everything before that stays byte-for-byte deterministic.
 import { createHash } from 'node:crypto'
 import { logger } from '../../../logger.js'
+import { aiLog } from '../debug.js'
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../../../db/client.js'
 import { aiReports, type AiReportRow } from '../../../db/schema/index.js'
@@ -93,6 +94,7 @@ export async function buildReport(o: BuildOptions): Promise<{ report: Report; id
     const llmRow = rows.find((r) => r.narrativeSource === 'llm')
     const rulesRow = rows.find((r) => r.narrativeSource === 'rules')
     const hit = llmRow ?? (wantLlm ? undefined : rulesRow)
+    aiLog('report.cache', { workspaceId: o.workspace.id, period: o.period, scope, hit: hit ? hit.narrativeSource : null, wantLlm, quotaReason })
     if (hit) return { report: hit.report as unknown as Report, id: hit.id, reused: true }
   }
 
@@ -120,6 +122,7 @@ export async function buildReport(o: BuildOptions): Promise<{ report: Report; id
     }
   }
 
+  aiLog('report.built', { workspaceId: o.workspace.id, period: o.period, scope, narrativeSource, meta: body.narrativeMeta, sections: body.sections.map((s) => `${s.id}:${s.state}`), insights: body.sections.reduce((n, s) => n + s.insights.length, 0) })
   const report: Report = { ...body, generatedAt: now.toISOString() }
   const [row] = await db
     .insert(aiReports)

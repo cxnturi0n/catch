@@ -25,6 +25,7 @@ export const workspacePlugin = fp(async (app) => {
   app.decorateRequest('workspaceRole', 'member')
 
   app.decorate('requireWorkspace', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (req.workspace) return // resolved once per request
     if (!req.auth) {
       return reply.status(401).send({ error: { code: 'UNAUTHENTICATED', message: 'Sign in required' } })
     }
@@ -44,6 +45,16 @@ export const workspacePlugin = fp(async (app) => {
     }
     req.workspace = row.workspace
     req.workspaceRole = row.role
+  })
+
+  // Guard by construction: any route whose path contains :workspaceId is
+  // checked here, before body validation, whether or not the route author
+  // remembered the preHandler. A forgotten guard therefore cannot leak data.
+  app.addHook('preValidation', async (req, reply) => {
+    const url = req.routeOptions?.url ?? ''
+    if (!url.includes(':workspaceId')) return
+    if (req.workspace) return // already resolved by an earlier hook
+    return app.requireWorkspace(req, reply)
   })
 
   app.decorate('requireWorkspaceRole', (roles: WorkspaceRole[]) => async (req: FastifyRequest, reply: FastifyReply) => {

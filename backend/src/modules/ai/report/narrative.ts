@@ -6,6 +6,8 @@
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
 import { logger } from '../../../logger.js'
+import { aiLog, bytes } from '../debug.js'
+import { captureException } from '../../../lib/sentry.js'
 import { anthropic, reportModel, type Usage } from '../llm.js'
 import type { Insight, Metric, Recommendation, Report, Section, SectionId } from './template.js'
 
@@ -102,6 +104,7 @@ export const callModel: CallModel = async (pack, sectionIds) => {
     messages: [{ role: 'user', content: `Section keys for notes: ${sectionIds.join(', ')}.\n\nPack:\n${JSON.stringify(pack)}` }],
   })
   const u = res.usage
+  aiLog('report.narrative.call', { model: res.model, stop: res.stop_reason, packBytes: bytes(pack), input: u.input_tokens, output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0, parsed: !!res.parsed_output })
   return {
     narrative: res.stop_reason === 'refusal' ? null : (res.parsed_output as Narrative | null),
     usage: { model: res.model, input: u.input_tokens, output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 },
@@ -189,7 +192,12 @@ export function gate(pack: Pack, n: Narrative): GateResult {
     if (!grounded(`${r.title} ${r.rationale}`, `recommendations[${i}]`)) continue
     recommendations.push({ id: `rec.llm.${i}`, title: r.title, rationale: r.rationale, priority: r.priority, metricIds: mids, insightIds: iids })
   }
-  if (rejected.length) logger.warn({ rejected }, 'narrative gate rejected slots')
+  if (rejected.length) {
+    logger.warn({ rejected }, 'narrative gate rejected slots')
+    // Worth a look each time: either the model drifted or the pack misses a number.
+    captureException(new Error('narrative gate rejected slots'), { rejected, workspace: pack.workspace })
+  }
+  aiLog('report.narrative.gate', { rejected: rejected.length, summaryKept: !!summary, notesKept: Object.keys(notes).length, recommendationsKept: recommendations.length })
   return { summary, notes, recommendations, rejected }
 }
 

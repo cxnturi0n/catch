@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify'
-import { count, countDistinct, eq, gte, sql } from 'drizzle-orm'
+import { and, count, countDistinct, eq, gte, sql } from 'drizzle-orm'
 import { db } from '../../db/client.js'
 import { user } from '../../db/schema/auth.js'
-import { compensationConfigs, contentSchedule, discoveryResponses, feedback, incidents, integrations, kols, meetings, moderators, payments, resourceFolders, resources, tasks, workspaces } from '../../db/schema/index.js'
+import { compensationConfigs, contentSchedule, discoveryResponses, feedback, incidents, integrations, kols, meetings, moderators, payments, resourceFolders, resources, tasks, workspaces, usageEvents } from '../../db/schema/index.js'
 
 // Platform-wide analytics for the admin dashboard (user.role = 'admin').
 // Shape mirrors what the legacy edge function returned.
@@ -50,6 +50,40 @@ export async function adminRoutes(app: FastifyInstance) {
       adoption: { total: wsTotal, withModerators: adoption[0], withResources: adoption[1], withPayments: adoption[2], withCompensation: adoption[3], withMeetings: adoption[4], withContent: adoption[5] },
       leads: { discoveryResponses: leads[0]?.n ?? 0, avgCompletionMs: leads[0]?.avg == null ? null : Number(leads[0].avg) },
       feedback: { total: fb, pending: fbPending },
+      ai: await aiUsage(since30),
     }
   })
+}
+
+// AI spend and volume, last 30 days: by event type, by day, top workspaces.
+async function aiUsage(since: Date) {
+  const aiEvents = sql`${usageEvents.eventType} like 'ai_%'`
+  const [byType, byDay, topWs] = await Promise.all([
+    db
+      .select({ type: usageEvents.eventType, calls: count(), tokens: sql<number>`coalesce(sum(${usageEvents.quantity}),0)::float`, usd: sql<number>`coalesce(sum(${usageEvents.costHintUsd}),0)::float` })
+      .from(usageEvents)
+      .where(and(aiEvents, gte(usageEvents.occurredAt, since)))
+      .groupBy(usageEvents.eventType),
+    db
+      .select({ date: sql<string>`to_char(${usageEvents.occurredAt}, 'YYYY-MM-DD')`, calls: count(), usd: sql<number>`coalesce(sum(${usageEvents.costHintUsd}),0)::float` })
+      .from(usageEvents)
+      .where(and(aiEvents, gte(usageEvents.occurredAt, since)))
+      .groupBy(sql`1`)
+      .orderBy(sql`1`),
+    db
+      .select({ workspaceId: usageEvents.workspaceId, name: workspaces.name, calls: count(), usd: sql<number>`coalesce(sum(${usageEvents.costHintUsd}),0)::float` })
+      .from(usageEvents)
+      .leftJoin(workspaces, eq(workspaces.id, usageEvents.workspaceId))
+      .where(and(aiEvents, gte(usageEvents.occurredAt, since)))
+      .groupBy(usageEvents.workspaceId, workspaces.name)
+      .orderBy(sql`sum(${usageEvents.costHintUsd}) desc nulls last`)
+      .limit(10),
+  ])
+  return {
+    byType: byType.map((r) => ({ type: r.type, calls: r.calls, tokens: Math.round(r.tokens), usd: Math.round(r.usd * 10000) / 10000 })),
+    byDay: byDay.map((r) => ({ date: r.date, calls: r.calls, usd: Math.round(r.usd * 10000) / 10000 })),
+    topWorkspaces: topWs.map((r) => ({ workspaceId: r.workspaceId, name: r.name ?? '(deleted)', calls: r.calls, usd: Math.round(r.usd * 10000) / 10000 })),
+    totalUsd: Math.round(byType.reduce((s, r) => s + r.usd, 0) * 10000) / 10000,
+    totalCalls: byType.reduce((s, r) => s + r.calls, 0),
+  }
 }

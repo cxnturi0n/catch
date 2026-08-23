@@ -264,7 +264,7 @@ The current `status-update` endpoint is kept and re-implemented as "summary only
 | P1 | template + metrics + insight engine + `ReportView`, no LLM (rules narrative) | 3 days |
 | P2 | narrative call, grounding gate, `ai_reports`, cache, quotas, scheduled e-mail narrative | 2 days |
 | P3 | chat: tools, help docs + FTS, agentic loop, SSE, `ChatPanel`, retention | 4 days |
-| P4 | hardening: injection suite, tenant tests, cost dashboard, kill switch, Sentry | 2 days |
+| P4 | hardening: injection suite, tenant tests, cost dashboard, kill switch, Sentry | done 2026-08-23: global membership hook before validation, route sweep test, injection regression suite, kill switch and quota tests, AI usage panel in Platform Analytics, Sentry on gate rejections, verbose AI logs on staging |
 
 P1 alone already delivers a deterministic, valuable, zero-cost report; every later phase
 is additive and can be disabled by config.

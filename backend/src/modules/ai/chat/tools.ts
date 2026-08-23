@@ -10,6 +10,7 @@ import { composeReport } from '../report/build.js'
 import { sanitize } from '../report/sections.js'
 import { PERIOD_KINDS, type PeriodKind, type Report, type Scope, type SectionId } from '../report/template.js'
 import { searchHelp } from './help.js'
+import { aiLog } from '../debug.js'
 
 export interface ToolContext {
   workspace: { id: string; name: string }
@@ -168,15 +169,24 @@ export interface ToolRunRecord {
 export async function runTool(name: string, rawInput: unknown, ctx: ToolContext): Promise<{ content: string; record: ToolRunRecord }> {
   const t0 = Date.now()
   const tool = TOOLS.find((x) => x.name === name)
-  if (!tool) return { content: JSON.stringify({ error: `unknown tool ${name}` }), record: { name, input: {}, ok: false, ms: 0 } }
+  if (!tool) {
+    aiLog('tool.unknown', { workspaceId: ctx.workspace.id, name })
+    return { content: JSON.stringify({ error: `unknown tool ${name}` }), record: { name, input: {}, ok: false, ms: 0 } }
+  }
   const parsed = tool.input.safeParse(rawInput ?? {})
-  if (!parsed.success) return { content: JSON.stringify({ error: 'invalid arguments', issues: parsed.error.issues.map((i) => i.message).slice(0, 5) }), record: { name, input: {}, ok: false, ms: Date.now() - t0 } }
+  if (!parsed.success) {
+    aiLog('tool.invalid_args', { workspaceId: ctx.workspace.id, name, issues: parsed.error.issues.map((i) => i.message).slice(0, 5) })
+    return { content: JSON.stringify({ error: 'invalid arguments', issues: parsed.error.issues.map((i) => i.message).slice(0, 5) }), record: { name, input: {}, ok: false, ms: Date.now() - t0 } }
+  }
   try {
     const result = await tool.run(parsed.data, ctx)
     let content = JSON.stringify({ source: 'workspace_data', data: result })
-    if (content.length > MAX_RESULT_BYTES) content = content.slice(0, MAX_RESULT_BYTES - 20) + '…"truncated":true}'
+    const truncated = content.length > MAX_RESULT_BYTES
+    if (truncated) content = content.slice(0, MAX_RESULT_BYTES - 20) + '…"truncated":true}'
+    aiLog('tool.ok', { workspaceId: ctx.workspace.id, name, args: parsed.data, ms: Date.now() - t0, bytes: content.length, truncated })
     return { content, record: { name, input: parsed.data as Record<string, unknown>, ok: true, ms: Date.now() - t0 } }
   } catch (err) {
+    aiLog('tool.failed', { workspaceId: ctx.workspace.id, name, args: parsed.data, ms: Date.now() - t0, err: err instanceof Error ? err.message : String(err) })
     return { content: JSON.stringify({ error: 'tool failed', message: err instanceof Error ? err.message.slice(0, 200) : 'error' }), record: { name, input: parsed.data as Record<string, unknown>, ok: false, ms: Date.now() - t0 } }
   }
 }

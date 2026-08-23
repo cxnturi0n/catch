@@ -32,6 +32,13 @@ export interface AdminAnalytics {
   }
   leads: { discoveryResponses: number; avgCompletionMs: number | null }
   feedback: { total: number; pending: number }
+  ai?: {
+    byType: { type: string; calls: number; tokens: number; usd: number }[]
+    byDay: { date: string; calls: number; usd: number }[]
+    topWorkspaces: { workspaceId: string | null; name: string; calls: number; usd: number }[]
+    totalUsd: number
+    totalCalls: number
+  }
 }
 
 export type AdminResult =

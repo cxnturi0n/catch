@@ -6,11 +6,11 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { db } from '../../../db/client.js'
 import { aiConversations, aiMessages } from '../../../db/schema/index.js'
 import type { PlanTier } from '../../../lib/quota.js'
-import { logger } from '../../../logger.js'
 import { anthropic, recordUsage, type Usage } from '../llm.js'
 import { config } from '../../../config.js'
 import { runTool, TOOL_LABELS, toolDefinitions, type ToolContext, type ToolRunRecord } from './tools.js'
 import { noDashes } from '../report/narrative.js'
+import { aiLog } from '../debug.js'
 
 export const CHAT_EVENT = 'ai_chat_message'
 export const CHAT_DAILY_QUOTA: Record<PlanTier, number> = { starter: 20, pro: 100, agency: 400, enterprise: 2000 }
@@ -88,6 +88,7 @@ export async function chatTurn(i: ChatTurnInput): Promise<{ conversationId: stri
   messages.push({ role: 'user', content: text })
 
   await db.insert(aiMessages).values({ conversationId, role: 'user', content: text })
+  aiLog('chat.turn.start', { workspaceId: i.workspace.id, userId: i.user.id, conversationId, plan: i.user.plan, historyMessages: messages.length - 1, userChars: text.length, toolCap: TOOL_CALLS_PER_MESSAGE[i.user.plan] })
 
   const card = `Workspace: ${i.workspace.name}. Connected platforms: ${i.workspace.platforms.join(', ') || 'none'}. Today (UTC): ${now.toISOString().slice(0, 10)}. User plan: ${i.user.plan}.`
   const system: Anthropic.TextBlockParam[] = [
@@ -125,6 +126,7 @@ export async function chatTurn(i: ChatTurnInput): Promise<{ conversationId: stri
     usage.output += res.usage.output_tokens
     usage.cacheRead += res.usage.cache_read_input_tokens ?? 0
     usage.cacheWrite += res.usage.cache_creation_input_tokens ?? 0
+    aiLog('chat.round', { conversationId, round, model: res.model, stop: res.stop_reason, input: res.usage.input_tokens, output: res.usage.output_tokens, cacheRead: res.usage.cache_read_input_tokens ?? 0, toolUses: res.content.filter((b) => b.type === 'tool_use').map((b) => (b as Anthropic.ToolUseBlock).name) })
 
     const textBlocks = res.content.filter((b): b is Anthropic.TextBlock => b.type === 'text')
     const toolUses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
@@ -158,7 +160,7 @@ export async function chatTurn(i: ChatTurnInput): Promise<{ conversationId: stri
   const [saved] = await db.insert(aiMessages).values({ conversationId, role: 'assistant', content: finalText, toolCalls: records, inputTokens: usage.input, outputTokens: usage.output }).returning({ id: aiMessages.id })
   await db.update(aiConversations).set({ updatedAt: now }).where(eq(aiConversations.id, conversationId))
   await recordUsage({ workspaceId: i.workspace.id, userId: i.user.id, eventType: CHAT_EVENT, usage, metadata: { tools: records.map((r) => r.name) } })
-  logger.info({ workspaceId: i.workspace.id, tools: records.length, input: usage.input, output: usage.output }, 'chat turn')
+  aiLog('chat.turn.done', { workspaceId: i.workspace.id, conversationId, tools: records.map((r) => `${r.name}:${r.ok ? 'ok' : 'fail'}:${r.ms}ms`), input: usage.input, output: usage.output, cacheRead: usage.cacheRead, answerChars: finalText.length, ms: Date.now() - now.getTime() })
   return { conversationId, messageId: saved!.id, content: finalText, tools: records, usage }
 }
 
