@@ -4,6 +4,9 @@ import {
   ArrowUp,
   BarChart3,
   FileText,
+  History,
+  Plus,
+  Trash2,
   Plug,
   RotateCcw,
   Sparkles,
@@ -119,7 +122,8 @@ export function CatchAI() {
   const navigate = useNavigate()
   const { activeWorkspaceId, workspaces } = useWorkspace()
   const { user } = useAuth()
-  const { messages, busy, aiReady, ask: send, clear } = useCatchChat(activeWorkspaceId)
+  const { messages, busy, aiReady, conversationId, history, ask: send, newChat, openConversation, removeConversation } = useCatchChat(activeWorkspaceId)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [input, setInput] = useState('')
   const [category, setCategory] = useState('setup')
   const [introOpen, setIntroOpen] = useState(false)
@@ -178,7 +182,55 @@ export function CatchAI() {
   const started = messages.length > 0
 
   return (
-    <div className="mx-auto flex w-full max-w-[820px] flex-col items-center">
+    <div className="relative mx-auto flex w-full max-w-[820px] flex-col items-center">
+      {/* History: stored conversations for this workspace (server-side, 30 days). */}
+      {aiReady && (
+        <div className="absolute right-0 top-0 z-10 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={newChat}
+            className="focus-ring flex items-center gap-1.5 rounded-lg border border-[var(--border-card)] px-2.5 py-1.5 text-[12px] text-[var(--text-secondary)] transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            <Plus size={13} /> New chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-expanded={historyOpen}
+            className={`focus-ring flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors ${historyOpen ? 'border-[color:rgba(230,184,77,0.45)] bg-[color:rgba(230,184,77,0.10)] text-[color:rgba(243,214,148,0.98)]' : 'border-[var(--border-card)] text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white'}`}
+          >
+            <History size={13} /> History{history.length ? ` (${history.length})` : ''}
+          </button>
+          {historyOpen && (
+            <div className="absolute right-0 top-10 w-80 overflow-hidden rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.75)]">
+              {history.length === 0 ? (
+                <div className="px-3 py-3 text-[12.5px] text-[var(--text-muted)]">No conversations yet.</div>
+              ) : (
+                <ul className="max-h-80 divide-y divide-[var(--border-card)] overflow-y-auto">
+                  {history.map((c) => (
+                    <li key={c.id} className={`flex items-center gap-2 px-3 py-2 ${c.id === conversationId ? 'bg-white/[0.04]' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void openConversation(c.id)
+                          setHistoryOpen(false)
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="truncate text-[13px] text-[var(--text-primary)]">{c.title || 'Untitled'}</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">{new Date(c.updatedAt).toLocaleString()}</div>
+                      </button>
+                      <button type="button" onClick={() => void removeConversation(c.id)} aria-label="Delete conversation" className="rounded-md p-1 text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-red-300">
+                        <Trash2 size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {/* Hero — gold mark, question, motto */}
       <div className={`flex flex-col items-center text-center ${started ? 'pt-2' : 'pt-10'}`}>
         <CatchMark size={started ? 40 : 60} variant="gold" play={!started} />
@@ -267,7 +319,7 @@ export function CatchAI() {
               {started && (
                 <button
                   type="button"
-                  onClick={clear}
+                  onClick={newChat}
                   aria-label="New chat"
                   className="focus-ring rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-white/[0.06] hover:text-white"
                 >

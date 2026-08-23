@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Maximize2, X } from 'lucide-react'
+import { Maximize2, Plus, X } from 'lucide-react'
 import { CatchMark } from './brand/CatchMark'
 import { CRUMB } from './layout/TopBar'
 import { useWorkspace } from '../context/WorkspaceContext'
@@ -24,7 +24,7 @@ export function CatchBar() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { activeWorkspaceId } = useWorkspace()
-  const { messages, busy, ask } = useCatchChat(activeWorkspaceId)
+  const { messages, busy, ask, newChat } = useCatchChat(activeWorkspaceId)
   const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -75,13 +75,18 @@ export function CatchBar() {
               <CatchMark size={20} variant="gold" play={false} />
               <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-[color:rgba(230,184,77,0.75)]">Catch Intelligence</span>
               <div className="ml-auto flex items-center gap-1">
+                {messages.length > 0 && (
+                  <button type="button" onClick={newChat} title="New chat" className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-white/5 hover:text-white">
+                    <Plus size={14} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setOpen(false)
                     navigate('/dashboard/catch')
                   }}
-                  title="Continue in the Catch page"
+                  title="Continue in the Catch page (history there)"
                   className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-white/5 hover:text-[color:rgba(243,214,148,0.95)]"
                 >
                   <Maximize2 size={14} />

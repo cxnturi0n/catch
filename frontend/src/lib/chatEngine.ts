@@ -15,7 +15,7 @@ export interface ChatReply {
   content: string
   actions?: ChatAction[]
   /** How the answer was produced; the bar hands 'kb'/'fallback' to the server assistant when available. */
-  kind?: 'setup' | 'nav' | 'kb' | 'fallback'
+  kind?: 'setup' | 'nav' | 'kb' | 'kb-weak' | 'fallback'
 }
 
 // Navigation targets — "go to / open / show <x>" or a bare keyword jumps here.
@@ -212,6 +212,33 @@ function scoreKeys(text: string, keys: string[]): number {
   return s
 }
 
+/**
+ * Prompts the UI offers as chips/cards. These always get the canned answer
+ * (zero tokens); anything else that is not navigation goes to the server
+ * assistant when it is available.
+ */
+export const CANNED_PROMPTS: string[] = [
+  'What can you do?',
+  'What does Discord track?',
+  'What does Telegram track?',
+  'What about Galxe and Zealy?',
+  'How do I connect Discord?',
+  'How do I connect Telegram?',
+  'How does compensation work?',
+  'How do shifts and coverage work?',
+  'How do reports work?',
+  'What goes in Resources?',
+  'Points & payouts',
+  'Resources & SOPs',
+  'Connect a platform',
+]
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+const CANNED = new Set(CANNED_PROMPTS.map(norm))
+/** Exact chip/card prompts only; free-form questions are not guessed at. */
+export function isCanned(input: string): boolean {
+  return CANNED.has(norm(input))
+}
+
 /** Local, deterministic reply. Never invents data; routes + explains. */
 export function respond(input: string): ChatReply {
   const text = ` ${input.toLowerCase().trim()} `
@@ -244,10 +271,12 @@ export function respond(input: string): ChatReply {
     return { content: `Taking you to **${bestNav.label}**.`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }], kind: 'nav' }
   }
   if (bestKb && bestKbScore >= bestNavScore) {
-    return { content: bestKb.answer, actions: bestKb.actions, kind: 'kb' }
+    // A strong keyword hit (≥ 8 matched characters, e.g. "discord track") is a
+    // canned answer; weaker hits are handed to the server assistant when present.
+    return { content: bestKb.answer, actions: bestKb.actions, kind: isCanned(input) ? 'kb' : 'kb-weak' }
   }
   if (bestNav) {
-    return { content: `Want to open **${bestNav.label}**?`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }], kind: 'kb' }
+    return { content: `Want to open **${bestNav.label}**?`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }], kind: 'kb-weak' }
   }
   if (GREETING.test(input.trim())) {
     return { content: KB[0].answer, actions: KB[0].actions, kind: 'kb' } // help

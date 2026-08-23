@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { respond, type ChatAction } from '../lib/chatEngine'
-import { deleteChatConversation, fetchAiQuota, fetchChatConversation, fetchChatConversations, sendChatMessage } from '../lib/api/misc'
+import { deleteChatConversation, fetchAiQuota, fetchChatConversation, fetchChatConversations, sendChatMessage, type ChatConversation } from '../lib/api/misc'
 
 // One chat thread per workspace, shared by the floating widget and the full
 // Catch page: both read the same store, so "expand" simply navigates.
@@ -23,9 +23,11 @@ interface Thread {
   busy: boolean
   /** Latest stored conversation loaded from the server (once per workspace). */
   hydrated: boolean
+  /** Stored conversations for this workspace, newest first. */
+  history: ChatConversation[]
 }
 
-const EMPTY: Thread = { messages: [], conversationId: null, busy: false, hydrated: false }
+const EMPTY: Thread = { messages: [], conversationId: null, busy: false, hydrated: false, history: [] }
 const threads = new Map<string, Thread>()
 const listeners = new Set<() => void>()
 let nextId = 1
@@ -77,8 +79,10 @@ export function useCatchChat(workspaceId: string) {
     let cancelled = false
     fetchChatConversations(workspaceId)
       .then(async (list) => {
+        if (cancelled) return
+        set(workspaceId, { history: list })
         const latest = list[0]
-        if (!latest || cancelled) return
+        if (!latest) return
         const c = await fetchChatConversation(workspaceId, latest.id)
         if (cancelled || get(workspaceId).messages.length > 0) return
         set(workspaceId, { conversationId: c.id, messages: c.messages.map((m) => ({ id: nextId++, role: m.role, content: m.content, source: 'ai' as const })) })
@@ -95,7 +99,9 @@ export function useCatchChat(workspaceId: string) {
       const t = get(workspaceId)
       if (!q || t.busy) return
       const local = respond(q)
-      if (!aiReady || local.kind === 'nav' || local.kind === 'setup') {
+      // Canned answers (navigation, setup, platform explainers, suggestion chips)
+      // cost no tokens; only open questions go to the model.
+      if (!aiReady || local.kind === 'nav' || local.kind === 'setup' || local.kind === 'kb') {
         set(workspaceId, { messages: [...t.messages, { id: nextId++, role: 'user', content: q }, { id: nextId++, role: 'assistant', content: local.content, actions: local.actions, source: 'local' }] })
         return
       }
@@ -108,6 +114,10 @@ export function useCatchChat(workspaceId: string) {
         .then((done) => {
           set(workspaceId, { conversationId: done.conversationId })
           patch({ content: done.content, pending: undefined })
+          // Keep the history list in sync (title = first message).
+          const h = get(workspaceId).history
+          const now = new Date().toISOString()
+          set(workspaceId, { history: h.some((c) => c.id === done.conversationId) ? h.map((c) => (c.id === done.conversationId ? { ...c, updatedAt: now } : c)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) : [{ id: done.conversationId, title: q.slice(0, 80), updatedAt: now }, ...h] })
         })
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : 'The assistant is unavailable.'
@@ -118,12 +128,28 @@ export function useCatchChat(workspaceId: string) {
     [workspaceId, aiReady],
   )
 
-  /** New chat: forgets the thread locally and deletes it on the server. */
-  const clear = useCallback(() => {
-    const id = get(workspaceId).conversationId
-    set(workspaceId, { messages: [], conversationId: null })
-    if (id) void deleteChatConversation(workspaceId, id).catch(() => undefined)
-  }, [workspaceId])
+  /** Start a new conversation; the previous one stays in history. */
+  const newChat = useCallback(() => set(workspaceId, { messages: [], conversationId: null }), [workspaceId])
 
-  return { messages: thread.messages, busy: thread.busy, aiReady, ask, clear }
+  /** Open a stored conversation. */
+  const openConversation = useCallback(
+    async (id: string) => {
+      if (get(workspaceId).busy) return
+      const c = await fetchChatConversation(workspaceId, id)
+      set(workspaceId, { conversationId: c.id, messages: c.messages.map((m) => ({ id: nextId++, role: m.role, content: m.content, source: 'ai' as const })) })
+    },
+    [workspaceId],
+  )
+
+  /** Delete a stored conversation (and leave it if it is the open one). */
+  const removeConversation = useCallback(
+    async (id: string) => {
+      const t = get(workspaceId)
+      set(workspaceId, { history: t.history.filter((c) => c.id !== id), ...(t.conversationId === id ? { messages: [], conversationId: null } : {}) })
+      await deleteChatConversation(workspaceId, id).catch(() => undefined)
+    },
+    [workspaceId],
+  )
+
+  return { messages: thread.messages, busy: thread.busy, aiReady, conversationId: thread.conversationId, history: thread.history, ask, newChat, openConversation, removeConversation }
 }
