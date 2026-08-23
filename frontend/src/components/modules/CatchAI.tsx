@@ -4,6 +4,9 @@ import {
   ArrowUp,
   BarChart3,
   FileText,
+  History,
+  Plus,
+  Trash2,
   Plug,
   RotateCcw,
   Sparkles,
@@ -16,32 +19,14 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useAuth } from '../../context/AuthContext'
-import { respond, type ChatAction } from '../../lib/chatEngine'
+import { useCatchChat } from '../../hooks/useCatchChat'
+import { renderContent } from '../chat/ChatMarkdown'
 import {
   hasSeenLayoutPromptLocally,
   hasSeenLayoutPromptRemotely,
   rememberLayoutPromptSeen,
 } from '../../lib/layoutPrompt'
 
-interface Msg {
-  id: number
-  role: 'user' | 'assistant'
-  content: string
-  actions?: ChatAction[]
-}
-
-let nextId = 1
-
-/** Renders the engine's light markup: **bold** and newlines. */
-function renderContent(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') ? (
-      <strong key={i} className="font-semibold text-[var(--text-primary)]">{part.slice(2, -2)}</strong>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  )
-}
 
 // ── What you can ask, grouped like a short manual ────────────────────────────
 
@@ -68,12 +53,12 @@ const CATEGORIES: Category[] = [
     cards: [
       {
         title: 'Build your layout',
-        body: 'Describe the project in your own words — who it’s for, which platforms you run, how big the team is. I shape the workspace around it.',
+        body: 'Describe the project in your own words, who it’s for, which platforms you run, how big the team is. I shape the workspace around it.',
         prompts: [SETUP_EXAMPLE],
       },
       {
         title: 'Connect a platform',
-        body: 'Bot tokens, server IDs, API keys — I tell you exactly what each integration needs.',
+        body: 'Bot tokens, server IDs, API keys, I tell you exactly what each integration needs.',
         prompts: ['How do I connect Discord?', 'How do I connect Telegram?'],
       },
     ],
@@ -85,7 +70,7 @@ const CATEGORIES: Category[] = [
     cards: [
       {
         title: 'What each platform tracks',
-        body: 'Straight answers on what is really measured — and what isn’t, so you never report a number that doesn’t exist.',
+        body: 'Straight answers on what is really measured, and what isn’t, so you never report a number that doesn’t exist.',
         prompts: ['What does Discord track?', 'What does Telegram track?', 'What about Galxe and Zealy?'],
       },
       {
@@ -137,7 +122,8 @@ export function CatchAI() {
   const navigate = useNavigate()
   const { activeWorkspaceId, workspaces } = useWorkspace()
   const { user } = useAuth()
-  const [messages, setMessages] = useState<Msg[]>([])
+  const { messages, busy, aiReady, conversationId, history, ask: send, newChat, openConversation, removeConversation } = useCatchChat(activeWorkspaceId)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [input, setInput] = useState('')
   const [category, setCategory] = useState('setup')
   const [introOpen, setIntroOpen] = useState(false)
@@ -146,14 +132,8 @@ export function CatchAI() {
 
   const workspaceName = workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'this workspace'
 
-  // Clear the thread when the workspace changes — it's a different client.
-  useEffect(() => {
-    setMessages([])
-  }, [activeWorkspaceId])
-
   // One-shot first run: the invitation to describe the project is shown the very
-  // first time only. If it has ever been seen — on this device or on any other —
-  // it never comes back, on any workspace.
+  // first time only. If it has ever been seen, on this device or on any other, // it never comes back, on any workspace.
   useEffect(() => {
     if (hasSeenLayoutPromptLocally()) return
     let cancelled = false
@@ -161,7 +141,7 @@ export function CatchAI() {
       const seenRemotely = user ? await hasSeenLayoutPromptRemotely(user.id) : false
       if (cancelled) return
       if (seenRemotely) {
-        // Another device already showed it — record it here so we stop asking.
+        // Another device already showed it, record it here so we stop asking.
         rememberLayoutPromptSeen(null)
         return
       }
@@ -179,7 +159,7 @@ export function CatchAI() {
 
   function dismissIntro(startNow: boolean) {
     setIntroOpen(false)
-    // Either way it counts as seen — dismissing is still having received it.
+    // Either way it counts as seen, dismissing is still having received it.
     rememberLayoutPromptSeen(user?.id ?? null)
     if (startNow) {
       setInput(SETUP_EXAMPLE)
@@ -192,13 +172,8 @@ export function CatchAI() {
 
   function ask(text: string) {
     const q = text.trim()
-    if (!q) return
-    const reply = respond(q)
-    setMessages((m) => [
-      ...m,
-      { id: nextId++, role: 'user', content: q },
-      { id: nextId++, role: 'assistant', content: reply.content, actions: reply.actions },
-    ])
+    if (!q || busy) return
+    send(q)
     setInput('')
   }
 
@@ -206,8 +181,56 @@ export function CatchAI() {
   const started = messages.length > 0
 
   return (
-    <div className="mx-auto flex w-full max-w-[820px] flex-col items-center">
-      {/* Hero — gold mark, question, motto */}
+    <div className="relative mx-auto flex w-full max-w-[820px] flex-col items-center">
+      {/* History: stored conversations for this workspace (server-side, 30 days). */}
+      {aiReady && (
+        <div className="absolute right-0 top-0 z-10 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={newChat}
+            className="focus-ring flex items-center gap-1.5 rounded-lg border border-[var(--border-card)] px-2.5 py-1.5 text-[12px] text-[var(--text-secondary)] transition-colors hover:bg-white/[0.04] hover:text-white"
+          >
+            <Plus size={13} /> New chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-expanded={historyOpen}
+            className={`focus-ring flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors ${historyOpen ? 'border-[color:rgba(230,184,77,0.45)] bg-[color:rgba(230,184,77,0.10)] text-[color:rgba(243,214,148,0.98)]' : 'border-[var(--border-card)] text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white'}`}
+          >
+            <History size={13} /> History{history.length ? ` (${history.length})` : ''}
+          </button>
+          {historyOpen && (
+            <div className="absolute right-0 top-10 w-80 overflow-hidden rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] shadow-[0_24px_60px_-12px_rgba(0,0,0,0.75)]">
+              {history.length === 0 ? (
+                <div className="px-3 py-3 text-[12.5px] text-[var(--text-muted)]">No conversations yet.</div>
+              ) : (
+                <ul className="max-h-80 divide-y divide-[var(--border-card)] overflow-y-auto">
+                  {history.map((c) => (
+                    <li key={c.id} className={`flex items-center gap-2 px-3 py-2 ${c.id === conversationId ? 'bg-white/[0.04]' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void openConversation(c.id)
+                          setHistoryOpen(false)
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="truncate text-[13px] text-[var(--text-primary)]">{c.title || 'Untitled'}</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">{new Date(c.updatedAt).toLocaleString()}</div>
+                      </button>
+                      <button type="button" onClick={() => void removeConversation(c.id)} aria-label="Delete conversation" className="rounded-md p-1 text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-red-300">
+                        <Trash2 size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Hero, gold mark, question, motto */}
       <div className={`flex flex-col items-center text-center ${started ? 'pt-2' : 'pt-10'}`}>
         <CatchMark size={started ? 40 : 60} variant="gold" play={!started} />
         {!started && (
@@ -235,7 +258,13 @@ export function CatchAI() {
                       : 'border border-[var(--border-card)] bg-white/[0.03] text-[var(--text-secondary)]'
                   }`}
                 >
-                  {renderContent(m.content)}
+                  {m.pending ? (
+                    <span className="inline-flex items-center gap-2 text-[var(--text-muted)]">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:rgba(230,184,77,0.9)]" /> {m.pending}
+                    </span>
+                  ) : (
+                    renderContent(m.content)
+                  )}
                 </div>
                 {m.actions && m.actions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -283,13 +312,13 @@ export function CatchAI() {
           />
           <div className="flex items-center justify-between gap-2 pt-1">
             <span className="pl-1.5 font-mono text-[10.5px] text-[var(--text-muted)]">
-              {workspaceName} · runs locally, nothing leaves the app
+              {workspaceName} · {aiReady ? 'answers from your workspace data' : 'local assistant'}
             </span>
             <div className="flex items-center gap-1.5">
               {started && (
                 <button
                   type="button"
-                  onClick={() => setMessages([])}
+                  onClick={newChat}
                   aria-label="New chat"
                   className="focus-ring rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
@@ -367,7 +396,7 @@ export function CatchAI() {
             </p>
           </div>
           <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-            Tell me about this project in one message — who it’s for, which platforms you run the community on, and how big
+            Tell me about this project in one message, who it’s for, which platforms you run the community on, and how big
             your team is. I’ll shape <span className="text-[var(--text-primary)]">{workspaceName}</span> around it and hand
             you the exact setup steps.
           </p>

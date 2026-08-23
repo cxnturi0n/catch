@@ -213,7 +213,7 @@ function RequestMetricFooter({ onOpen }: { onOpen: () => void }) {
 
 /**
  * Lightweight request form. Reuses the existing CatchLab feedback channel
- * (category "Analytics & Metrics") — no new table or backend. Requests land in
+ * (category "Analytics & Metrics"), no new table or backend. Requests land in
  * the owner inbox and can be promoted to the public roadmap from CatchLab.
  */
 function RequestMetricModal({
@@ -252,7 +252,7 @@ function RequestMetricModal({
     setSubmitting(true)
     try {
       const detail = description.trim()
-      const body = [detail, contextHint ? `— Requested from ${contextHint}` : '']
+      const body = [detail, contextHint ? `, Requested from ${contextHint}` : '']
         .filter(Boolean)
         .join('\n\n') || '(no extra detail)'
       await submitFeedback(userId, {
@@ -262,7 +262,7 @@ function RequestMetricModal({
         rating: null,
         role: null,
       })
-      showToast('Metric request sent — thank you!')
+      showToast('Metric request sent, thank you!')
       onClose()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not send the request.')
@@ -314,7 +314,7 @@ function RequestMetricModal({
 
 const SYNCABLE_PLATFORMS: IntegrationKey[] = ['discord', 'telegram', 'galxe', 'zealy']
 // Every live integration that can feed the dynamic (real-data) Analytics view.
-// Twitter/X is excluded — it's CSV-only and never reports "Connected".
+// Twitter/X is excluded, it's CSV-only and never reports "Connected".
 const LIVE_KEYS: IntegrationKey[] = ['discord', 'telegram', 'galxe', 'zealy']
 const STALE_AFTER_MS = 60 * 60 * 1000
 const AUTO_REFRESH_MS = 5 * 60 * 1000
@@ -340,7 +340,7 @@ const METRIC_TOOLTIPS: Record<'activeMembers' | 'messagesWeek' | 'newMembers' | 
   scamAlerts: {
     what: 'Security incidents logged and resolved in the Moderation module.',
     how: 'Count of incidents with status "Resolved" created in the period.',
-    why: 'Proof of security work — critical for client trust and reporting.',
+    why: 'Proof of security work, critical for client trust and reporting.',
   },
 }
 
@@ -434,7 +434,7 @@ function XAnalyticsSection({ workspaceId }: { workspaceId: string }) {
         <div className="flex items-center gap-2">
           {data && (
             <span className="text-xs text-[var(--text-secondary)]">
-              Imported {formatRelativeTime(data.importedAt)} · {formatLongDate(data.periodStart)} – {formatLongDate(data.periodEnd)}
+              Imported {formatRelativeTime(data.importedAt)} · {formatLongDate(data.periodStart)}, {formatLongDate(data.periodEnd)}
             </span>
           )}
           <Button onClick={() => { setImportError(null); setModalOpen(true) }} className="!px-3 !py-1.5 text-xs flex items-center gap-1.5">
@@ -503,7 +503,7 @@ function XAnalyticsSection({ workspaceId }: { workspaceId: string }) {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-white">Impressions & Engagements Trend</h3>
               <p className="text-xs text-[var(--text-secondary)]">
-                {formatLongDate(data.periodStart)} – {formatLongDate(data.periodEnd)}
+                {formatLongDate(data.periodStart)}, {formatLongDate(data.periodEnd)}
               </p>
             </div>
             <ResponsiveContainer width="100%" height={280}>
@@ -654,8 +654,8 @@ export function Analytics() {
           : []),
       ]
 
-      const url = await createGoogleSheet(token, `Catch — ${wsName}`, sheets)
-      showToast('Spreadsheet created — opening now')
+      const url = await createGoogleSheet(token, `Catch, ${wsName}`, sheets)
+      showToast('Spreadsheet created, opening now')
       window.open(url, '_blank', 'noopener')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Export failed.')
@@ -779,7 +779,7 @@ export function Analytics() {
         userId={user?.id ?? null}
         contextHint="Analytics (sample view)"
       />
-      {/* Filter bar — platform × analytics type × time range, plus export */}
+      {/* Filter bar, platform × analytics type × time range, plus export */}
       <div className="flex flex-wrap items-center gap-2.5">
         <FilterDropdown
           icon={<Monitor size={15} className="text-[var(--accent-emerald)]" />}
@@ -866,7 +866,7 @@ export function Analytics() {
       <Card className="p-5">
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-white">Active Members Trend</h3>
-          <p className="text-xs text-[var(--text-secondary)]">Last {period} days{hasLiveData ? ' — live' : ''}</p>
+          <p className="text-xs text-[var(--text-secondary)]">Last {period} days{hasLiveData ? ', live' : ''}</p>
         </div>
         <ResponsiveContainer key={`members-${activeWorkspaceId}`} width="100%" height={300}>
           <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -995,7 +995,7 @@ function LiveAnalyticsView({
       connected.includes('telegram')
         ? fetchMemberMessageTrend(workspaceId, 30).catch(() => [])
         : Promise.resolve([] as { date: string; value: number }[]),
-      // Member tenure / retention — Discord only, and only once it has been
+      // Member tenure / retention, Discord only, and only once it has been
       // synced at least once. Failures degrade to "metric unavailable".
       connected.includes('discord')
         ? fetchTenure(workspaceId).catch(() => [] as TenureRecord[])
@@ -1038,7 +1038,7 @@ function LiveAnalyticsView({
     })
   }, [platformOptionsKey, urlPlatform])
 
-  // Empty is a real, honored state now (user cleared the filter) — no snap-back.
+  // Empty is a real, honored state now (user cleared the filter), no snap-back.
   const scopePlatforms = selectedPlatforms
   const metricCaps = useMemo(() => metricOptionsFor(scopePlatforms, dataset), [scopePlatforms.join(','), dataset])
   const metricCapsKey = metricCaps.map(capId).join(',')
@@ -1128,7 +1128,7 @@ function LiveAnalyticsView({
 
   return (
     <>
-      {/* Dynamic filter bar — Platform & Metric are multi-select; every option is
+      {/* Dynamic filter bar, Platform & Metric are multi-select; every option is
           backed by real data availability. Range stays a single time window. */}
       <div className="flex flex-wrap items-center gap-2.5">
         <MultiSelectDropdown
@@ -1185,9 +1185,9 @@ function LiveAnalyticsView({
         </div>
       </div>
 
-      {/* Collapsible sections — General first, then one per connected platform.
-          All closed by default; opening one reveals its metrics split into
-          time-series (left) and current-value metrics (right). */}
+      {/* Collapsible sections, one per connected platform. All closed by
+          default; opening one reveals its metrics split into time-series
+          (left) and current-value metrics (right). */}
       {displayItems.length > 0 && <PlatformSections items={displayItems} window={win} />}
 
       {displayItems.length === 0 && (
@@ -1205,15 +1205,15 @@ function LiveAnalyticsView({
             {dataset === null
               ? 'Fetching the latest metrics from your connected platforms.'
               : scopePlatforms.length === 0
-                ? 'Pick a platform from the filter — or click Aggregated to select them all.'
+                ? 'Pick a platform from the filter, or click Aggregated to select them all.'
                 : !overview && selectedMetricIds.length === 0
-                  ? 'Pick a metric from the filter — or click Overview to show them all.'
-                  : 'Tracking has just started — values will appear as snapshots accumulate.'}
+                  ? 'Pick a metric from the filter, or click Overview to show them all.'
+                  : 'Tracking has just started, values will appear as snapshots accumulate.'}
           </p>
         </Card>
       )}
 
-      {/* Member tenure & retention — Discord only, entirely real data. */}
+      {/* Member tenure & retention, Discord only, entirely real data. */}
       {connected.includes('discord') && (
         <div className="mt-2">
           <RetentionPanel workspaceId={workspaceId} />
@@ -1255,7 +1255,7 @@ function MetricTile({ item }: { item: DisplayItem }) {
           {positive && <ArrowUpRight size={12} />}
           {negative && <ArrowDownRight size={12} />}
           {delta === null && <Minus size={12} />}
-          {delta === null ? '—' : `${Math.abs(delta)}%`}
+          {delta === null ? 'n/a' : `${Math.abs(delta)}%`}
         </span>
       </div>
       <div className="sf-value text-[var(--text-primary)]">{value}</div>
@@ -1277,8 +1277,8 @@ function MetricTile({ item }: { item: DisplayItem }) {
 }
 
 /**
- * The Cards view: a list of collapsible sections — "General" first, then one per
- * platform that actually has data. Every section is closed by default. Inside,
+ * The Cards view: one collapsible section per platform that actually has
+ * data. Every section is closed by default. Inside,
  * the metrics split in two: time-series charts on the left, current-value
  * metrics (those without a real temporal series) on the right.
  */
@@ -1294,16 +1294,12 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
     list.push(item)
     byPlatform.set(item.cap.platform, list)
   }
-  const generalItems = byPlatform.get('aggregated') ?? []
   const platforms = [
     ...ORDER.filter((p) => byPlatform.has(p)),
     ...[...byPlatform.keys()].filter((p) => p !== 'aggregated' && !ORDER.includes(p)),
   ]
 
-  const sections: { key: string; label: string; items: DisplayItem[]; general?: boolean }[] = [
-    { key: 'general', label: 'General', items: generalItems, general: true },
-    ...platforms.map((p) => ({ key: p, label: platformLabel(p), items: byPlatform.get(p) ?? [] })),
-  ]
+  const sections: { key: string; label: string; items: DisplayItem[] }[] = platforms.map((p) => ({ key: p, label: platformLabel(p), items: byPlatform.get(p) ?? [] }))
 
   return (
     <div className="flex flex-col gap-3">
@@ -1325,9 +1321,7 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />
               <span className="text-sm font-semibold text-white">{section.label}</span>
               <span className="font-mono text-[11px] text-[var(--text-muted)]">
-                {section.general
-                  ? `${platforms.length} platform${platforms.length === 1 ? '' : 's'} · ${WINDOW_META[win].label.toLowerCase()}`
-                  : `${count} metric${count === 1 ? '' : 's'}`}
+                {`${count} metric${count === 1 ? '' : 's'} · ${WINDOW_META[win].label.toLowerCase()}`}
               </span>
               <ChevronDown
                 size={16}
@@ -1337,21 +1331,11 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
 
             {isOpen && (
               <div className="border-t border-[var(--border-card)] p-4">
-                {section.general && (
-                  <p className="mb-4 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                    Tracking {items.length} real metric{items.length === 1 ? '' : 's'} across{' '}
-                    {platforms.map(platformLabel).join(', ') || 'no platform yet'} over the {WINDOW_META[win].label.toLowerCase()}.
-                    Only metrics your integrations actually report are shown.
-                  </p>
-                )}
-
                 {count === 0 ? (
-                  <p className="text-[13px] text-[var(--text-secondary)]">
-                    No aggregated metric for this selection — open a platform section below.
-                  </p>
+                  <p className="text-[13px] text-[var(--text-secondary)]">No metric for this selection yet.</p>
                 ) : (
                   <div className={`flex flex-col gap-4 ${charts.length > 0 && tiles.length > 0 ? 'lg:flex-row' : ''}`}>
-                    {/* LEFT — metrics over time */}
+                    {/* LEFT, metrics over time */}
                     {charts.length > 0 && (
                       <div className={`flex min-w-0 flex-col gap-4 ${tiles.length > 0 ? 'lg:flex-[2]' : 'w-full'}`}>
                         {charts.map((item) => (
@@ -1366,7 +1350,7 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
                       </div>
                     )}
 
-                    {/* RIGHT — metrics that aren't a function of time */}
+                    {/* RIGHT, metrics that aren't a function of time */}
                     {tiles.length > 0 && (
                       <div
                         className={

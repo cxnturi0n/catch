@@ -6,7 +6,7 @@ export type MetricPlatform = 'X' | 'Telegram' | 'Discord'
 export type MetricSource = 'auto' | 'manual'
 
 /**
- * The CURATED catalog of metrics Catch can actually track — either pulled
+ * The CURATED catalog of metrics Catch can actually track, either pulled
  * automatically from an integration ('auto') or entered by the CM ('manual',
  * e.g. from the X CSV export). The CM can ONLY pick metrics from this list, so
  * they never create a metric we have no way of measuring. Each metric is tied

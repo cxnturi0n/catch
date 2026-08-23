@@ -342,7 +342,7 @@ export function Resources() {
         <div>
           <h2 className="text-lg font-semibold text-white">Resources</h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            A knowledge drive for your team — organise files and links into typed sections.
+            A knowledge drive for your team, organise files and links into typed sections.
           </p>
         </div>
         <div className="relative" ref={menuRef}>
@@ -449,8 +449,8 @@ export function Resources() {
           title={user ? 'No sections yet' : 'Sign in to manage resources'}
           description={
             user
-              ? 'Create your first section — a Playbook, SOP, Template and more — then import files and links into it.'
-              : 'Guest mode preview — resources persist once you sign in.'
+              ? 'Create your first section, a Playbook, SOP, Template and more, then import files and links into it.'
+              : 'Guest mode preview, resources persist once you sign in.'
           }
           action={
             user ? (
@@ -609,7 +609,7 @@ export function Resources() {
                 value={linkDraft.title}
                 onChange={(e) => setLinkDraft({ ...linkDraft, title: e.target.value })}
                 className={inputClass}
-                placeholder="Brand kit — Notion"
+                placeholder="Brand kit, Notion"
                 required
               />
             </FormField>

@@ -45,6 +45,10 @@ const schema = z.object({
   // LLM (status update summary)
   ANTHROPIC_API_KEY: optionalSecret,
   LLM_MODEL: z.string().default('claude-opus-5'),
+  // Report narrative can use a cheaper model than on-demand summaries.
+  LLM_MODEL_REPORT: optionalSecret,
+  // Kill switch for every generative call (reports fall back to rule text).
+  AI_ENABLED: z.preprocess((v) => (v === '' || v === undefined ? true : v !== 'false' && v !== '0'), z.boolean()),
 
   // Error tracking (optional)
   SENTRY_DSN: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),

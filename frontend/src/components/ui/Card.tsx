@@ -21,7 +21,7 @@ export function Card({ children, glow = false, hover = false, className = '', ..
 
 /**
  * Skeleton placeholder for loading states. Always renders a visible soft surface
- * with a sweeping sheen — never gates content on the animation.
+ * with a sweeping sheen, never gates content on the animation.
  */
 export function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`skeleton ${className}`} />

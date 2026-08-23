@@ -17,7 +17,7 @@ interface QuotaBannerProps {
  * Inline banner that surfaces quota state for a given resource:
  *   • ok    → hidden (unless hideWhenOk=false, then shows a soft info row)
  *   • near  → amber warning ("you're at X of Y")
- *   • reached → red block ("limit reached — upgrade")
+ *   • reached → red block ("limit reached, upgrade")
  */
 export function QuotaBanner({ resource, used, hideWhenOk = true, className = '' }: QuotaBannerProps) {
   const { tier, meta } = useCurrentPlan()
@@ -71,7 +71,7 @@ export function QuotaBanner({ resource, used, hideWhenOk = true, className = '' 
             <AlertTriangle size={18} className="mt-0.5 flex-shrink-0 text-amber-400" />
             <div className="min-w-0">
               <div className="text-sm font-semibold text-white">
-                You’re close to your {labels.singular} limit — {quota.used} of {formatLimit(quota.limit)} used
+                You’re close to your {labels.singular} limit, {quota.used} of {formatLimit(quota.limit)} used
               </div>
               <div className="mt-2 h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-white/[0.06]">
                 <div

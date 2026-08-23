@@ -51,23 +51,22 @@ function fmtDate(iso: string): string {
 // ── To-Do (insights → azione) ────────────────────────────────────────────────
 // Turns the recurring discovery signals into a decision table: what to build,
 // whether it already exists, how feasible it is, and its cost. €0 items are
-// implementable now; costed ones are flagged. Seeded from the known themes —
-// refine as real responses accrue.
+// implementable now; costed ones are flagged. Seeded from the known themes, // refine as real responses accrue.
 type TodoCost = 'free' | 'ai' | 'ext' | 'deploy'
 type TodoStato = 'exists' | 'partial' | 'missing'
 interface TodoItem { todo: string; insight: string; stato: TodoStato; feas: string; cost: TodoCost; costNote?: string }
 
 const TODOS: TodoItem[] = [
-  { todo: 'Automatic cross-platform KPIs', insight: '“stitched in sheets, wish it were automatic”', stato: 'exists', feas: 'Done — Analytics section', cost: 'free' },
-  { todo: '24/7 shift coverage + handover', insight: '“cover the community 24/7 across time zones”', stato: 'exists', feas: 'Done — Coverage board', cost: 'free' },
-  { todo: 'Unified multi-platform client report', insight: '“one dashboard that unifies every platform”', stato: 'partial', feas: 'Medium — aggregates connected sources', cost: 'free' },
-  { todo: 'Retention per cohort (Discord)', insight: '“I wish I had retention per cohort”', stato: 'partial', feas: 'Medium — requires MEMBERS intent', cost: 'free', costNote: 'needs the privileged Discord intent' },
-  { todo: 'Brand mention monitoring', insight: 'listening to mentions outside the community', stato: 'partial', feas: 'Medium — Bluesky already live', cost: 'ext', costNote: '€0 on open protocols · €€ on X' },
-  { todo: 'Report delivery to Slack / Notion', insight: 'tools mentioned: Slack, Notion', stato: 'missing', feas: 'Easy — edge function', cost: 'deploy', costNote: 'requires Supabase deploy' },
-  { todo: 'Auto-written report (narrative)', insight: '“auto-generated client reports”', stato: 'missing', feas: 'Easy — LLM on real data', cost: 'ai' },
-  { todo: 'Assistant on SOPs / moderator onboarding', insight: '“training new moderators fast enough”', stato: 'missing', feas: 'Easy — RAG on Resources', cost: 'ai' },
-  { todo: 'Sentiment / scam detection', insight: 'community protection & mood', stato: 'missing', feas: 'Medium — content + AI', cost: 'ai', costNote: '+ Supabase deploy' },
-  { todo: 'Automatic KOL results tracking', insight: '“how do you follow their results?”', stato: 'partial', feas: 'Medium — manual today', cost: 'ext', costNote: 'social listening (X API)' },
+  { todo: 'Automatic cross-platform KPIs', insight: '“stitched in sheets, wish it were automatic”', stato: 'exists', feas: 'Done, Analytics section', cost: 'free' },
+  { todo: '24/7 shift coverage + handover', insight: '“cover the community 24/7 across time zones”', stato: 'exists', feas: 'Done, Coverage board', cost: 'free' },
+  { todo: 'Unified multi-platform client report', insight: '“one dashboard that unifies every platform”', stato: 'partial', feas: 'Medium, aggregates connected sources', cost: 'free' },
+  { todo: 'Retention per cohort (Discord)', insight: '“I wish I had retention per cohort”', stato: 'partial', feas: 'Medium, requires MEMBERS intent', cost: 'free', costNote: 'needs the privileged Discord intent' },
+  { todo: 'Brand mention monitoring', insight: 'listening to mentions outside the community', stato: 'partial', feas: 'Medium, Bluesky already live', cost: 'ext', costNote: '€0 on open protocols · €€ on X' },
+  { todo: 'Report delivery to Slack / Notion', insight: 'tools mentioned: Slack, Notion', stato: 'missing', feas: 'Easy, edge function', cost: 'deploy', costNote: 'requires Supabase deploy' },
+  { todo: 'Auto-written report (narrative)', insight: '“auto-generated client reports”', stato: 'missing', feas: 'Easy, LLM on real data', cost: 'ai' },
+  { todo: 'Assistant on SOPs / moderator onboarding', insight: '“training new moderators fast enough”', stato: 'missing', feas: 'Easy, RAG on Resources', cost: 'ai' },
+  { todo: 'Sentiment / scam detection', insight: 'community protection & mood', stato: 'missing', feas: 'Medium, content + AI', cost: 'ai', costNote: '+ Supabase deploy' },
+  { todo: 'Automatic KOL results tracking', insight: '“how do you follow their results?”', stato: 'partial', feas: 'Medium, manual today', cost: 'ext', costNote: 'social listening (X API)' },
 ]
 
 const COST_META: Record<TodoCost, { label: string; cls: string }> = {
@@ -91,7 +90,7 @@ function TodoPanel() {
     <div className="glass sf-card p-5">
       <div className="mb-1 flex items-center gap-2">
         <Lightbulb size={16} className="text-[var(--accent-emerald-bright)]" />
-        <h2 className="text-[15px] font-bold text-[var(--text-primary)]">To Do — from insight to action</h2>
+        <h2 className="text-[15px] font-bold text-[var(--text-primary)]">To Do, from insight to action</h2>
       </div>
       <p className="mb-4 font-mono text-[11px] text-[var(--text-muted)]">
         Discovery signals → features. Platform status · feasibility · cost. The €0 ones are shippable now. Seeded from known themes, refined by real responses.
@@ -235,7 +234,7 @@ export function DiscoveryResponses() {
     [tabQuestions, tabRows],
   )
 
-  // Resizable table columns — width per column id ('respondent' + question ids).
+  // Resizable table columns, width per column id ('respondent' + question ids).
   const [colW, setColW] = useState<Record<string, number>>({})
   const drag = useRef<{ id: string; startX: number; startW: number } | null>(null)
   const wOf = (id: string, def: number) => colW[id] ?? def
@@ -298,7 +297,7 @@ export function DiscoveryResponses() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Total responses" value={String(stats.total)} hint={stats.unknown ? `${stats.unknown} without a type` : 'all forms'} />
         <StatTile label="Avg completion" value={`${stats.avgCompletion}%`} hint={`across ${stats.counted} typed responses`} accent />
-        <StatTile label="Fully completed" value={String(stats.fullyComplete)} hint={stats.counted ? `${Math.round((stats.fullyComplete / stats.counted) * 100)}% of responses` : '—'} />
+        <StatTile label="Fully completed" value={String(stats.fullyComplete)} hint={stats.counted ? `${Math.round((stats.fullyComplete / stats.counted) * 100)}% of responses` : 'n/a'} />
         <StatTile label="Near-empty (≤2)" value={String(stats.nearEmpty)} hint="possible drop-offs" warn={stats.nearEmpty > 0} />
       </div>
 
@@ -390,7 +389,7 @@ export function DiscoveryResponses() {
                     <tr key={r.id} className="group">
                       {/* Sticky name column */}
                       <td className="sticky left-0 z-10 border-b border-r border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 align-top" style={{ width: wOf('respondent', 200), minWidth: wOf('respondent', 200) }}>
-                        <div className="text-[13.5px] font-semibold text-[var(--text-primary)]">{r.respondent_name || '—'}</div>
+                        <div className="text-[13.5px] font-semibold text-[var(--text-primary)]">{r.respondent_name || 'n/a'}</div>
                         {r.respondent_email && <div className="truncate text-[11.5px] text-[var(--text-muted)]" style={{ maxWidth: 180 }}>{r.respondent_email}</div>}
                         <div className="mt-1 flex items-center gap-2 font-mono text-[10.5px] text-[var(--text-faint,#5c6785)]">
                           <span>{fmtDate(r.submitted_at)}</span>
@@ -408,7 +407,7 @@ export function DiscoveryResponses() {
                                 {val}
                               </div>
                             ) : (
-                              <span className="text-[var(--text-faint,#5c6785)]">—</span>
+                              <span className="text-[var(--text-faint,#5c6785)]">, </span>
                             )}
                           </td>
                         )
@@ -432,7 +431,7 @@ const SAMPLE_ROWS: DiscoveryResponseRow[] = [
     respondent_name: 'Lena Ортега', respondent_email: 'lena@aurelia.xyz', respondent_role: 'CM',
     submitted_at: new Date(Date.now() - 3600e3).toISOString(), completion_ms: 720000,
     answers: {
-      variant: 'freelance', fl_clients: '2–5', fl_clients__platforms: 'X, Telegram, Discord',
+      variant: 'freelance', fl_clients: '2 to 5', fl_clients__platforms: 'X, Telegram, Discord',
       fl_tools: 'Notion for tasks, Google Calendar, and a metrics spreadsheet.',
       fl_pain: 'Compiling weekly reports across three platforms by hand.',
       fl_switching: 'Time-boxing each client to fixed days of the week.',
@@ -454,7 +453,7 @@ const SAMPLE_ROWS: DiscoveryResponseRow[] = [
     respondent_name: 'Marco Bianchi', respondent_email: 'marco@studio.gg', respondent_role: 'Agency lead',
     submitted_at: new Date(Date.now() - 1.8e6).toISOString(), completion_ms: 900000,
     answers: {
-      variant: 'agency', ag_scale: '6–15', ag_scale__platforms: 'X, Telegram, Discord, Farcaster', ag_scale__note: 'Team of 8',
+      variant: 'agency', ag_scale: '6 to 15', ag_scale__platforms: 'X, Telegram, Discord, Farcaster', ag_scale__note: 'Team of 8',
       ag_tools: 'Notion + Slack + a shared sheet per client.',
       ag_bottleneck: 'Onboarding and training new moderators fast enough.',
       ag_moderators: 'We recruit from client communities and run a 1-week shadowing.',

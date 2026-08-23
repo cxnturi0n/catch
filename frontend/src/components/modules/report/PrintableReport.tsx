@@ -5,7 +5,7 @@ import { formatDelta } from '../../../lib/reportModel'
 import { formatLongDate } from '../../../lib/format'
 
 // Force background colors (the sapphire stripes) to actually render in the
-// printed/PDF output — browsers skip backgrounds by default.
+// printed/PDF output, browsers skip backgrounds by default.
 const printColor: CSSProperties = { WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as CSSProperties
 
 const STRIPE: CSSProperties = {
@@ -15,7 +15,7 @@ const STRIPE: CSSProperties = {
 }
 
 /**
- * Rendered off-screen at all times (`hidden print:block`) — this is what
+ * Rendered off-screen at all times (`hidden print:block`), this is what
  * `window.print()` actually captures. Everything else in the app carries a
  * matching `print:hidden` so only this shows up in the printed/PDF output.
  * Branded to the sapphire palette: top/bottom stripes, KPI row and pure-SVG
@@ -23,8 +23,7 @@ const STRIPE: CSSProperties = {
  */
 export function PrintableReport({ data }: { data: ReportData | null }) {
   if (!data) return null
-  // `model` may be absent on report snapshots saved before it was introduced —
-  // fall back to KPI-less text so Download PDF still works for old history rows.
+  // `model` may be absent on report snapshots saved before it was introduced, // fall back to KPI-less text so Download PDF still works for old history rows.
   const model = data.model
   const typeLabel = data.reportType === 'community' ? 'Community Analytics Report' : 'General Report'
 
@@ -55,10 +54,10 @@ export function PrintableReport({ data }: { data: ReportData | null }) {
           </div>
           <div>
             <div className="text-xl font-bold" style={{ color: '#14276b' }}>
-              Catch — {typeLabel}
+              Catch, {typeLabel}
             </div>
             <div className="text-sm text-black/70">
-              {data.workspaceName} · {formatLongDate(data.periodStart)} – {formatLongDate(data.periodEnd)}
+              {data.workspaceName} · {formatLongDate(data.periodStart)}, {formatLongDate(data.periodEnd)}
             </div>
           </div>
         </div>
@@ -125,7 +124,7 @@ export function PrintableReport({ data }: { data: ReportData | null }) {
       <div style={STRIPE} />
 
       <div className="report-print-footer fixed inset-x-0 bottom-0 border-t border-black/20 px-2 py-2 text-center text-[10px] text-black/70">
-        Catch — {typeLabel} · {data.workspaceName} · Generated {formatLongDate(data.generatedAt)}
+        Catch, {typeLabel} · {data.workspaceName} · Generated {formatLongDate(data.generatedAt)}
       </div>
     </div>
   )

@@ -48,12 +48,12 @@ export function ScheduleTab({ moderators }: { moderators: Moderator[] }) {
   const [grid, setGrid] = useState<Record<string, string[]>>(() => buildDefaultGrid(moderators))
   const [editingCell, setEditingCell] = useState<{ day: number; row: number } | null>(null)
 
-  // Workspace switched (moderators list identity changes) — rebuild default assignments.
+  // Workspace switched (moderators list identity changes), rebuild default assignments.
   useEffect(() => {
     setGrid(buildDefaultGrid(moderators))
   }, [moderators])
 
-  // Ticking — the today column and the highlighted shift row must not freeze.
+  // Ticking, the today column and the highlighted shift row must not freeze.
   const now = useNow()
   const todayMonday = mondayOf(now)
   const weekStart = new Date(todayMonday)
@@ -65,7 +65,7 @@ export function ScheduleTab({ moderators }: { moderators: Moderator[] }) {
   const todayColumnIndex = (now.getDay() + 6) % 7
   const activeShiftRow = currentShiftRowIndex(now.getHours())
 
-  const rangeLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  const rangeLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 
   const moderatorById = useMemo(() => new Map(moderators.map((m) => [m.id, m])), [moderators])
 
@@ -151,7 +151,7 @@ export function ScheduleTab({ moderators }: { moderators: Moderator[] }) {
       <Modal
         open={editingCell !== null}
         onClose={() => setEditingCell(null)}
-        title={editingCell ? `Assign — ${DAYS[editingCell.day]} · ${SHIFT_ROWS[editingCell.row]}` : 'Assign'}
+        title={editingCell ? `Assign, ${DAYS[editingCell.day]} · ${SHIFT_ROWS[editingCell.row]}` : 'Assign'}
       >
         {editingCell && (
           <div className="flex flex-col gap-2">
@@ -175,7 +175,7 @@ export function ScheduleTab({ moderators }: { moderators: Moderator[] }) {
                     </span>
                     {m.fullName}
                   </span>
-                  <span className="text-xs">{assigned ? 'Assigned — click to remove' : 'Click to assign'}</span>
+                  <span className="text-xs">{assigned ? 'Assigned, click to remove' : 'Click to assign'}</span>
                 </button>
               )
             })}

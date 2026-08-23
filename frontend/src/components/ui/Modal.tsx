@@ -60,7 +60,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {open && (
-        // Backdrop is a solid tint (no backdrop-filter — the modal can mount inside
+        // Backdrop is a solid tint (no backdrop-filter, the modal can mount inside
         // an overflow-hidden layout ancestor, which turns filters black). Fully
         // visible on mount; only the panel animates, and via transform only.
         <motion.div

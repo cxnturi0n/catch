@@ -44,7 +44,7 @@ const PLATFORM_ORDER: MetricPlatform[] = ['X', 'Telegram', 'Discord']
 /**
  * Roll workspace compensation data up into per-moderator activity reports:
  * points, money, per-metric and per-platform breakdowns, ranking and share.
- * Pure — the same inputs the Compensation tab already loads, so no extra I/O.
+ * Pure, the same inputs the Compensation tab already loads, so no extra I/O.
  */
 export function buildRollup(
   moderators: Moderator[],
@@ -129,7 +129,7 @@ export function execSummary(rollup: ReportRollup): string {
     `${activeCount} of ${reports.length} moderators were active this period, generating ${formatInt(rollup.totalPoints)} points (${formatCurrency(rollup.totalMoney, currency)} in payout).`,
   )
   parts.push(
-    `${topName} leads with ${formatInt(top.totalPoints)} points — ${topShare}% of all activity${topPlatform ? `, driven mostly by ${topPlatform}` : ''}.`,
+    `${topName} leads with ${formatInt(top.totalPoints)} points, ${topShare}% of all activity${topPlatform ? `, driven mostly by ${topPlatform}` : ''}.`,
   )
   if (inactive > 0) {
     parts.push(`${inactive} moderator${inactive === 1 ? ' has' : 's have'} no recorded activity and may need follow-up.`)

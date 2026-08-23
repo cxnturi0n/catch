@@ -32,7 +32,13 @@ import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { captureException } from './lib/sentry.js'
 
-// Builds the Fastify instance without listening — reused by api.ts and by tests.
+// Builds the Fastify instance without listening, reused by api.ts and by tests.
+declare module 'fastify' {
+  interface FastifyInstance {
+    routeList: { method: string; url: string }[]
+  }
+}
+
 export async function buildApp() {
   const app = Fastify({
     loggerInstance: logger,
@@ -91,6 +97,13 @@ export async function buildApp() {
     reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } })
   })
 
+
+  // Registered routes, for the tenancy sweep test and for debugging.
+  const routeList: { method: string; url: string }[] = []
+  app.addHook('onRoute', (r) => {
+    for (const m of Array.isArray(r.method) ? r.method : [r.method]) routeList.push({ method: m, url: r.url })
+  })
+  app.decorate('routeList', routeList)
 
   await app.register(sessionPlugin)
   await app.register(workspacePlugin)

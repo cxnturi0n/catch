@@ -71,18 +71,21 @@ await db.transaction(async (tx) => {
 
   // Member activity: 40 community members + the moderators, 30 days.
   const members = [
-    ...mods.map((m) => ({ tg: { ref: `t-${m.id.slice(0, 8)}`, name: m.telegramHandle! }, dc: { ref: `d-${m.id.slice(0, 8)}`, name: m.discordHandle! }, weight: 6 })),
-    ...Array.from({ length: 40 }, (_, i) => ({ tg: { ref: `t-${1000 + i}`, name: `@member_${i + 1}` }, dc: { ref: `d-${2000 + i}`, name: `member_${i + 1}` }, weight: ri(1, 4) })),
+    ...mods.map((m) => ({ tg: { ref: `t-${m.id.slice(0, 8)}`, name: m.telegramHandle! }, dc: { ref: `d-${m.id.slice(0, 8)}`, name: m.discordHandle! }, weight: 6, shiftStart: m.shiftStartUtc })),
+    ...Array.from({ length: 40 }, (_, i) => ({ tg: { ref: `t-${1000 + i}`, name: `@member_${i + 1}` }, dc: { ref: `d-${2000 + i}`, name: `member_${i + 1}` }, weight: ri(1, 4), shiftStart: null as number | null })),
   ]
   const mm: (typeof s.memberMessages.$inferInsert)[] = []
   const act = new Map<string, number>()
   for (let ago = DAYS - 1; ago >= 0; ago--) {
     for (const m of members) {
       for (const [platform, who] of [['telegram', m.tg], ['discord', m.dc]] as const) {
-        if (rnd() < 0.35) continue
+        // Moderators show up around their shift start (mostly on time, some
+        // late, an occasional no-show); members post whenever.
+        const isMod = m.shiftStart !== null
+        if (rnd() < (isMod ? 0.08 : 0.35)) continue
         const n = ri(1, 5 * m.weight)
-        const firstH = ri(6, 20)
-        const first = at(ago, firstH, ri(0, 59))
+        const firstH = isMod ? (m.shiftStart! + (rnd() < 0.8 ? 0 : 1)) % 24 : ri(6, 20)
+        const first = at(ago, firstH, isMod && rnd() < 0.8 ? ri(0, 12) : ri(0, 59))
         const last = at(ago, Math.min(23, firstH + ri(0, 6)), ri(0, 59))
         mm.push({ workspaceId: W, platform, memberRef: who.ref, displayName: who.name, day: day(ago), messageCount: n, firstMessageAt: first, lastMessageAt: last })
         for (let k = 0; k < n; k++) {

@@ -12,7 +12,7 @@ import { FormField, inputClass } from '../ui/FormControls'
 import { QuotaBanner } from '../QuotaBanner'
 import { UpgradeModal } from '../UpgradeModal'
 
-// Community size is deliberately not asked here — the user describes the
+// Community size is deliberately not asked here, the user describes the
 // project to Catch Intelligence right after creation, in plain language.
 const emptyForm = {
   name: '',
@@ -161,7 +161,7 @@ export function WorkspaceSwitcher() {
             </select>
           </FormField>
           <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-            Once it’s created, tell Catch about the project — platforms, team size, who it’s for — and it shapes the
+            Once it’s created, tell Catch about the project, platforms, team size, who it’s for, and it shapes the
             workspace around your answer.
           </p>
           <div className="mt-1 flex justify-end gap-3">

@@ -35,7 +35,7 @@ function view(s: typeof reportSchedules.$inferSelect) {
     recipientEmails: s.recipientEmails,
     enabled: s.enabled,
     lastSentAt: s.lastSentAt,
-    // Never the secrets — only whether they are set.
+    // Never the secrets, only whether they are set.
     hasSlackWebhook: !!s.slackWebhookUrlEnc,
     hasNotionToken: !!s.notionTokenEnc,
     notionPageId: s.notionPageId,

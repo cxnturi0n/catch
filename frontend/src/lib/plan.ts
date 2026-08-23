@@ -1,6 +1,6 @@
 // Plan tiers, quota limits and upgrade helpers.
 // Prices are quote-based ("Contact us") so the app only cares about limits
-// and gating — never about billing amounts.
+// and gating, never about billing amounts.
 
 export type PlanTier = 'starter' | 'pro' | 'agency' | 'enterprise'
 
@@ -16,7 +16,7 @@ export interface PlanMeta {
   limits: PlanLimits
 }
 
-// Numeric.POSITIVE_INFINITY means unlimited — displayed as "∞" in the UI.
+// Numeric.POSITIVE_INFINITY means unlimited, displayed as "∞" in the UI.
 export const PLANS: Record<PlanTier, PlanMeta> = {
   starter: {
     tier: 'starter',
@@ -100,8 +100,8 @@ export function upgradeMailto(currentPlan: PlanTier, resource: QuotaResource | n
   const targetLabel = target ? PLANS[target].label : 'Enterprise'
   const subject =
     resource === null
-      ? `Catch — upgrade to ${targetLabel}`
-      : `Catch — ${targetLabel} upgrade (${RESOURCE_LABELS[resource].plural} limit reached)`
+      ? `Catch, upgrade to ${targetLabel}`
+      : `Catch, ${targetLabel} upgrade (${RESOURCE_LABELS[resource].plural} limit reached)`
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
 }
 

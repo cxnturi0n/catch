@@ -44,13 +44,13 @@ export function Onboarding() {
   const [step, setStep] = useState(1)
   const [dir, setDir] = useState(1)
 
-  // Step 1 — about you
+  // Step 1, about you
   const [role, setRole] = useState('')
   const [managesMultiple, setManagesMultiple] = useState<boolean | null>(null)
-  // Step 2 — your community
+  // Step 2, your community
   const [workspaceName, setWorkspaceName] = useState('')
   const [communitySize, setCommunitySize] = useState<string>(COMMUNITY_SIZES[1])
-  // Step 3 — your stack
+  // Step 3, your stack
   const [platforms, setPlatforms] = useState<string[]>([])
 
   const [error, setError] = useState('')
@@ -90,7 +90,7 @@ export function Onboarding() {
         communitySize,
         platforms,
       })
-      // "Who is using Catch" signal — best-effort, never blocks entering the app.
+      // "Who is using Catch" signal, best-effort, never blocks entering the app.
       if (user) {
         try {
           await updateProfile({ jobRole: role, managesMultiple: !!managesMultiple, communitySize, primaryPlatforms: platforms, onboarded: true })
@@ -98,7 +98,7 @@ export function Onboarding() {
           // profile is informational only
         }
       }
-      showToast('Workspace ready — welcome to Catch')
+      showToast('Workspace ready, welcome to Catch')
       // Land in the Catch assistant: the first thing a new workspace needs is
       // the user describing the project so we can shape the layout around it.
       navigate('/dashboard/catch')
@@ -114,7 +114,7 @@ export function Onboarding() {
 
       <div className="animate-rise-in glow-emerald relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0b1018] p-8">
         <div aria-hidden className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-emerald-bright)]/60 to-transparent" />
-        {/* Brand header — the C engages as you enter */}
+        {/* Brand header, the C engages as you enter */}
         <div className="mb-6 flex items-center gap-4">
           <CatchMark size={56} />
           <div>
@@ -125,7 +125,7 @@ export function Onboarding() {
           </div>
         </div>
 
-        {/* Progress — always shows "Step X of 3" */}
+        {/* Progress, always shows "Step X of 3" */}
         <div className="mb-8">
           <div className="mb-2 flex items-center justify-between text-xs font-medium">
             <span className="text-[color:var(--accent-emerald-bright)]">Step {step} of {TOTAL}</span>
@@ -215,7 +215,7 @@ export function Onboarding() {
                 <div className="flex flex-col gap-4">
                   <div>
                     <h2 className="text-base font-semibold text-white">Which platforms do you use most?</h2>
-                    <p className="mt-1 text-sm text-slate-400">Select all that apply — you can connect them later.</p>
+                    <p className="mt-1 text-sm text-slate-400">Select all that apply, you can connect them later.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
                     {PLATFORMS.map((p) => (

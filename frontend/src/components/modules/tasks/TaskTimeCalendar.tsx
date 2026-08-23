@@ -161,7 +161,7 @@ export function TaskTimeCalendar({
                 <span className="truncate">{meeting.title}</span>
               </span>
               <span className="flex items-center gap-1 text-[10px] text-[#bae6fd]/80">
-                <Clock size={9} /> {formatTimeInTz(meeting.startsAt, timezone)}–{formatTimeInTz(meeting.endsAt, timezone)}
+                <Clock size={9} /> {formatTimeInTz(meeting.startsAt, timezone)}, {formatTimeInTz(meeting.endsAt, timezone)}
               </span>
             </button>
           ))}

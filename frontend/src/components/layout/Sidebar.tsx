@@ -16,7 +16,7 @@ interface NavItem {
   icon: LucideIcon
   // Analytics platform drill-down (/dashboard/analytics?platform=<key>).
   platform?: IntegrationKey
-  // The bare Analytics dashboard — active only when NO ?platform param is set.
+  // The bare Analytics dashboard, active only when NO ?platform param is set.
   isDashboard?: boolean
 }
 interface NavGroup {
@@ -54,7 +54,7 @@ function isItemActive(item: NavItem, pathname: string, platformParam: string | n
   return pathname === item.to || pathname.startsWith(item.to + '/')
 }
 
-/** One nav row — icon + label, with the sliding active pill. In collapsed mode
+/** One nav row, icon + label, with the sliding active pill. In collapsed mode
  *  the label is hidden and the icon is centered, with a native tooltip. */
 function NavRow({ item, active, collapsed, onClose }: { item: NavItem; active: boolean; collapsed: boolean; onClose?: () => void }) {
   const Icon = item.icon
@@ -96,7 +96,7 @@ export function Sidebar({
   const { pathname, search } = useLocation()
   const platformParam = new URLSearchParams(search).get('platform')
 
-  // Build the nav tree — the Analytics group lists one item per Connected platform.
+  // Build the nav tree, the Analytics group lists one item per Connected platform.
   const navGroups = useMemo<NavGroup[]>(() => {
     const integrations = getWorkspaceIntegrations(activeWorkspaceId)
     const connected = PLATFORM_NAV.filter((p) => integrations[p.key]?.status === 'Connected')
@@ -135,7 +135,7 @@ export function Sidebar({
           { to: '/dashboard/integrations', label: 'Integrations', icon: Plug },
           { to: '/dashboard/members', label: 'Members', icon: Users },
           { to: '/dashboard/instructions', label: 'Catch Instructions', icon: BookOpen },
-          // Owner-only pages — the routes/RLS also enforce this.
+          // Owner-only pages, the routes/RLS also enforce this.
           ...(user?.email?.toLowerCase() === OWNER_EMAIL
             ? [
                 { to: '/dashboard/admin', label: 'Platform Analytics', icon: Gauge } as NavItem,
@@ -190,7 +190,7 @@ export function Sidebar({
       {/* Thin sapphire edge-light down the right border */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[var(--accent-emerald)]/25 to-transparent" />
 
-      {/* Drag-to-resize handle — desktop only, sits on the right edge. */}
+      {/* Drag-to-resize handle, desktop only, sits on the right edge. */}
       {onResize && (
         <div
           role="separator"
@@ -214,7 +214,7 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Catch AI — its own section, marked by the gold "C". */}
+      {/* Catch AI, its own section, marked by the gold "C". */}
       <div className={`mt-3 ${collapsed ? 'px-2' : 'px-3'}`}>
         <NavLink
           to="/dashboard/catch"
@@ -313,7 +313,7 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* Plan card + upgrade CTA — hidden in the collapsed rail. */}
+      {/* Plan card + upgrade CTA, hidden in the collapsed rail. */}
       {!collapsed && (
         <div className="mx-3 mb-3 mt-1">
           <div

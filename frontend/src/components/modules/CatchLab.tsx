@@ -85,7 +85,7 @@ export function CatchLab() {
         <div>
           <h1 className="text-2xl font-bold text-white sm:text-3xl">CatchLab</h1>
           <p className="mt-2 max-w-xl text-sm text-[var(--text-secondary)]">
-            The public roadmap of Catch. See what&apos;s planned, in progress and shipped — and shape what we build next.
+            The public roadmap of Catch. See what&apos;s planned, in progress and shipped, and shape what we build next.
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)} className="shrink-0">

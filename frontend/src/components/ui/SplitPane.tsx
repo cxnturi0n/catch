@@ -62,7 +62,7 @@ export function SplitPane({
           return p
         })
       } catch {
-        /* storage unavailable — ratio still applies for this session */
+        /* storage unavailable, ratio still applies for this session */
       }
     }
     document.body.style.userSelect = 'none'

@@ -1,5 +1,5 @@
 // ── Member tenure & retention ───────────────────────────────────────────────
-// "How long do people stay in our Discord?" — everything here is derived from
+// "How long do people stay in our Discord?", everything here is derived from
 // REAL rows written by the `discord-members-sync` edge function:
 //
 //   discord_member_tenure        one row per member ever seen (joined_at + last_seen)
@@ -10,7 +10,7 @@
 //      synced are invisible to the Discord API, so tenure stats describe current
 //      members, never the full history of the server.
 //   2. Anything that needs history (churn %, retention over time) only becomes
-//      available once ≥2 sync runs exist — until then it reports hasData: false
+//      available once ≥2 sync runs exist, until then it reports hasData: false
 //      instead of guessing.
 
 import { fetchTenure, fetchMembershipSnapshots, type TenureRecord, type MembershipSnapshotRow } from './api/metrics'
@@ -66,7 +66,7 @@ export interface TenureBucket {
   id: string
   label: string
   count: number
-  /** Share of members with a known join date, 0–100 (rounded to 1 decimal). */
+  /** Share of members with a known join date, 0 to 100 (rounded to 1 decimal). */
   pct: number
 }
 
@@ -81,10 +81,10 @@ interface BucketDef {
 
 const BUCKET_DEFS: BucketDef[] = [
   { id: 'lt1w', label: '< 1 week', min: 0, max: 7 },
-  { id: '1to4w', label: '1–4 weeks', min: 7, max: 30 },
-  { id: '1to3m', label: '1–3 months', min: 30, max: 90 },
-  { id: '3to6m', label: '3–6 months', min: 90, max: 180 },
-  { id: '6to12m', label: '6–12 months', min: 180, max: 365 },
+  { id: '1to4w', label: '1 to 4 weeks', min: 7, max: 30 },
+  { id: '1to3m', label: '1 to 3 months', min: 30, max: 90 },
+  { id: '3to6m', label: '3 to 6 months', min: 90, max: 180 },
+  { id: '6to12m', label: '6 to 12 months', min: 180, max: 365 },
   { id: 'gt1y', label: '> 1 year', min: 365, max: Infinity },
 ]
 
@@ -106,7 +106,7 @@ export interface CohortRow {
 }
 
 export interface TenureStats {
-  /** False when no member row exists yet — the UI must show an empty state, never zeros. */
+  /** False when no member row exists yet, the UI must show an empty state, never zeros. */
   hasData: boolean
   /** Rows in the table: current members + everyone we have observed leaving. */
   trackedMembers: number
@@ -125,7 +125,7 @@ export interface TenureStats {
   oldestJoinedAt: string | null
   /** Timestamp of the most recent sync run (max last_seen). */
   lastSyncAt: string | null
-  /** Timestamp of the first sync run (min first_seen) — where honest history starts. */
+  /** Timestamp of the first sync run (min first_seen), where honest history starts. */
   trackingSince: string | null
   cohorts: CohortRow[]
   /**
@@ -286,7 +286,7 @@ export interface RetentionPoint {
 }
 
 export interface RetentionSeries {
-  /** True only with ≥2 sync runs — churn is meaningless without a baseline. */
+  /** True only with ≥2 sync runs, churn is meaningless without a baseline. */
   hasData: boolean
   points: RetentionPoint[]
   avgChurnPct: number | null

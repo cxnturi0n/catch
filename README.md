@@ -35,7 +35,7 @@ cd ../frontend && npm install && npm run dev   # http://localhost:5173 (proxies 
 ```
 
 Without `RESEND_API_KEY` the backend prints verification / reset emails in its
-log — copy the link from there. Social sign-in buttons appear only for
+log, copy the link from there. Social sign-in buttons appear only for
 providers whose `*_CLIENT_ID` / `*_CLIENT_SECRET` are set.
 
 See each folder's README for details.

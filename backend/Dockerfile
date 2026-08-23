@@ -17,6 +17,7 @@ COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/drizzle ./drizzle
 COPY --from=build --chown=app:app /app/package.json ./
+COPY --chown=app:app help ./help
 USER app
 EXPOSE 3000
 CMD ["node", "dist/api.js"]

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Discovery form — "Sapphire" restyle token layer + animated gem background.
+   Discovery form, "Sapphire" restyle token layer + animated gem background.
    SCOPED to the public discovery form only (`.df-scope`). Imports nothing from,
    and changes nothing in, the dashboard. Night is the shipped default; day
    tokens are kept under [data-df-theme="day"] for later (no toggle wired yet).
@@ -42,7 +42,7 @@
   --df-arrow: #7fa8ff;
   --df-eyebrow: #7fa8ff;
 
-  /* Gem body/scrim — corner variant defaults; step overrides below. */
+  /* Gem body/scrim, corner variant defaults; step overrides below. */
   --df-scrim: linear-gradient(184deg, rgba(4, 9, 28, 0.5) 0%, rgba(4, 9, 28, 0.9) 34%, rgba(4, 9, 28, 0.95) 100%);
 
   color: var(--df-text-body);
@@ -92,7 +92,7 @@
   pointer-events: none;
 }
 
-/* Visible focus ring the reference omits — required for shipping. */
+/* Visible focus ring the reference omits, required for shipping. */
 .df-scope :where(button, [role='radio'], textarea, a, input):focus-visible {
   outline: 2px solid rgba(120, 160, 255, 0.55);
   outline-offset: 2px;
@@ -128,7 +128,7 @@
   will-change: transform;
 }
 
-/* Step 2 / day — corner gem */
+/* Step 2 / day, corner gem */
 .df-gem--corner .df-gem__wrap {
   width: 364px;
   height: 342px;
@@ -202,7 +202,7 @@
   background: radial-gradient(circle, rgba(106, 79, 216, 0.18), transparent 70%);
 }
 
-/* Step 1 — crown gem rising from the bottom, centred */
+/* Step 1, crown gem rising from the bottom, centred */
 .df-gem--crown {
   --df-scrim: linear-gradient(180deg, rgba(4, 9, 28, 0.92) 0%, rgba(4, 9, 28, 0.88) 60%, rgba(4, 9, 28, 0.82) 92%, rgba(4, 9, 28, 0.45) 100%);
 }

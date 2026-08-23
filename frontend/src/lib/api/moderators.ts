@@ -77,7 +77,7 @@ function mapModerator(m: ApiModerator): Moderator {
     messagesThisMonth: 0,
     bansExecuted: 0,
     timeoutsGiven: 0,
-    avgResponseTime: '—',
+    avgResponseTime: 'n/a',
     lastActiveDate: m.updatedAt.slice(0, 10),
     shiftsCompleted: 0,
     shiftsAssigned: 0,
@@ -144,7 +144,7 @@ interface ShiftEventRow {
 }
 
 // Roster + measured activity (30 days) + punctuality (30 days), merged. The
-// counters stay 0 / '—' when no handle matches platform members.
+// counters stay 0 / 'n/a' when no handle matches platform members.
 export async function fetchModerators(workspaceId: WorkspaceId): Promise<Moderator[]> {
   const [list, perf, shifts] = await Promise.all([
     api<{ moderators: ApiModerator[] }>(base(workspaceId)),

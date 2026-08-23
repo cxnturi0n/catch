@@ -23,7 +23,7 @@ const CADENCES: { id: ReportCadence; label: string }[] = [
  * Email-automation cadence UI (#6). Sits to the RIGHT of the date-range selector.
  * Guest-safe: when `canPersist` is false (no signed-in user / local workspace)
  * the controls stay interactive but saving is disabled with an inline hint,
- * since schedules live on the server. Saving here only stores the schedule — the
+ * since schedules live on the server. Saving here only stores the schedule, the
  * `send-report` edge function + RESEND_API_KEY are what actually dispatch it.
  */
 export function ReportScheduleControls({
@@ -130,7 +130,7 @@ export function ReportScheduleControls({
 
       {!isOff && (
         <div className="mt-3 flex flex-col gap-3">
-          {/* Report type is chosen on the left — not repeated here. */}
+          {/* Report type is chosen on the left, not repeated here. */}
           <div className={`grid gap-2 ${schedule.cadence === 'weekly' ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <label className="flex flex-col gap-1 text-xs">
               <span className="text-[var(--text-secondary)]">Time</span>
@@ -190,7 +190,7 @@ export function ReportScheduleControls({
               : `Sends daily at ${schedule.time} (${schedule.timezone}).`}
           </p>
 
-          {/* Optional extra delivery targets — dispatched server-side (edge function). */}
+          {/* Optional extra delivery targets, dispatched server-side (edge function). */}
           <div className="mt-1 flex flex-col gap-3 border-t border-[var(--border-card)] pt-3">
             <div className="flex items-center gap-2">
               <Send size={14} className="text-[var(--accent-emerald)]" />
@@ -232,7 +232,7 @@ export function ReportScheduleControls({
             </div>
 
             <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-              Slack/Notion: incolla webhook/token — inviati via server (edge function). Salvati protetti da RLS.
+              Slack/Notion: incolla webhook/token, inviati via server (edge function). Salvati protetti da RLS.
             </p>
           </div>
         </div>

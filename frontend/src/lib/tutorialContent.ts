@@ -2,11 +2,10 @@
 //
 // Each entry is keyed by a stable `id` and matched against the current route by
 // `pathPrefix` (longest prefix wins, so more specific routes take precedence).
-// Blurbs are intentionally short — 1-2 plain sentences in CM-facing language —
-// so the pop-up reads in a couple of seconds and never gets in the way.
+// Blurbs are intentionally short, 1-2 plain sentences in CM-facing language, // so the pop-up reads in a couple of seconds and never gets in the way.
 
 export interface TutorialEntry {
-  /** Stable id — also the localStorage suffix: `catch:tutorial:<id>`. */
+  /** Stable id, also the localStorage suffix: `catch:tutorial:<id>`. */
   id: string
   /** Pathname prefix this tutorial applies to. */
   pathPrefix: string
@@ -43,7 +42,7 @@ export const TUTORIAL_ENTRIES: TutorialEntry[] = [
     pathPrefix: '/dashboard/tasks',
     title: 'Task Manager',
     blurb:
-      'Plan work in a table, board, or time-blocked calendar — drag the divider for a split view. Filter the calendar between tasks and meetings.',
+      'Plan work in a table, board, or time-blocked calendar, drag the divider for a split view. Filter the calendar between tasks and meetings.',
   },
   {
     id: 'resources',
@@ -57,7 +56,7 @@ export const TUTORIAL_ENTRIES: TutorialEntry[] = [
     pathPrefix: '/dashboard/kol',
     title: 'KOLs',
     blurb:
-      'Keep tabs on the influencers you work with — their reach, engagement and current status.',
+      'Keep tabs on the influencers you work with, their reach, engagement and current status.',
   },
   {
     id: 'integrations',

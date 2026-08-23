@@ -47,7 +47,7 @@ export interface MetricCapability {
   windows: AnalyticsWindow[]
   color: string
   suffix?: string
-  /** Discord's member count is approximate — surface an honest "≈" marker. */
+  /** Discord's member count is approximate, surface an honest "≈" marker. */
   approx?: boolean
   /** Which data source backs a given window. */
   source: (w: AnalyticsWindow) => DataSource
@@ -60,17 +60,16 @@ const deltaOrDaily = (w: AnalyticsWindow): DataSource => (w === '1h' || w === '5
 
 // The matrix. Order matters for "first valid option" fallbacks.
 export const CAPABILITY_MATRIX: MetricCapability[] = [
-  // Aggregated (only meaningful with ≥2 connected platforms) — members summed across platforms.
+  // Aggregated (only meaningful with ≥2 connected platforms), members summed across platforms.
   { platform: 'aggregated', metric: 'members', metricKey: 'members', label: 'Members (all platforms)', windows: ALL_WINDOWS, color: '#2f7cf6', source: deltaOrDaily },
 
   // Discord
   { platform: 'discord', metric: 'members', metricKey: 'members', label: 'Members', windows: ALL_WINDOWS, color: '#2f7cf6', approx: true, source: deltaOrDaily },
   { platform: 'discord', metric: 'bans', metricKey: 'bans_7d', label: 'Bans (7d)', windows: ['7d'], color: '#1e3a8a', source: () => 'daily-rollup' },
 
-  // Discord — member tenure & retention (fed by the discord-members-sync run).
+  // Discord, member tenure & retention (fed by the discord-members-sync run).
   // These are SNAPSHOT / COHORT measures: one data point per sync run, or a count
-  // grouped by join DATE. They are deliberately NOT offered on the 1h/5h windows —
-  // there is no hourly delta behind them, so claiming one would be a fabrication.
+  // grouped by join DATE. They are deliberately NOT offered on the 1h/5h windows, // there is no hourly delta behind them, so claiming one would be a fabrication.
   // The full distribution / median / cohort table lives in RetentionPanel; these
   // entries only expose the parts that are genuinely a time series.
   { platform: 'discord', metric: 'tracked_members', metricKey: 'total_members', label: 'Members tracked (tenure sync)', windows: ['24h', '7d', '30d'], color: '#4d9fff', source: () => 'membership-snapshot' },
@@ -90,7 +89,7 @@ export const CAPABILITY_MATRIX: MetricCapability[] = [
   { platform: 'zealy', metric: 'members', metricKey: 'members', label: 'Members', windows: ALL_WINDOWS, color: '#2f7cf6', source: deltaOrDaily },
   { platform: 'zealy', metric: 'total_xp', metricKey: 'total_xp', label: 'Total XP', windows: ALL_WINDOWS, color: '#4d9fff', source: deltaOrDaily },
 
-  // Twitter / X — CSV only; window = the imported CSV period. Rendered by the
+  // Twitter / X, CSV only; window = the imported CSV period. Rendered by the
   // dedicated XAnalyticsSection, NOT by the dynamic dropdowns (X is never a
   // "Connected" live integration), so windows is intentionally empty here.
   { platform: 'twitter', metric: 'impressions', metricKey: 'impressions', label: 'Impressions', windows: [], color: '#1e3a8a', source: () => 'csv' },
@@ -144,11 +143,10 @@ export interface AnalyticsDataset {
   x: XAnalyticsData | null
   /**
    * Discord member tenure rows (one per member ever seen). Optional: a caller
-   * that never fetched them simply leaves the tenure metrics unavailable —
-   * fail-safe, never a metric backed by nothing.
+   * that never fetched them simply leaves the tenure metrics unavailable, * fail-safe, never a metric backed by nothing.
    */
   tenure?: TenureRecord[]
-  /** Discord membership snapshots — one row per discord-members-sync run. */
+  /** Discord membership snapshots, one row per discord-members-sync run. */
   membershipSnapshots?: MembershipSnapshotRow[]
 }
 
@@ -203,7 +201,7 @@ function membershipSeries(ds: AnalyticsDataset, key: string, hours: number): Tre
 
 /**
  * Members STILL in the server grouped by the day they joined, within the window.
- * Real data (joined_at of current members) — but by construction it can only
+ * Real data (joined_at of current members), but by construction it can only
  * contain people who have not left, which is why the label says so.
  */
 function tenureJoinSeries(ds: AnalyticsDataset, days: number): TrendPoint[] {
@@ -217,7 +215,7 @@ function tenureJoinSeries(ds: AnalyticsDataset, days: number): TrendPoint[] {
   const byDate = new Map<string, number>()
   for (const r of rows) {
     if (!r.joinedAt) continue
-    if (r.lastSeen < presentCutoff) continue // already left — not a retained join
+    if (r.lastSeen < presentCutoff) continue // already left, not a retained join
     const day = r.joinedAt.slice(0, 10)
     if (day < cutoff) continue
     byDate.set(day, (byDate.get(day) ?? 0) + 1)
@@ -305,7 +303,7 @@ export function availableWindows(cap: MetricCapability, ds: AnalyticsDataset): W
   })
 }
 
-/** Current level (not delta) of a metric key across one/all platforms — the
+/** Current level (not delta) of a metric key across one/all platforms, the
  * latest daily rollup value, falling back to the latest snapshot. null if none. */
 export function latestLevel(ds: AnalyticsDataset, platform: AnalyticsPlatformId, metricKey: string): number | null {
   const platforms = platform === 'aggregated' ? ds.connected.filter((p) => p !== 'aggregated') : [platform]
@@ -416,7 +414,7 @@ export function computeWindow(cap: MetricCapability, w: AnalyticsWindow, ds: Ana
     const previous = series.length >= 2 ? series[0].value : null
     const delta = previous == null ? null : latest - previous
     const deltaPct = previous && previous > 0 ? Math.round(((latest - previous) / previous) * 100) : null
-    // Only members who are STILL in the server can appear here — people who
+    // Only members who are STILL in the server can appear here, people who
     // joined and already left are invisible to the Discord member list.
     return { latest, previous, delta, deltaPct, series, note: 'only members still present', suffix: cap.suffix, isDelta: false }
   }

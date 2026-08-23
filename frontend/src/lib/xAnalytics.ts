@@ -31,7 +31,7 @@ export async function parseXAnalyticsCsvFile(file: File): Promise<XAnalyticsData
   const clean = text.replace(/^﻿/, '')
   const lines = clean.split(/\r?\n/).filter((l) => l.trim())
 
-  // Find header row — the one that contains the "impressions" column
+  // Find header row, the one that contains the "impressions" column
   let headerIdx = -1
   let headers: string[] = []
   for (let i = 0; i < Math.min(lines.length, 10); i++) {

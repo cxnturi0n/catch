@@ -2,7 +2,7 @@ import type { Lang } from './LanguageContext'
 
 // All Landing copy in both languages. Icons, layout and plan highlighting stay
 // in the component; only text lives here so translations are easy to maintain.
-// Plan names (Starter/Pro/Agency/Enterprise) are product names — not translated.
+// Plan names (Starter/Pro/Agency/Enterprise) are product names, not translated.
 
 export interface LandingContent {
   nav: { features: string; how: string; pricing: string; faq: string; signIn: string; bookDemo: string }
@@ -33,17 +33,17 @@ const en: LandingContent = {
     titlePre: 'The command center for',
     titleHighlight: 'Web3 community managers',
     subtitle:
-      'Analytics, moderation, moderator payroll and task calendars for every community you run — unified in one dark, fast, premium workspace.',
+      'Analytics, moderation, moderator payroll and task calendars for every community you run, unified in one dark, fast, premium workspace.',
     cta: 'Sign in',
   },
   features: {
     eyebrow: 'Product',
     title: 'Everything a Web3 CM needs, in one panel',
     items: [
-      { title: 'Cross-platform analytics', body: 'Members, messages, growth and retention across Discord, Telegram, Zealy and Galxe — one dashboard, honest metrics, no vanity.' },
-      { title: 'Moderation log', body: 'Fake links, impersonation, phishing, rug warnings — every incident tracked per platform with export and audit trail.' },
+      { title: 'Cross-platform analytics', body: 'Members, messages, growth and retention across Discord, Telegram, Zealy and Galxe, one dashboard, honest metrics, no vanity.' },
+      { title: 'Moderation log', body: 'Fake links, impersonation, phishing, rug warnings, every incident tracked per platform with export and audit trail.' },
       { title: 'Moderator payroll', body: 'Configurable points per metric, auto-computed earnings, salary log and Payments section. Pay from what they actually did.' },
-      { title: 'KOL tracker', body: 'Track influencers by channel and campaign — Discord, Telegram, Twitter, YouTube — with performance signals.' },
+      { title: 'KOL tracker', body: 'Track influencers by channel and campaign, Discord, Telegram, Twitter, YouTube, with performance signals.' },
       { title: 'Tasks + calendar', body: 'Kanban board plus calendar view, drag-and-drop, per-moderator assignments, and a Notion-style daily recap.' },
       { title: 'Reports on autopilot', body: 'Branded one-pagers with exec summary, moderator activity and scheduled email delivery to your clients.' },
     ],
@@ -93,11 +93,11 @@ const en: LandingContent = {
     eyebrow: 'FAQ',
     title: 'Answers to what teams ask us first',
     items: [
-      { q: 'Why don’t you show prices?', a: 'Every community is different. A KOL agency with 8 clients has very different needs from a single foundation running one Discord. We quote you a number that fits — no surprise overage bills, no shelf-ware.' },
-      { q: 'Which platforms do you support today?', a: 'Discord, Telegram, Zealy, Galxe and Snapshot are wired in. X / Twitter data comes in via CSV import. Streaming platforms — Twitch, YouTube Live and Kick — are on the roadmap and visible in the Integrations panel as “Coming Soon”.' },
+      { q: 'Why don’t you show prices?', a: 'Every community is different. A KOL agency with 8 clients has very different needs from a single foundation running one Discord. We quote you a number that fits, no surprise overage bills, no shelf-ware.' },
+      { q: 'Which platforms do you support today?', a: 'Discord, Telegram, Zealy, Galxe and Snapshot are wired in. X / Twitter data comes in via CSV import. Streaming platforms, Twitch, YouTube Live and Kick, are on the roadmap and visible in the Integrations panel as “Coming Soon”.' },
       { q: 'How does the moderator payroll work?', a: 'You define a point value for each metric that matters (Discord messages, Telegram messages, X contents, likes, incidents resolved…), set a points-to-currency rate, and Catch computes what each moderator earned. Overrides and manual adjustments are always available.' },
-      { q: 'Do you store our community data?', a: 'Yes — aggregated metrics and metadata live on Supabase (Postgres) with row-level security. Message content is not stored beyond what’s needed for attribution and moderation logs.' },
-      { q: 'Can we white-label the reports for our clients?', a: 'Yes, on Agency and Enterprise. Custom branding on the PDF and the scheduled email — your logo, your domain.' },
+      { q: 'Do you store our community data?', a: 'Yes, aggregated metrics and metadata live on Supabase (Postgres) with row-level security. Message content is not stored beyond what’s needed for attribution and moderation logs.' },
+      { q: 'Can we white-label the reports for our clients?', a: 'Yes, on Agency and Enterprise. Custom branding on the PDF and the scheduled email, your logo, your domain.' },
       { q: 'Do you offer a trial?', a: 'We prefer a 30-minute onboarding call. You show us your community, we set up your workspace with your data live during the call. If it doesn’t click, you owe nothing.' },
     ],
   },
@@ -116,17 +116,17 @@ const pt: LandingContent = {
     titlePre: 'O centro de comando para',
     titleHighlight: 'gestores de comunidade Web3',
     subtitle:
-      'Analytics, moderação, pagamento de moderadores e calendários de tarefas para cada comunidade que você gerencia — tudo em um workspace único, escuro, rápido e premium.',
+      'Analytics, moderação, pagamento de moderadores e calendários de tarefas para cada comunidade que você gerencia, tudo em um workspace único, escuro, rápido e premium.',
     cta: 'Entrar',
   },
   features: {
     eyebrow: 'Produto',
     title: 'Tudo que um CM Web3 precisa, em um só painel',
     items: [
-      { title: 'Analytics multiplataforma', body: 'Membros, mensagens, crescimento e retenção no Discord, Telegram, Zealy e Galxe — um painel, métricas honestas, sem vaidade.' },
-      { title: 'Registro de moderação', body: 'Links falsos, falsificação de identidade, phishing, alertas de rug — cada incidente registrado por plataforma, com exportação e trilha de auditoria.' },
+      { title: 'Analytics multiplataforma', body: 'Membros, mensagens, crescimento e retenção no Discord, Telegram, Zealy e Galxe, um painel, métricas honestas, sem vaidade.' },
+      { title: 'Registro de moderação', body: 'Links falsos, falsificação de identidade, phishing, alertas de rug, cada incidente registrado por plataforma, com exportação e trilha de auditoria.' },
       { title: 'Folha de pagamento de moderadores', body: 'Pontos configuráveis por métrica, ganhos calculados automaticamente, histórico salarial e seção de Pagamentos. Pague pelo que eles realmente fizeram.' },
-      { title: 'Rastreador de KOLs', body: 'Acompanhe influenciadores por canal e campanha — Discord, Telegram, Twitter, YouTube — com sinais de desempenho.' },
+      { title: 'Rastreador de KOLs', body: 'Acompanhe influenciadores por canal e campanha, Discord, Telegram, Twitter, YouTube, com sinais de desempenho.' },
       { title: 'Tarefas + calendário', body: 'Quadro Kanban e visão de calendário, arrastar e soltar, atribuições por moderador e um recap diário no estilo Notion.' },
       { title: 'Relatórios no piloto automático', body: 'One-pagers com sua marca, resumo executivo, atividade dos moderadores e envio agendado por e-mail para seus clientes.' },
     ],
@@ -176,11 +176,11 @@ const pt: LandingContent = {
     eyebrow: 'FAQ',
     title: 'Respostas para o que os times perguntam primeiro',
     items: [
-      { q: 'Por que vocês não mostram os preços?', a: 'Cada comunidade é diferente. Uma agência de KOLs com 8 clientes tem necessidades bem distintas de uma única fundação com um Discord. A gente cota um valor que faz sentido — sem cobranças-surpresa por excedente, sem software na prateleira.' },
-      { q: 'Quais plataformas vocês suportam hoje?', a: 'Discord, Telegram, Zealy, Galxe e Snapshot já estão integrados. Os dados do X / Twitter entram por importação de CSV. Plataformas de streaming — Twitch, YouTube Live e Kick — estão no roadmap e aparecem no painel de Integrações como “Em breve”.' },
+      { q: 'Por que vocês não mostram os preços?', a: 'Cada comunidade é diferente. Uma agência de KOLs com 8 clientes tem necessidades bem distintas de uma única fundação com um Discord. A gente cota um valor que faz sentido, sem cobranças-surpresa por excedente, sem software na prateleira.' },
+      { q: 'Quais plataformas vocês suportam hoje?', a: 'Discord, Telegram, Zealy, Galxe e Snapshot já estão integrados. Os dados do X / Twitter entram por importação de CSV. Plataformas de streaming, Twitch, YouTube Live e Kick, estão no roadmap e aparecem no painel de Integrações como “Em breve”.' },
       { q: 'Como funciona o pagamento dos moderadores?', a: 'Você define um valor em pontos para cada métrica que importa (mensagens no Discord, mensagens no Telegram, conteúdos no X, curtidas, incidentes resolvidos…), define uma taxa de pontos para moeda, e o Catch calcula quanto cada moderador ganhou. Ajustes e alterações manuais estão sempre disponíveis.' },
-      { q: 'Vocês armazenam os dados da nossa comunidade?', a: 'Sim — métricas agregadas e metadados ficam no Supabase (Postgres) com segurança em nível de linha. O conteúdo das mensagens não é armazenado além do necessário para atribuição e registros de moderação.' },
-      { q: 'Podemos usar white-label nos relatórios para nossos clientes?', a: 'Sim, no Agency e no Enterprise. Marca personalizada no PDF e no e-mail agendado — seu logo, seu domínio.' },
+      { q: 'Vocês armazenam os dados da nossa comunidade?', a: 'Sim, métricas agregadas e metadados ficam no Supabase (Postgres) com segurança em nível de linha. O conteúdo das mensagens não é armazenado além do necessário para atribuição e registros de moderação.' },
+      { q: 'Podemos usar white-label nos relatórios para nossos clientes?', a: 'Sim, no Agency e no Enterprise. Marca personalizada no PDF e no e-mail agendado, seu logo, seu domínio.' },
       { q: 'Vocês oferecem período de teste?', a: 'Preferimos uma call de onboarding de 30 minutos. Você mostra sua comunidade, a gente monta seu workspace com seus dados ao vivo durante a call. Se não fizer sentido, você não deve nada.' },
     ],
   },

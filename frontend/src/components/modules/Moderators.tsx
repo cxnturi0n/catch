@@ -23,7 +23,7 @@ import { UpgradeModal } from '../UpgradeModal'
 import { useCurrentPlan } from '../../hooks/useCurrentPlan'
 import { computeQuota } from '../../lib/plan'
 
-// Reports tab removed for now (redundant) — to be repurposed elsewhere later.
+// Reports tab removed for now (redundant), to be repurposed elsewhere later.
 type Tab = 'directory' | 'analytics' | 'payments' | 'leaderboard'
 
 const TABS: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
@@ -39,7 +39,7 @@ function applyWarningPenalty(rating: number, severity: Warning['severity']): num
 }
 
 // The moderators table has no performance-stat columns, so those numbers
-// only ever live in this session's state — carry them across a persisted
+// only ever live in this session's state, carry them across a persisted
 // write instead of letting the DB round-trip reset them to defaults.
 function performanceStatsOf(m: Moderator) {
   return {
@@ -71,7 +71,7 @@ export function Moderators() {
   const { tier } = useCurrentPlan()
   const modQuota = computeQuota('moderators', moderators.length, tier)
 
-  // Workspace switched — reload this workspace's own moderator roster,
+  // Workspace switched, reload this workspace's own moderator roster,
   // seeding it from mock data the first time a workspace is opened.
   useEffect(() => {
     let cancelled = false
@@ -81,7 +81,7 @@ export function Moderators() {
       setTab('directory')
 
       if (!user) {
-        // Guest mode — never touch the API.
+        // Guest mode, never touch the API.
         if (!cancelled) setModerators(getSeedModerators(activeWorkspaceId))
         if (!cancelled) setLoading(false)
         return
@@ -122,7 +122,7 @@ export function Moderators() {
   const lastSyncLabel = lastSyncTimestamps.length > 0 ? formatRelativeTime(lastSyncTimestamps.sort().reverse()[0]) : null
 
   function openAdd() {
-    // Block creation past the plan cap — surface the upgrade modal instead
+    // Block creation past the plan cap, surface the upgrade modal instead
     // of the add form so the user sees exactly why they can't proceed.
     if (modQuota.status === 'reached') {
       setUpgradeOpen(true)
@@ -146,7 +146,7 @@ export function Moderators() {
     const wasEditing = editing !== null
 
     if (!user) {
-      // Guest mode — keep the moderator in memory only, no API write.
+      // Guest mode, keep the moderator in memory only, no API write.
       const local: Moderator = wasEditing ? m : { ...m, id: `local-${Date.now()}` }
       setModerators((prev) => (prev.some((x) => x.id === local.id) ? prev.map((x) => (x.id === local.id ? local : x)) : [local, ...prev]))
       closeAddModal()
@@ -172,7 +172,7 @@ export function Moderators() {
     const newWarnings = [...target.warnings, warning]
 
     if (!user) {
-      // Guest mode — update in-memory state only, no API write.
+      // Guest mode, update in-memory state only, no API write.
       setModerators((prev) =>
         prev.map((m) => (m.id === target.id ? { ...m, warnings: newWarnings, rating: applyWarningPenalty(m.rating, warning.severity) } : m)),
       )
@@ -198,7 +198,7 @@ export function Moderators() {
     const targetId = removeTarget.id
 
     if (!user) {
-      // Guest mode — remove from in-memory state only, no API write.
+      // Guest mode, remove from in-memory state only, no API write.
       setModerators((prev) => prev.filter((m) => m.id !== targetId))
       setRemoveTarget(null)
       showToast('Moderator removed')
@@ -256,7 +256,7 @@ export function Moderators() {
                 <div className="flex flex-col gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-white">Weekly schedule</h3>
-                    <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">Shift coverage — drag the divider to resize.</p>
+                    <p className="mt-0.5 text-[12px] text-[var(--text-secondary)]">Shift coverage, drag the divider to resize.</p>
                   </div>
                   <ScheduleTab moderators={moderators} />
                 </div>

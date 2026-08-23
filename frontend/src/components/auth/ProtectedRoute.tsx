@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
 // Guards direct navigation to /login or /signup while a session already
 // exists (e.g. a restored localStorage session). Captures isAuthenticated
-// only at mount rather than reacting to it live — login/signup flip
+// only at mount rather than reacting to it live, login/signup flip
 // isAuthenticated true *during* their own submit handler, which already
 // navigates explicitly; reacting to that here would race the explicit
 // navigate() call and could redirect to the wrong place mid-transition.
@@ -33,7 +33,7 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
   const [wasAuthenticatedOnMount, setWasAuthenticatedOnMount] = useState<boolean | null>(isLoading ? null : isAuthenticated)
 
-  // Session restoration is async — if we're still loading on first render,
+  // Session restoration is async, if we're still loading on first render,
   // capture the flag once loading finishes instead of at mount.
   if (wasAuthenticatedOnMount === null && !isLoading) {
     setWasAuthenticatedOnMount(isAuthenticated)

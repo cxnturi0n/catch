@@ -19,7 +19,7 @@ import type { WorkspaceId } from '../../../types'
 import { sectionMeta } from './sectionMeta'
 
 function formatBytes(n: number | null): string {
-  if (n == null) return '—'
+  if (n == null) return 'n/a'
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`
@@ -247,7 +247,7 @@ export function FolderView({
                 value={linkTitle}
                 onChange={(e) => setLinkTitle(e.target.value)}
                 className={inputClass}
-                placeholder="Brand kit — Notion"
+                placeholder="Brand kit, Notion"
                 required
               />
             </FormField>

@@ -6,8 +6,8 @@
 type GemVariant = 'crown' | 'corner'
 
 /**
- * `crown` — Step 1: the gem rises from the bottom edge, centred (hero).
- * `corner` — Step 2: a smaller gem cropped by the top-right corner (content-dense).
+ * `crown`, Step 1: the gem rises from the bottom edge, centred (hero).
+ * `corner`, Step 2: a smaller gem cropped by the top-right corner (content-dense).
  */
 export function SapphireGem({ variant }: { variant: GemVariant }) {
   return (

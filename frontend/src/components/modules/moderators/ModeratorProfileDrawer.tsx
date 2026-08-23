@@ -234,9 +234,9 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
   }
 
   const months = monthsInTeam(moderator?.startDate)
-  const primaryPlatform = platforms[0] ?? moderator?.platforms?.[0] ?? '—'
+  const primaryPlatform = platforms[0] ?? moderator?.platforms?.[0] ?? 'n/a'
   const roleLine = moderator
-    ? ['Moderator', primaryPlatform, moderator.timezone, `${pad(startH)}–${pad(endH)}`, months != null ? `${months} month${months === 1 ? '' : 's'} on the team` : null]
+    ? ['Moderator', primaryPlatform, moderator.timezone, `${pad(startH)}, ${pad(endH)}`, months != null ? `${months} month${months === 1 ? '' : 's'} on the team` : null]
         .filter(Boolean).join('  ·  ')
     : ''
 
@@ -367,7 +367,7 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
                       </div>
                     </div>
 
-                    {/* Dual-thumb slider (0–24h) */}
+                    {/* Dual-thumb slider (0 to 24h) */}
                     <div className="relative mx-1 mb-1 h-[18px]">
                       <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-white/[0.08]" />
                       <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
@@ -397,7 +397,7 @@ export function ModeratorProfileDrawer({ open, onClose, moderator, onUpdated, on
 
                     <div className="mt-4 flex items-center gap-2 font-mono text-[11.5px] text-[var(--text-secondary)]">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#3ee0a0]" />
-                      Shift {pad(startH)}–{pad(endH)} UTC · {days.length} day{days.length === 1 ? '' : 's'} / week · {weeklyH}h total.
+                      Shift {pad(startH)}, {pad(endH)} UTC · {days.length} day{days.length === 1 ? '' : 's'} / week · {weeklyH}h total.
                     </div>
                   </div>
                 </section>

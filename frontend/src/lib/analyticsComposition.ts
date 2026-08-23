@@ -53,7 +53,7 @@ export function isLevelMetric(cap: MetricCapability): boolean {
   return LEVEL_METRICS.has(cap.metric)
 }
 
-/** Platforms offered in the (multi-select) Platform filter — only those with data. */
+/** Platforms offered in the (multi-select) Platform filter, only those with data. */
 export function platformOptionsFor(ds: AnalyticsDataset | null): AnalyticsPlatformId[] {
   return ds ? availablePlatforms(ds) : []
 }

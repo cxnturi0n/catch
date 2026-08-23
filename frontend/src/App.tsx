@@ -23,7 +23,7 @@ const TwoFactor = lazy(() => import('./pages/TwoFactor').then((m) => ({ default:
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail })))
 const Members = lazy(() => import('./pages/Members').then((m) => ({ default: m.Members })))
 const AcceptInvite = lazy(() => import('./pages/AcceptInvite').then((m) => ({ default: m.AcceptInvite })))
-// Public discovery form — deliberately NOT wrapped in ProtectedRoute/MainLayout.
+// Public discovery form, deliberately NOT wrapped in ProtectedRoute/MainLayout.
 const DiscoveryForm = lazy(() => import('./pages/discovery/DiscoveryForm').then((m) => ({ default: m.DiscoveryForm })))
 
 const CatchAI = lazy(() => import('./components/modules/CatchAI').then((m) => ({ default: m.CatchAI })))
@@ -65,7 +65,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/landing" element={<Landing forcePublic />} />
-                {/* Public, standalone discovery form — no auth, no app layout. */}
+                {/* Public, standalone discovery form, no auth, no app layout. */}
                 <Route path="/discovery" element={<DiscoveryForm />} />
                 <Route path="/discovery/:slug" element={<DiscoveryForm />} />
                 <Route

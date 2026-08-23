@@ -16,7 +16,7 @@ function toDate(value: Instant): Date {
 /** Format an instant in `tz` with explicit Intl options. */
 export function formatInTz(value: Instant, tz: string, opts: Intl.DateTimeFormatOptions): string {
   const d = toDate(value)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return 'n/a'
   try {
     return new Intl.DateTimeFormat('en-GB', { timeZone: tz, ...opts }).format(d)
   } catch {
@@ -24,22 +24,22 @@ export function formatInTz(value: Instant, tz: string, opts: Intl.DateTimeFormat
   }
 }
 
-/** "14:05" — 24h wall-clock time in `tz`. */
+/** "14:05", 24h wall-clock time in `tz`. */
 export function formatTimeInTz(value: Instant, tz: string): string {
   return formatInTz(value, tz, { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-/** "6 Aug" — day + short month in `tz`. */
+/** "6 Aug", day + short month in `tz`. */
 export function formatDateInTz(value: Instant, tz: string): string {
   return formatInTz(value, tz, { day: 'numeric', month: 'short' })
 }
 
-/** "Wed 6 Aug" — weekday + day + short month in `tz`. */
+/** "Wed 6 Aug", weekday + day + short month in `tz`. */
 export function formatWeekdayDateInTz(value: Instant, tz: string): string {
   return formatInTz(value, tz, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-/** "6 Aug 2026, 14:05" — full date + time in `tz`. */
+/** "6 Aug 2026, 14:05", full date + time in `tz`. */
 export function formatDateTimeInTz(value: Instant, tz: string): string {
   return formatInTz(value, tz, {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -47,12 +47,12 @@ export function formatDateTimeInTz(value: Instant, tz: string): string {
   })
 }
 
-/** "14:05 GMT+2" — time plus the zone's current short offset. */
+/** "14:05 GMT+2", time plus the zone's current short offset. */
 export function formatTimeWithZone(value: Instant, tz: string): string {
   return `${formatTimeInTz(value, tz)} ${zoneShortOffset(tz, toDate(value))}`
 }
 
-/** Minutes past midnight (0–1439) of the wall clock in `tz` — for positioning on a day grid. */
+/** Minutes past midnight (0 to 1439) of the wall clock in `tz`, for positioning on a day grid. */
 export function wallMinutesInTz(value: Instant, tz: string): number {
   const d = toDate(value)
   if (Number.isNaN(d.getTime())) return 0

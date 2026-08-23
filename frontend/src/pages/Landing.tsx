@@ -93,7 +93,7 @@ function SiteHeader({ c }: { c: LandingContent }) {
             {c.nav.signIn}
           </Link>
           <a
-            href={contactHref('Catch — book a demo')}
+            href={contactHref('Catch, book a demo')}
             className="gradient-bar-emerald sheen rounded-lg px-4 py-2 font-semibold text-white shadow-[var(--glow-emerald)] transition-all hover:shadow-[var(--glow-emerald-strong)]"
           >
             {c.nav.bookDemo}
@@ -247,7 +247,7 @@ function Pricing({ c }: { c: LandingContent }) {
               <div className="mt-1 text-xs uppercase tracking-wider text-slate-500">{c.pricing.quoted}</div>
             </div>
             <a
-              href={contactHref(`Catch — ${p.name} plan inquiry`)}
+              href={contactHref(`Catch, ${p.name} plan inquiry`)}
               className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-all ${
                 p.highlight
                   ? 'gradient-bar-emerald sheen text-white shadow-[var(--glow-emerald)] hover:shadow-[var(--glow-emerald-strong)]'
@@ -356,13 +356,13 @@ function ContactCTA({ c }: { c: LandingContent }) {
         <p className="mx-auto mt-4 max-w-xl text-slate-300">{c.cta.body}</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <a
-            href={contactHref('Catch — book a demo')}
+            href={contactHref('Catch, book a demo')}
             className="gradient-bar-emerald sheen inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[var(--glow-emerald)] transition-all hover:shadow-[var(--glow-emerald-strong)]"
           >
             <Mail size={16} /> {c.cta.bookDemo}
           </a>
           <a
-            href={contactHref('Catch — general inquiry')}
+            href={contactHref('Catch, general inquiry')}
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.08]"
           >
             {CONTACT_EMAIL}
@@ -388,7 +388,7 @@ function SiteFooter({ c }: { c: LandingContent }) {
           <a href="#features" className="hover:text-white">{c.footer.features}</a>
           <a href="#pricing" className="hover:text-white">{c.footer.pricing}</a>
           <a href="#faq" className="hover:text-white">{c.footer.faq}</a>
-          <a href={contactHref('Catch — hello')} className="hover:text-white">{c.footer.contact}</a>
+          <a href={contactHref('Catch, hello')} className="hover:text-white">{c.footer.contact}</a>
         </div>
       </div>
     </footer>

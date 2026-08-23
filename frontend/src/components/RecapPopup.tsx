@@ -34,11 +34,11 @@ function writeLastShown(ts: number) {
   try {
     localStorage.setItem(RECAP_KEY, String(ts))
   } catch {
-    // localStorage unavailable — the recap will simply show again next mount.
+    // localStorage unavailable, the recap will simply show again next mount.
   }
 }
 
-/** Small delta pill — green up / red down / neutral. */
+/** Small delta pill, green up / red down / neutral. */
 function DeltaPill({ delta, pct }: { delta: number | null; pct: number | null }) {
   if (delta === null || delta === 0) return null
   const up = delta > 0
@@ -124,7 +124,7 @@ export function RecapPopup() {
   // ── Timing: show at most once every 2h, only on RETURN to the app ──────────
   // Runs on mount AND whenever the tab regains visibility/focus. Reads and
   // writes the timestamp synchronously so overlapping events can't double-fire.
-  // No setInterval/timer — staying continuously in the app never triggers it.
+  // No setInterval/timer, staying continuously in the app never triggers it.
   const maybeShow = useCallback(() => {
     if (openRef.current) return
     const last = readLastShown()
@@ -243,7 +243,7 @@ export function RecapPopup() {
   return (
     <AnimatePresence>
       {open && (
-        // Solid tint backdrop (no backdrop-filter — this can mount inside an
+        // Solid tint backdrop (no backdrop-filter, this can mount inside an
         // overflow-hidden layout ancestor, which turns filters black). Fully
         // opaque on mount; only the card animates, and via transform only.
         <motion.div
@@ -317,7 +317,7 @@ export function RecapPopup() {
                 </div>
               ) : hasRecap ? (
                 <div className="flex flex-col gap-4">
-                  {/* Catch AI narrative — the "message" from the assistant */}
+                  {/* Catch AI narrative, the "message" from the assistant */}
                   {insights && (
                     <div className="relative overflow-hidden rounded-xl border border-[rgba(120,170,255,0.22)] bg-gradient-to-br from-[rgba(47,124,246,0.10)] to-[rgba(52,211,153,0.05)] p-4">
                       <div className="flex items-center gap-2">
@@ -386,7 +386,7 @@ export function RecapPopup() {
                   )}
                 </div>
               ) : (
-                // Guest / no-data — gentle connect state (never fake numbers).
+                // Guest / no-data, gentle connect state (never fake numbers).
                 <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border-card)] bg-white/[0.015] px-6 py-12 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--accent-emerald)]">
                     <PlugZap size={22} />

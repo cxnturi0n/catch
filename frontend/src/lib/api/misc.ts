@@ -1,4 +1,4 @@
-import { api, isApiError } from './client'
+import { api, API_URL, ApiError, isApiError } from './client'
 import type { FeedbackEntry, KOL, ModerationIncident, NewFeedbackInput, WorkspaceId } from '../../types'
 import type { ReportSchedule } from '../reportSchedules'
 
@@ -253,4 +253,122 @@ export async function fetchAdminOverview<T>(): Promise<{ status: 'ok'; data: T }
     if (isApiError(err) && (err.status === 404 || err.status === 403)) return { status: 'forbidden' }
     return { status: 'error', error: err instanceof Error ? err.message : 'Failed' }
   }
+}
+
+// ---- Intelligence report (deterministic, server-built) ----------------------
+export type ReportPeriod = '7d' | '30d' | '90d' | 'custom'
+export type ReportScope = 'overview' | 'moderation'
+export type ReportPlatformFilter = 'discord' | 'telegram'
+export interface GenerateReportParams {
+  period: ReportPeriod
+  start?: string
+  end?: string
+  scope?: ReportScope
+  platform?: ReportPlatformFilter | null
+}
+export interface ReportMetric { id: string; label: string; value: number | null; prev: number | null; unit: 'count' | 'pct' | 'seconds' | 'hours' | 'usd' | 'ratio'; deltaPct: number | null }
+export interface ReportSeries { id: string; label: string; unit: ReportMetric['unit']; points: { t: string; v: number }[] }
+export interface ReportTable { id: string; label: string; columns: { key: string; label: string; unit?: ReportMetric['unit'] }[]; rows: Record<string, string | number | null>[] }
+export interface ReportInsight { id: string; sectionId: string; severity: 'info' | 'warning' | 'critical' | 'positive'; metricIds: string[]; text: string }
+export interface ReportSection {
+  id: string
+  title: string
+  state: 'ok' | 'no_data' | 'not_connected' | 'not_available'
+  stateReason: string | null
+  metrics: ReportMetric[]
+  series: ReportSeries[]
+  tables: ReportTable[]
+  insights: ReportInsight[]
+  note: string
+}
+export interface ReportRecommendation { id: string; title: string; rationale: string; priority: 'high' | 'medium' | 'low'; metricIds: string[]; insightIds: string[] }
+export interface IntelligenceReportDoc {
+  version: number
+  workspace: { id: string; name: string }
+  period: { kind: ReportPeriod; days: number; start: string; end: string; prevStart: string; prevEnd: string }
+  scope: ReportScope
+  platform: ReportPlatformFilter | null
+  generatedAt: string
+  coverage: { platforms: { platform: string; status: string; lastSyncAt: string | null; lastError: string | null }[]; daysWithData: number; periodDays: number; moderators: number }
+  summary: string[]
+  sections: ReportSection[]
+  recommendations: ReportRecommendation[]
+  methodology: string[]
+  narrativeSource: 'rules' | 'llm'
+  narrativeMeta: { reason: 'ok' | 'disabled' | 'quota' | 'failed' | 'gated' | 'partial'; llmSlots: number; totalSlots: number; model: string | null }
+}
+export interface IntelligenceReportListItem { id: string; periodKind: ReportPeriod; periodStart: string; periodEnd: string; narrativeSource: 'rules' | 'llm'; createdAt: string; report: IntelligenceReportDoc }
+
+export function generateIntelligenceReport(workspaceId: WorkspaceId, params: GenerateReportParams) {
+  return api<{ id: string; reused: boolean; report: IntelligenceReportDoc }>(`/workspaces/${workspaceId}/ai/report`, { method: 'POST', body: params })
+}
+export async function fetchIntelligenceReports(workspaceId: WorkspaceId): Promise<IntelligenceReportListItem[]> {
+  return (await api<{ reports: IntelligenceReportListItem[] }>(`/workspaces/${workspaceId}/ai/reports`)).reports
+}
+export function fetchIntelligenceReport(workspaceId: WorkspaceId, id: string) {
+  return api<{ id: string; report: IntelligenceReportDoc; createdAt: string }>(`/workspaces/${workspaceId}/ai/reports/${id}`)
+}
+
+// ---- Chat over workspace data (SSE) ------------------------------------------
+export interface ChatDone { type: 'done'; conversationId: string; messageId: string; content: string; tools: { name: string; ok: boolean }[]; quota: { used: number; limit: number } }
+export type ChatStreamEvent = { type: 'status'; text: string } | { type: 'tool'; name: string; ok: boolean } | ChatDone | { type: 'error'; code: string; message: string }
+
+/** Sends one message; resolves with the final answer, calling onEvent for progress. */
+export async function sendChatMessage(workspaceId: WorkspaceId, body: { conversationId: string | null; message: string }, onEvent?: (e: ChatStreamEvent) => void, signal?: AbortSignal): Promise<ChatDone> {
+  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/ai/chat`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  if (!res.ok || !res.body) {
+    let code = 'AI_FAILED'
+    let message = 'The assistant is unavailable.'
+    try {
+      const j = (await res.json()) as { error?: { code?: string; message?: string } }
+      code = j.error?.code ?? code
+      message = j.error?.message ?? message
+    } catch {
+      /* no body */
+    }
+    throw new ApiError(res.status, code, message)
+  }
+  const reader = res.body.getReader()
+  const dec = new TextDecoder()
+  let buf = ''
+  let done: ChatDone | null = null
+  for (;;) {
+    const { value, done: end } = await reader.read()
+    if (end) break
+    buf += dec.decode(value, { stream: true })
+    let idx: number
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const frame = buf.slice(0, idx)
+      buf = buf.slice(idx + 2)
+      const data = frame.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('')
+      if (!data) continue
+      let ev: ChatStreamEvent
+      try {
+        ev = JSON.parse(data) as ChatStreamEvent
+      } catch {
+        continue
+      }
+      onEvent?.(ev)
+      if (ev.type === 'done') done = ev
+      if (ev.type === 'error') throw new ApiError(502, ev.code, ev.message)
+    }
+  }
+  if (!done) throw new ApiError(502, 'AI_FAILED', 'No answer received.')
+  return done
+}
+
+export interface AiQuota { configured: boolean; model: string; used: number; limit: number; reports: { used: number; limit: number; model: string }; chat: { used: number; limit: number } }
+export function fetchAiQuota(workspaceId: WorkspaceId) {
+  return api<AiQuota>(`/workspaces/${workspaceId}/ai/quota`)
+}
+
+export interface ChatConversation { id: string; title: string | null; updatedAt: string }
+export async function fetchChatConversations(workspaceId: WorkspaceId): Promise<ChatConversation[]> {
+  return (await api<{ conversations: ChatConversation[] }>(`/workspaces/${workspaceId}/ai/conversations`)).conversations
+}
+export function fetchChatConversation(workspaceId: WorkspaceId, id: string) {
+  return api<ChatConversation & { messages: { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }[] }>(`/workspaces/${workspaceId}/ai/conversations/${id}`)
+}
+export function deleteChatConversation(workspaceId: WorkspaceId, id: string) {
+  return api<void>(`/workspaces/${workspaceId}/ai/conversations/${id}`, { method: 'DELETE' })
 }

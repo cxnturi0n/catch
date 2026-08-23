@@ -1,13 +1,13 @@
-// Client-side Bluesky listening — public AppView, no auth, no API key, CORS-enabled.
+// Client-side Bluesky listening, public AppView, no auth, no API key, CORS-enabled.
 // Docs: https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts
 //
 // Bluesky is an OPEN protocol (AT Protocol); its public search endpoint is
-// callable directly from the browser with a plain fetch — €0, no backend.
+// callable directly from the browser with a plain fetch, €0, no backend.
 
 const SEARCH_ENDPOINT = 'https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts'
 
 export interface BlueskyPost {
-  /** Stable key — the post's AT-URI. */
+  /** Stable key, the post's AT-URI. */
   uri: string
   handle: string
   displayName: string
@@ -21,7 +21,7 @@ export interface BlueskyPost {
   url: string
 }
 
-// Shape of the slice of the API response we consume. Kept permissive — the
+// Shape of the slice of the API response we consume. Kept permissive, the
 // public API can omit counts, avatars, or display names.
 interface RawPost {
   uri?: string

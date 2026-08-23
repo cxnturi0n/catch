@@ -36,7 +36,7 @@
   --text-secondary: #b4c6e6;
   --text-muted: #8194ba;
 
-  /* Unified sapphire glow scale — soft, medium, strong, plus a focus ring */
+  /* Unified sapphire glow scale, soft, medium, strong, plus a focus ring */
   --glow-purple: 0 0 30px rgba(37, 99, 235, 0.35);
   --glow-soft: 0 0 18px rgba(77, 159, 255, 0.18);
   --glow-emerald: 0 0 24px rgba(77, 159, 255, 0.30);
@@ -49,7 +49,7 @@
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
 
-  /* Surfaces — subtle raised fills layered over cards */
+  /* Surfaces, subtle raised fills layered over cards */
   --surface-1: rgba(255, 255, 255, 0.03);
   --surface-2: rgba(255, 255, 255, 0.06);
   --hairline: rgba(120, 170, 255, 0.16);
@@ -65,7 +65,7 @@
   --raise-hover-strong: rgba(255, 255, 255, 0.09);
   --shadow-card: 0 0 0 1px rgba(120, 170, 255, 0.04);
 
-  /* Ambient sapphire pools behind the shell — strong in night mode */
+  /* Ambient sapphire pools behind the shell, strong in night mode */
   --ambient-1: rgba(47, 124, 246, 0.20);
   --ambient-2: rgba(77, 159, 255, 0.16);
   --ambient-3: rgba(30, 58, 138, 0.20);
@@ -195,7 +195,7 @@ body {
     var(--bg-primary);
 }
 
-/* Frosted-glass surfaces — moderate translucency + blur, sapphire-tinted border.
+/* Frosted-glass surfaces, moderate translucency + blur, sapphire-tinted border.
    Used for cards, tables and popups so content reads as sitting on glass over
    the luminous backdrop. */
 .glass {
@@ -282,7 +282,7 @@ body {
   box-shadow: var(--glow-soft);
 }
 
-/* Skeleton loading — visible base tint with a sheen that sweeps via transform only.
+/* Skeleton loading, visible base tint with a sheen that sweeps via transform only.
    Never gates visibility: the block is always a soft surface even if frozen. */
 .skeleton {
   position: relative;
@@ -335,7 +335,7 @@ body {
   transform-origin: center;
 }
 
-/* Rise-in for content entrance. Transform-only — never animates opacity — so if
+/* Rise-in for content entrance. Transform-only, never animates opacity, so if
    the animation is frozen at 0% (hidden/non-compositing renderer) the content is
    still fully visible, just momentarily offset. Motion is an enhancement, never
    a gate on visibility. */
@@ -396,7 +396,7 @@ body {
 }
 
 /* Brand mark lighting. Night: the faceted C sits on a dark field, so it carries
-   its own outer glow. Day: no glow (it would haze on white) — the mark gets a
+   its own outer glow. Day: no glow (it would haze on white), the mark gets a
    projected shadow instead and its lower facet deepens for contrast. */
 .catch-mark {
   filter: drop-shadow(0 0 10px rgba(63, 123, 255, 0.45)) drop-shadow(0 0 22px rgba(47, 107, 255, 0.22));
@@ -404,7 +404,7 @@ body {
 [data-theme="day"] .catch-mark {
   filter: drop-shadow(0 6px 10px rgba(15, 25, 55, 0.28)) drop-shadow(0 1px 2px rgba(15, 25, 55, 0.18));
 }
-/* Catch Intelligence bar — part of the shell, not of any section's layout. It
+/* Catch Intelligence bar, part of the shell, not of any section's layout. It
    starts where the sidebar ends and runs to the page edge, re-flowing with the
    sidebar width (and any future right rail that sets --rail-w). */
 .catch-bar {
@@ -435,7 +435,7 @@ body {
    solid sapphire gradient instead so "Catch" stays legible. */
 [data-theme="day"] .text-shine {
   /* Use background-IMAGE (not the `background` shorthand) so background-clip:text
-     from the base rule is preserved — the shorthand would reset it and paint a
+     from the base rule is preserved, the shorthand would reset it and paint a
      solid blue block over the wordmark. Re-assert clip + transparent fill too. */
   background-image: linear-gradient(100deg, #1d6fe0 0%, #2563eb 50%, #1560c9 100%);
   background-size: auto;
@@ -450,7 +450,7 @@ body {
    Module files still carry hardcoded dark-on-dark utilities (text-white, slate
    text, a few #hex backgrounds) that were never converted to theme variables.
    Remap the common ones so day mode is READABLE without editing every module.
-   All scoped to [data-theme="day"] — night mode is untouched. */
+   All scoped to [data-theme="day"], night mode is untouched. */
 [data-theme="day"] .text-white {
   color: var(--text-primary);
 }
@@ -487,7 +487,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   "SAPPHIRE" RESTYLE — design-system foundation
+   "SAPPHIRE" RESTYLE, design-system foundation
    Additive layer: reusable tokens + utilities that realise the Sapphire handoff
    (glass cards, ambient background, mono KPIs). Theme-aware via the existing
    day/night token split; nothing here fabricates data or motion on data.
@@ -498,10 +498,10 @@ body {
   --sf-sapphire-deep: #2050e6;
   --sf-ice: #37d0f0;
   --sf-violet: #583ce8;
-  /* Card filament + hover border — night values (light glints on dark glass). */
+  /* Card filament + hover border, night values (light glints on dark glass). */
   --sf-edge-light: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
   --sf-hover-border: rgba(120, 160, 255, 0.35);
-  /* Partial glowing border: bright at the top-left, fading to nothing — only PART
+  /* Partial glowing border: bright at the top-left, fading to nothing, only PART
      of the ring lights up. Plus a soft glow behind the top filament. */
   --sf-glow-border: linear-gradient(145deg, rgba(140, 180, 255, 0.85), rgba(120, 170, 255, 0.16) 42%, rgba(120, 170, 255, 0) 70%);
   --sf-edge-glow: rgba(120, 170, 255, 0.5);
@@ -515,14 +515,14 @@ body {
 }
 :root[data-theme="day"],
 [data-theme="day"] {
-  /* On light glass a white filament vanishes — use a faint sapphire one instead. */
+  /* On light glass a white filament vanishes, use a faint sapphire one instead. */
   --sf-edge-light: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.22), transparent);
   --sf-hover-border: rgba(47, 107, 255, 0.4);
   --sf-glow-border: linear-gradient(145deg, rgba(47, 107, 255, 0.55), rgba(47, 107, 255, 0.1) 42%, rgba(47, 107, 255, 0) 70%);
   --sf-edge-glow: rgba(47, 107, 255, 0.22);
 }
 
-/* Ambient background — three slow, blurred lights + a vignette. The one signature
+/* Ambient background, three slow, blurred lights + a vignette. The one signature
    element. Lives inside .shell-ambient so the existing day-mode dimming applies.
    Transform-only animation (GPU); never animates blur or the gradient. */
 .sf-ambient { position: absolute; inset: 0; overflow: hidden; }
@@ -558,7 +558,7 @@ body {
 @keyframes sf-driftB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); } 50% { transform: translate3d(-7%, 5%, 0) scale(0.92); } }
 @keyframes sf-driftC { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(4%, 6%, 0); } }
 
-/* Card recipe — layered ON TOP of .glass (which supplies the theme-aware
+/* Card recipe, layered ON TOP of .glass (which supplies the theme-aware
    translucent fill + blur + border), adding the sapphire radius + a 1px light
    filament along the top edge, inset by the card padding. */
 .sf-card { position: relative; border-radius: 16px; }
@@ -600,7 +600,7 @@ body {
 }
 @keyframes sf-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
 
-/* Golden "elusive" glow border — a bright gold band that flows around a 1px
+/* Golden "elusive" glow border, a bright gold band that flows around a 1px
    masked ring, for the Upgrade-to-PRO CTA. */
 .sf-gold { position: relative; }
 .sf-gold::before {

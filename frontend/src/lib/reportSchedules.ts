@@ -4,7 +4,7 @@
 // construction: every function here talks to the API, so callers must only
 // invoke them for a signed-in user with a real (non-local) workspace. Backed by
 // migration 014 (owner RLS + grants). The UI stores schedules even before the
-// `send-report` edge function / RESEND_API_KEY exist — dispatch is a separate,
+// `send-report` edge function / RESEND_API_KEY exist, dispatch is a separate,
 // server-side concern.
 
 import type { ReportType } from './reportModel'
@@ -14,7 +14,7 @@ export type ReportCadence = 'off' | 'daily' | 'weekly'
 export interface ReportSchedule {
   reportType: ReportType
   cadence: ReportCadence
-  /** 0 (Sunday) – 6 (Saturday); only meaningful for the weekly cadence. */
+  /** 0 (Sunday), 6 (Saturday); only meaningful for the weekly cadence. */
   weekday: number
   /** "HH:MM" 24h, interpreted in `timezone`. */
   time: string

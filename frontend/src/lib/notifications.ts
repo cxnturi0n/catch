@@ -14,7 +14,7 @@ export interface AppNotification {
   severity: NotificationSeverity
   title: string
   detail: string
-  /** ISO timestamp the event is anchored to — used for ordering + relative time. */
+  /** ISO timestamp the event is anchored to, used for ordering + relative time. */
   at: string
 }
 

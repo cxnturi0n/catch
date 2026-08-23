@@ -73,7 +73,7 @@ export function ShiftPicker({ value, onChange }: ShiftPickerProps) {
             ))}
           </select>
         </FormField>
-        <FormField label={`Start (UTC) — ${formatHour(value.shiftStartUtc)}`}>
+        <FormField label={`Start (UTC), ${formatHour(value.shiftStartUtc)}`}>
           <input
             type="range"
             min={0}
@@ -84,7 +84,7 @@ export function ShiftPicker({ value, onChange }: ShiftPickerProps) {
             className="w-full accent-[var(--accent-emerald-bright)]"
           />
         </FormField>
-        <FormField label={`End (UTC) — ${formatHour(value.shiftEndUtc)}`}>
+        <FormField label={`End (UTC), ${formatHour(value.shiftEndUtc)}`}>
           <input
             type="range"
             min={0}

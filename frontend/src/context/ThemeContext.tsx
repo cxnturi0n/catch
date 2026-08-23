@@ -18,7 +18,7 @@ function readInitialTheme(): Theme {
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored === 'day' || stored === 'night') return stored
   } catch {
-    /* localStorage unavailable (private mode / SSR) — fall back to default */
+    /* localStorage unavailable (private mode / SSR), fall back to default */
   }
   return 'night'
 }

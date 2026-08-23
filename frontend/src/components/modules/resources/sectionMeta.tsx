@@ -21,7 +21,7 @@ interface SectionMeta {
   accent: string
 }
 
-/** Bright hex per tone — mirrors the Badge palette so tiles + pills stay cohesive. */
+/** Bright hex per tone, mirrors the Badge palette so tiles + pills stay cohesive. */
 const TONE_HEX: Record<BadgeTone, string> = {
   green: '#34d399',
   emerald: '#2dd4bf',

@@ -380,7 +380,7 @@ export function Security() {
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-[var(--text-secondary)]">
-              Each code works once. Store them somewhere safe — they are the only way in if you lose your authenticator.
+              Each code works once. Store them somewhere safe, they are the only way in if you lose your authenticator.
             </p>
             <ul className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--surface-2)] p-3 font-mono text-sm text-[var(--text-primary)]">
               {backupCodes.map((c) => (

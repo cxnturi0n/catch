@@ -6,7 +6,7 @@ import { logger } from '../logger.js'
 
 // Workspace change notifications over Postgres LISTEN/NOTIFY: any process
 // (API or worker) publishes after writing; the API fans out to SSE clients.
-// Payload is tiny on purpose — subscribers refetch through the normal routes.
+// Payload is tiny on purpose, subscribers refetch through the normal routes.
 
 const CHANNEL = 'catch_events'
 

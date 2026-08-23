@@ -4,7 +4,7 @@
 // Division of labour: this module assembles a snapshot from the SAME honest
 // sources the dashboards use (buildRecap for platform metrics, the moderator
 // roster for coverage), then asks the `status-update` edge function to write
-// the prose. Numbers are computed here and only here — the model never derives
+// the prose. Numbers are computed here and only here, the model never derives
 // one, so there is no second pipeline that could disagree with the dashboards.
 //
 // The AI text is an enhancement, never a dependency: any failure falls back to
@@ -107,7 +107,7 @@ export interface StatusSnapshot {
     lastSync: string | null
   }[]
   coverage: CoverageSummary
-  /** Platforms the workspace has NOT connected — the model must not invent them. */
+  /** Platforms the workspace has NOT connected, the model must not invent them. */
   notConnected: string[]
 }
 
@@ -173,7 +173,7 @@ export async function writeStatusUpdate(
     return {
       headline: insights.narrative.headline,
       body: insights.narrative.body,
-      watch: insights.alerts.slice(0, 3).map((a) => `${a.title} — ${a.detail}`),
+      watch: insights.alerts.slice(0, 3).map((a) => `${a.title}, ${a.detail}`),
       fromAI: false,
     }
   }

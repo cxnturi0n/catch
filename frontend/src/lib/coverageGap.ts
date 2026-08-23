@@ -154,13 +154,13 @@ export function coverageGapReportLines(result: CoverageGapResult): {
 } {
   if (!result.hasActivityData) {
     return {
-      summaryLine: 'Coverage analysis unavailable — no tracked community activity yet.',
+      summaryLine: 'Coverage analysis unavailable, no tracked community activity yet.',
       lines: ['Connect Discord or Telegram and let activity accumulate to map shift coverage.'],
     }
   }
   if (!result.hasShiftData) {
     return {
-      summaryLine: 'Coverage analysis unavailable — no moderator shift windows set.',
+      summaryLine: 'Coverage analysis unavailable, no moderator shift windows set.',
       lines: ['Assign each moderator a timezone and shift in Moderators → Roster to enable this.'],
     }
   }
@@ -174,12 +174,12 @@ export function coverageGapReportLines(result: CoverageGapResult): {
   const top = result.gaps.slice(0, 6)
   const lines = top.map(
     (g) =>
-      `${WEEKDAY_LABELS[g.weekday]} ${fmtHour(g.startHour)}–${fmtHour(g.endHour)} UTC — ${g.messages.toLocaleString()} msgs, no moderator on shift.`,
+      `${WEEKDAY_LABELS[g.weekday]} ${fmtHour(g.startHour)}, ${fmtHour(g.endHour)} UTC, ${g.messages.toLocaleString()} msgs, no moderator on shift.`,
   )
   const worst = top[0]
   return {
     summaryLine: `${result.uncoveredActiveHours} active hour${result.uncoveredActiveHours === 1 ? '' : 's'}/week fall outside moderator shift coverage.`,
     lines,
-    recommendation: `Consider adding coverage around ${WEEKDAY_LABELS[worst.weekday]} ${fmtHour(worst.startHour)}–${fmtHour(worst.endHour)} UTC — the busiest uncovered window — by shifting an existing moderator or hiring for that timezone.`,
+    recommendation: `Consider adding coverage around ${WEEKDAY_LABELS[worst.weekday]} ${fmtHour(worst.startHour)}, ${fmtHour(worst.endHour)} UTC, the busiest uncovered window, by shifting an existing moderator or hiring for that timezone.`,
   }
 }

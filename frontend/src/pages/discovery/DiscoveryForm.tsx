@@ -52,9 +52,9 @@ const EMPTY_ABOUT: AboutYou = { name: '', email: '', role: '' }
 // ── Answer-quality helpers ────────────────────────────────────────────────────
 // Kept as a gentle, non-blocking nudge (per the form's product intent): a
 // low-effort text answer never collapses to "answered", so it keeps prompting
-// for more — but the respondent can always skip or submit partially.
+// for more, but the respondent can always skip or submit partially.
 
-const MSG_TEXT_DETAIL = "I'd really appreciate a bit more detail — a full sentence helps a lot. 🙏"
+const MSG_TEXT_DETAIL = "I'd really appreciate a bit more detail, a full sentence helps a lot. 🙏"
 
 /** Heuristic: does this free-text answer look like a lazy skip (one word, keyboard mash, gibberish)? */
 function looksLowEffort(raw: string): boolean {
@@ -68,7 +68,7 @@ function looksLowEffort(raw: string): boolean {
   if (distinct.size < 3) return true
 
   // Vowel ratio over the whole answer catches keyboard-mash ("kdfhgkdwhk").
-  // NB: compute on the concatenated letters only for the RATIO — never run a
+  // NB: compute on the concatenated letters only for the RATIO, never run a
   // consonant-run regex across it, or word boundaries fake a run ("metricS SPReadsheet").
   const letters = text.toLowerCase().replace(/[^a-z]/g, '')
   if (letters.length >= 6) {
@@ -226,7 +226,7 @@ export function DiscoveryForm() {
       const draft: Draft = { variant, answers, skipped: Array.from(skipped), about, savedAt: Date.now() }
       localStorage.setItem(draftKey(slug), JSON.stringify(draft))
     } catch {
-      /* localStorage unavailable — non-fatal */
+      /* localStorage unavailable, non-fatal */
     }
   }, [variant, answers, skipped, about, slug])
 
@@ -363,7 +363,7 @@ export function DiscoveryForm() {
       setPhase('submitted')
     } else {
       setSubmitting(false)
-      setSubmitError("Couldn't submit — please try again.")
+      setSubmitError("Couldn't submit, please try again.")
     }
   }
 
@@ -432,7 +432,7 @@ function Scope({ theme = 'night', children }: { theme?: DfTheme; children: React
   )
 }
 
-// ── Step 1 — profile picker ───────────────────────────────────────────────────
+// ── Step 1, profile picker ───────────────────────────────────────────────────
 function PickerStep({
   greetingName,
   variant,
@@ -481,11 +481,11 @@ function PickerStep({
           Questions
         </h1>
         <p className="max-w-[560px] text-[15px] leading-[1.7] text-[var(--df-text-body)] [text-wrap:pretty]">
-          {greetingName ? `Hi ${greetingName} — ` : ''}I&apos;m building Catch, a command center for Web3 communities, and I
+          {greetingName ? `Hi ${greetingName}, ` : ''}I&apos;m building Catch, a command center for Web3 communities, and I
           want to understand how you actually work. Your answers go straight into the product.
         </p>
         <div className="flex flex-wrap items-center gap-2 font-mono text-[12px] font-medium text-[var(--df-text-muted)]">
-          <span>10–15 min</span>
+          <span>10 to 15 min</span>
           <Dot />
           <span>{QUESTIONS_PER_VARIANT} questions</span>
           <Dot />
@@ -558,7 +558,7 @@ function PickerStep({
   )
 }
 
-// ── Step 2 — question list ────────────────────────────────────────────────────
+// ── Step 2, question list ────────────────────────────────────────────────────
 function QuestionsStep(props: {
   variant: DiscoveryVariant
   activeVariant: ReturnType<typeof getVariant>
@@ -651,13 +651,13 @@ function QuestionsStep(props: {
             />
           ))}
 
-          {/* About you — optional, kept from the original intake */}
+          {/* About you, optional, kept from the original intake */}
           <div
             className="relative overflow-hidden rounded-[16px] border p-5"
             style={{ background: 'var(--df-surface-option)', borderColor: 'var(--df-option-border)' }}
           >
             <h3 className="text-[14px] font-semibold text-[var(--df-text-label)]">About you</h3>
-            <p className="mt-0.5 text-[12.5px] text-[var(--df-text-muted)]">Optional — so I can follow up if you&apos;re open to it.</p>
+            <p className="mt-0.5 text-[12.5px] text-[var(--df-text-muted)]">Optional, so I can follow up if you&apos;re open to it.</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <AboutField label="Name" value={about.name} autoComplete="name" onChange={(v) => onAbout((a) => ({ ...a, name: v }))} />
               <AboutField label="Email" value={about.email} type="email" autoComplete="email" onChange={(v) => onAbout((a) => ({ ...a, email: v }))} />
@@ -731,7 +731,7 @@ function QuestionRow({
   const { id, text, choices, platforms } = question
   const isStructured = Boolean(choices || platforms)
   // Derived (not event-driven): a text answer left with lazy/gibberish content
-  // gets a gentle nudge. Shows while active or after leaving it — never blocks.
+  // gets a gentle nudge. Shows while active or after leaving it, never blocks.
   const textValue = (answers[id] ?? '').trim()
   const nudge = !isStructured && state !== 'answered' && state !== 'skipped' && Boolean(textValue) && looksLowEffort(textValue)
 
@@ -859,7 +859,7 @@ function StructuredControls({
       {choices && <ChipRow fieldKey={id} choices={choices} multi={Boolean(multi)} value={value} onChange={onAnswer} onActivate={onActivate} />}
       {platforms && (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--df-text-faint)]">Platforms — select all that apply</span>
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--df-text-faint)]">Platforms, select all that apply</span>
           <ChipRow fieldKey={id + PLATFORMS_SUFFIX} choices={platforms} multi value={platformsValue} onChange={onAnswer} onActivate={onActivate} />
         </div>
       )}
@@ -1015,7 +1015,7 @@ function ThankYouScreen({ name, gem }: { name: string | null; gem: 'crown' | 'co
           </div>
           <h1 className="text-2xl font-bold text-[var(--df-text-primary)]">{name ? `Thank you, ${name}!` : 'Thank you!'}</h1>
           <p className="mt-3 text-sm leading-relaxed text-[var(--df-text-body)]">
-            Your answers came through — this genuinely helps shape Catch. I appreciate the time.
+            Your answers came through, this genuinely helps shape Catch. I appreciate the time.
           </p>
           <div className="mt-8 rounded-2xl border p-5" style={{ background: 'var(--df-surface-option)', borderColor: 'var(--df-option-border)' }}>
             <p className="text-sm text-[var(--df-text-body)]">Want to see Catch in action?</p>

@@ -5,9 +5,9 @@ Fastify API + background worker sharing one codebase and one Docker image.
 ```
 src/
   api.ts        HTTP entrypoint (npm run start:api)
-  worker.ts     background jobs entrypoint (npm run start:worker) — pg-boss scheduler
+  worker.ts     background jobs entrypoint (npm run start:worker), pg-boss scheduler
   app.ts        Fastify instance: plugins, error envelope, routes
-  config.ts     env validation (Zod) — the only place process.env is read
+  config.ts     env validation (Zod), the only place process.env is read
   logger.ts     pino, redacts secrets
   auth/         Better Auth instance (email+password, OAuth, 2FA) + security audit log
   email/        transactional email (Resend; logged to an in-memory outbox when unset)
@@ -68,11 +68,11 @@ and session revocations.
 
 ## Authorization model
 
-- `requireSession` / `requireVerifiedEmail` — authenticated user.
-- `requireWorkspace` — loads `/workspaces/:workspaceId` **and** the caller's
+- `requireSession` / `requireVerifiedEmail`, authenticated user.
+- `requireWorkspace`, loads `/workspaces/:workspaceId` **and** the caller's
   membership in one query; non-members receive 404 so ids cannot be probed.
   `requireWorkspaceRole(['owner','admin'])` adds a role check.
-- `requireAdmin` — `user.role = 'admin'` (database column; no hard-coded emails).
+- `requireAdmin`, `user.role = 'admin'` (database column; no hard-coded emails).
 - Plan quotas (`lib/quota.ts`) are enforced in services inside a transaction
   with an advisory lock; the SPA only displays them.
 - Third-party secrets (`integrations.credentials_enc`, report webhook/token)
@@ -85,7 +85,7 @@ and session revocations.
 ## Background worker
 
 `npm run dev:worker` / `node dist/worker.js`. pg-boss (schema `pgboss`) on the same
-PostgreSQL — no Redis.
+PostgreSQL, no Redis.
 
 | Queue | When | What |
 |---|---|---|
