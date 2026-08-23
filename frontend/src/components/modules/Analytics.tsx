@@ -1185,9 +1185,9 @@ function LiveAnalyticsView({
         </div>
       </div>
 
-      {/* Collapsible sections — General first, then one per connected platform.
-          All closed by default; opening one reveals its metrics split into
-          time-series (left) and current-value metrics (right). */}
+      {/* Collapsible sections — one per connected platform. All closed by
+          default; opening one reveals its metrics split into time-series
+          (left) and current-value metrics (right). */}
       {displayItems.length > 0 && <PlatformSections items={displayItems} window={win} />}
 
       {displayItems.length === 0 && (
@@ -1277,8 +1277,8 @@ function MetricTile({ item }: { item: DisplayItem }) {
 }
 
 /**
- * The Cards view: a list of collapsible sections — "General" first, then one per
- * platform that actually has data. Every section is closed by default. Inside,
+ * The Cards view: one collapsible section per platform that actually has
+ * data. Every section is closed by default. Inside,
  * the metrics split in two: time-series charts on the left, current-value
  * metrics (those without a real temporal series) on the right.
  */
@@ -1294,16 +1294,12 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
     list.push(item)
     byPlatform.set(item.cap.platform, list)
   }
-  const generalItems = byPlatform.get('aggregated') ?? []
   const platforms = [
     ...ORDER.filter((p) => byPlatform.has(p)),
     ...[...byPlatform.keys()].filter((p) => p !== 'aggregated' && !ORDER.includes(p)),
   ]
 
-  const sections: { key: string; label: string; items: DisplayItem[]; general?: boolean }[] = [
-    { key: 'general', label: 'General', items: generalItems, general: true },
-    ...platforms.map((p) => ({ key: p, label: platformLabel(p), items: byPlatform.get(p) ?? [] })),
-  ]
+  const sections: { key: string; label: string; items: DisplayItem[] }[] = platforms.map((p) => ({ key: p, label: platformLabel(p), items: byPlatform.get(p) ?? [] }))
 
   return (
     <div className="flex flex-col gap-3">
@@ -1325,9 +1321,7 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />
               <span className="text-sm font-semibold text-white">{section.label}</span>
               <span className="font-mono text-[11px] text-[var(--text-muted)]">
-                {section.general
-                  ? `${platforms.length} platform${platforms.length === 1 ? '' : 's'} · ${WINDOW_META[win].label.toLowerCase()}`
-                  : `${count} metric${count === 1 ? '' : 's'}`}
+                {`${count} metric${count === 1 ? '' : 's'} · ${WINDOW_META[win].label.toLowerCase()}`}
               </span>
               <ChevronDown
                 size={16}
@@ -1337,18 +1331,8 @@ function PlatformSections({ items, window: win }: { items: DisplayItem[]; window
 
             {isOpen && (
               <div className="border-t border-[var(--border-card)] p-4">
-                {section.general && (
-                  <p className="mb-4 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                    Tracking {items.length} real metric{items.length === 1 ? '' : 's'} across{' '}
-                    {platforms.map(platformLabel).join(', ') || 'no platform yet'} over the {WINDOW_META[win].label.toLowerCase()}.
-                    Only metrics your integrations actually report are shown.
-                  </p>
-                )}
-
                 {count === 0 ? (
-                  <p className="text-[13px] text-[var(--text-secondary)]">
-                    No aggregated metric for this selection — open a platform section below.
-                  </p>
+                  <p className="text-[13px] text-[var(--text-secondary)]">No metric for this selection yet.</p>
                 ) : (
                   <div className={`flex flex-col gap-4 ${charts.length > 0 && tiles.length > 0 ? 'lg:flex-row' : ''}`}>
                     {/* LEFT — metrics over time */}
