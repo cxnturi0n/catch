@@ -51,6 +51,24 @@ export function CatchBar() {
   const [messages, setMessages] = useState<Msg[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // Publish the bar's rendered height (input row + open answer panel) as a
+  // CSS variable so page content can pad itself and never hide under it.
+  useEffect(() => {
+    const el = rootRef.current
+    const root = document.documentElement
+    if (!el) {
+      root.style.setProperty('--catch-bar-h', '0px')
+      return
+    }
+    const ro = new ResizeObserver(([entry]) => root.style.setProperty('--catch-bar-h', `${Math.ceil(entry?.contentRect.height ?? 0)}px`))
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      root.style.setProperty('--catch-bar-h', '0px')
+    }
+  }, [pathname])
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const section = sectionName(pathname)
@@ -92,7 +110,7 @@ export function CatchBar() {
   return (
     // Span is CSS-driven (.catch-bar) so it can be responsive: full width on
     // mobile, offset by the sidebar from lg up.
-    <div className="catch-bar pointer-events-none fixed bottom-0 z-40 print:hidden">
+    <div ref={rootRef} className="catch-bar pointer-events-none fixed bottom-0 z-40 print:hidden">
       <div className="pointer-events-auto px-4 pb-4 sm:px-6">
         {/* Answer panel — opaque, sits above the bar */}
         <AnimatePresence>
