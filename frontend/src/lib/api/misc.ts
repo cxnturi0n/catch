@@ -1,4 +1,4 @@
-import { api, isApiError } from './client'
+import { api, API_URL, ApiError, isApiError } from './client'
 import type { FeedbackEntry, KOL, ModerationIncident, NewFeedbackInput, WorkspaceId } from '../../types'
 import type { ReportSchedule } from '../reportSchedules'
 
@@ -307,4 +307,57 @@ export async function fetchIntelligenceReports(workspaceId: WorkspaceId): Promis
 }
 export function fetchIntelligenceReport(workspaceId: WorkspaceId, id: string) {
   return api<{ id: string; report: IntelligenceReportDoc; createdAt: string }>(`/workspaces/${workspaceId}/ai/reports/${id}`)
+}
+
+// ---- Chat over workspace data (SSE) ------------------------------------------
+export interface ChatDone { type: 'done'; conversationId: string; messageId: string; content: string; tools: { name: string; ok: boolean }[]; quota: { used: number; limit: number } }
+export type ChatStreamEvent = { type: 'status'; text: string } | { type: 'tool'; name: string; ok: boolean } | ChatDone | { type: 'error'; code: string; message: string }
+
+/** Sends one message; resolves with the final answer, calling onEvent for progress. */
+export async function sendChatMessage(workspaceId: WorkspaceId, body: { conversationId: string | null; message: string }, onEvent?: (e: ChatStreamEvent) => void, signal?: AbortSignal): Promise<ChatDone> {
+  const res = await fetch(`${API_URL}/workspaces/${workspaceId}/ai/chat`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  if (!res.ok || !res.body) {
+    let code = 'AI_FAILED'
+    let message = 'The assistant is unavailable.'
+    try {
+      const j = (await res.json()) as { error?: { code?: string; message?: string } }
+      code = j.error?.code ?? code
+      message = j.error?.message ?? message
+    } catch {
+      /* no body */
+    }
+    throw new ApiError(res.status, code, message)
+  }
+  const reader = res.body.getReader()
+  const dec = new TextDecoder()
+  let buf = ''
+  let done: ChatDone | null = null
+  for (;;) {
+    const { value, done: end } = await reader.read()
+    if (end) break
+    buf += dec.decode(value, { stream: true })
+    let idx: number
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const frame = buf.slice(0, idx)
+      buf = buf.slice(idx + 2)
+      const data = frame.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('')
+      if (!data) continue
+      let ev: ChatStreamEvent
+      try {
+        ev = JSON.parse(data) as ChatStreamEvent
+      } catch {
+        continue
+      }
+      onEvent?.(ev)
+      if (ev.type === 'done') done = ev
+      if (ev.type === 'error') throw new ApiError(502, ev.code, ev.message)
+    }
+  }
+  if (!done) throw new ApiError(502, 'AI_FAILED', 'No answer received.')
+  return done
+}
+
+export interface AiQuota { configured: boolean; model: string; used: number; limit: number; reports: { used: number; limit: number; model: string }; chat: { used: number; limit: number } }
+export function fetchAiQuota(workspaceId: WorkspaceId) {
+  return api<AiQuota>(`/workspaces/${workspaceId}/ai/quota`)
 }

@@ -14,6 +14,8 @@ export interface ChatAction {
 export interface ChatReply {
   content: string
   actions?: ChatAction[]
+  /** How the answer was produced; the bar hands 'kb'/'fallback' to the server assistant when available. */
+  kind?: 'setup' | 'nav' | 'kb' | 'fallback'
 }
 
 // Navigation targets — "go to / open / show <x>" or a bare keyword jumps here.
@@ -217,7 +219,7 @@ export function respond(input: string): ChatReply {
 
   // A workspace description wins over keyword routing: it's the onboarding path.
   const plan = parseSetupPrompt(input)
-  if (plan) return setupReply(plan)
+  if (plan) return { ...setupReply(plan), kind: 'setup' }
 
   // Explicit navigation intent.
   const wantsNav = /\b(vai|apri|mostra|porta(mi)?|va(i)? a|open|go to|show|take me)\b/.test(text)
@@ -239,20 +241,21 @@ export function respond(input: string): ChatReply {
   }
 
   if (wantsNav && bestNav) {
-    return { content: `Taking you to **${bestNav.label}**.`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }] }
+    return { content: `Taking you to **${bestNav.label}**.`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }], kind: 'nav' }
   }
   if (bestKb && bestKbScore >= bestNavScore) {
-    return { content: bestKb.answer, actions: bestKb.actions }
+    return { content: bestKb.answer, actions: bestKb.actions, kind: 'kb' }
   }
   if (bestNav) {
-    return { content: `Want to open **${bestNav.label}**?`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }] }
+    return { content: `Want to open **${bestNav.label}**?`, actions: [{ label: `Open ${bestNav.label}`, to: bestNav.to }], kind: 'kb' }
   }
   if (GREETING.test(input.trim())) {
-    return { content: KB[0].answer, actions: KB[0].actions } // help
+    return { content: KB[0].answer, actions: KB[0].actions, kind: 'kb' } // help
   }
   return {
     content:
       'I don’t have a ready answer. I can: take you to a section ("open moderators"), explain what a platform tracks ("what does Telegram do?") or how to connect it ("how do I connect Discord?").',
+    kind: 'fallback',
   }
 }
 

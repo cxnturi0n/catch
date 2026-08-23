@@ -1,29 +1,70 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Maximize2, X } from 'lucide-react'
 import { CatchMark } from './brand/CatchMark'
 import { CRUMB } from './layout/TopBar'
 import { respond, type ChatAction } from '../lib/chatEngine'
+import { useWorkspace } from '../context/WorkspaceContext'
+import { fetchAiQuota, sendChatMessage } from '../lib/api/misc'
 
 interface Msg {
   id: number
   role: 'user' | 'assistant'
   content: string
   actions?: ChatAction[]
+  /** Progress text while the server assistant is working. */
+  pending?: string
+  source?: 'local' | 'ai'
 }
 
 let nextId = 1
 
-/** Renders the engine's light markup: **bold** and newlines. */
-function renderContent(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+/** Inline markup: **bold** and `code`. Everything else is plain text (no HTML, no links). */
+function renderInline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') ? (
       <strong key={i} className="font-semibold text-[var(--text-primary)]">{part.slice(2, -2)}</strong>
+    ) : part.startsWith('`') && part.endsWith('`') ? (
+      <code key={i} className="rounded bg-white/[0.06] px-1 font-mono text-[12px]">{part.slice(1, -1)}</code>
     ) : (
       <span key={i}>{part}</span>
     ),
   )
+}
+
+/** Block markup the assistant is allowed to use: paragraphs, bullets, numbered lists, ### headings. */
+function renderContent(text: string) {
+  const lines = text.split('\n')
+  const out: React.ReactNode[] = []
+  let list: { ordered: boolean; items: string[] } | null = null
+  const flush = () => {
+    if (!list) return
+    const items = list.items.map((it, i) => <li key={i}>{renderInline(it)}</li>)
+    out.push(list.ordered ? <ol key={out.length} className="my-1 list-decimal space-y-0.5 pl-5">{items}</ol> : <ul key={out.length} className="my-1 list-disc space-y-0.5 pl-5">{items}</ul>)
+    list = null
+  }
+  for (const raw of lines) {
+    const line = raw.trimEnd()
+    const bullet = /^\s*[-*•]\s+(.*)$/.exec(line)
+    const num = /^\s*\d+[.)]\s+(.*)$/.exec(line)
+    if (bullet || num) {
+      const ordered = !!num
+      if (!list || list.ordered !== ordered) {
+        flush()
+        list = { ordered, items: [] }
+      }
+      list.items.push((bullet ?? num)![1]!)
+      continue
+    }
+    flush()
+    if (!line.trim()) continue
+    const h = /^#{1,6}\s+(.*)$/.exec(line)
+    if (h) out.push(<div key={out.length} className="mt-1.5 font-semibold text-[var(--text-primary)]">{renderInline(h[1]!)}</div>)
+    else out.push(<div key={out.length}>{renderInline(line)}</div>)
+  }
+  flush()
+  return out
 }
 
 /** The section you're standing in, so the bar can address it by name. */
@@ -50,7 +91,29 @@ export function CatchBar() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Msg[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
+  const { activeWorkspaceId } = useWorkspace()
+  const [aiReady, setAiReady] = useState(false)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Is the server assistant available for this workspace? (AI configured on
+  // the deployment and a real workspace selected.) Otherwise the local engine
+  // answers everything, as before.
+  useEffect(() => {
+    setConversationId(null)
+    if (!activeWorkspaceId || activeWorkspaceId.startsWith('local-')) {
+      setAiReady(false)
+      return
+    }
+    let cancelled = false
+    fetchAiQuota(activeWorkspaceId)
+      .then((q) => !cancelled && setAiReady(q.configured))
+      .catch(() => !cancelled && setAiReady(false))
+    return () => {
+      cancelled = true
+    }
+  }, [activeWorkspaceId])
   const rootRef = useRef<HTMLDivElement>(null)
 
   // Publish the bar's rendered height (input row + open answer panel) as a
@@ -89,15 +152,33 @@ export function CatchBar() {
 
   function ask(text: string) {
     const q = text.trim()
-    if (!q) return
-    const reply = respond(q)
-    setMessages((m) => [
-      ...m,
-      { id: nextId++, role: 'user', content: q },
-      { id: nextId++, role: 'assistant', content: reply.content, actions: reply.actions },
-    ])
+    if (!q || busy) return
     setInput('')
     setPanelOpen(true)
+    const local = respond(q)
+    // Navigation and workspace setup stay instant and local; questions about
+    // data or how Catch works go to the server assistant when available.
+    if (!aiReady || local.kind === 'nav' || local.kind === 'setup') {
+      setMessages((m) => [...m, { id: nextId++, role: 'user', content: q }, { id: nextId++, role: 'assistant', content: local.content, actions: local.actions, source: 'local' }])
+      return
+    }
+    const pendingId = nextId++
+    setMessages((m) => [...m, { id: nextId++, role: 'user', content: q }, { id: pendingId, role: 'assistant', content: '', pending: 'Thinking…', source: 'ai' }])
+    setBusy(true)
+    const patch = (p: Partial<Msg>) => setMessages((m) => m.map((x) => (x.id === pendingId ? { ...x, ...p } : x)))
+    sendChatMessage(activeWorkspaceId, { conversationId, message: q }, (e) => {
+      if (e.type === 'status') patch({ pending: e.text + '…' })
+    })
+      .then((done) => {
+        setConversationId(done.conversationId)
+        patch({ content: done.content, pending: undefined })
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'The assistant is unavailable.'
+        // Quota or outage: fall back to the local engine so the bar still helps.
+        patch({ content: `${msg}\n\n${local.content}`, actions: local.actions, pending: undefined, source: 'local' })
+      })
+      .finally(() => setBusy(false))
   }
 
   function expand() {
@@ -158,7 +239,13 @@ export function CatchBar() {
                             : 'border border-[var(--border-card)] bg-white/[0.03] text-[var(--text-secondary)]'
                         }`}
                       >
-                        {renderContent(m.content)}
+                        {m.pending ? (
+                          <span className="inline-flex items-center gap-2 text-[var(--text-muted)]">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:rgba(230,184,77,0.9)]" /> {m.pending}
+                          </span>
+                        ) : (
+                          renderContent(m.content)
+                        )}
                       </div>
                       {m.actions && m.actions.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
