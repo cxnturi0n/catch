@@ -31,7 +31,8 @@ export interface BuildOptions {
   callModel?: CallModel
 }
 
-export async function buildReport(o: BuildOptions): Promise<{ report: Report; id: string; reused: boolean }> {
+/** Deterministic part only: metrics → sections → rule narrative. No storage, no model. */
+export async function composeReport(o: Pick<BuildOptions, 'workspace' | 'period' | 'range' | 'scope' | 'platform' | 'now'>) {
   const now = o.now ?? new Date()
   const scope = o.scope ?? 'overview'
   const platform = o.platform ?? null
@@ -59,6 +60,12 @@ export async function buildReport(o: BuildOptions): Promise<{ report: Report; id
     narrativeSource: 'rules' as Report['narrativeSource'],
     narrativeMeta: { reason: 'disabled', llmSlots: 0, totalSlots: 2 + ordered.filter((s) => s.state === 'ok').length, model: null } as Report['narrativeMeta'],
   }
+  return { body, cur, prev, scope, sections, data }
+}
+
+export async function buildReport(o: BuildOptions): Promise<{ report: Report; id: string; reused: boolean }> {
+  const now = o.now ?? new Date()
+  const { body, cur, scope } = await composeReport(o)
   // Hash covers the deterministic part only (rules narrative, no generatedAt),
   // so an unchanged dataset maps to one stored report per narrative source.
   const inputHash = createHash('sha256').update(JSON.stringify({ ...body, narrativeMeta: undefined })).digest('hex')

@@ -6,11 +6,12 @@ import { and, count, eq, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import { config } from '../../config.js'
 import { db } from '../../db/client.js'
-import { usageEvents } from '../../db/schema/index.js'
+import { integrations, usageEvents } from '../../db/schema/index.js'
 import { HttpError } from '../../lib/errors.js'
 import type { PlanTier } from '../../lib/quota.js'
 import { buildReport, getReport, listReports } from './report/build.js'
 import { aiEnabled, REPORT_MONTHLY_QUOTA, reportModel, reportNarrativesThisMonth } from './llm.js'
+import { CHAT_DAILY_QUOTA, CHAT_EVENT, chatTurn, deleteConversation, getConversation, listConversations } from './chat/run.js'
 import { PERIOD_KINDS, REPORT_PLATFORMS, SCOPES } from './report/template.js'
 
 // Catch Intelligence — the only generative call in the product. The model
@@ -38,10 +39,10 @@ export const DAILY_QUOTA: Record<PlanTier, number> = { starter: 10, pro: 50, age
 const MAX_SNAPSHOT_BYTES = 32 * 1024
 const EVENT = 'ai_status_update'
 
-export async function usedToday(userId: string): Promise<number> {
+export async function usedToday(userId: string, eventType = EVENT): Promise<number> {
   const since = new Date()
   since.setUTCHours(0, 0, 0, 0)
-  const [row] = await db.select({ n: count() }).from(usageEvents).where(and(eq(usageEvents.userId, userId), eq(usageEvents.eventType, EVENT), gte(usageEvents.occurredAt, since)))
+  const [row] = await db.select({ n: count() }).from(usageEvents).where(and(eq(usageEvents.userId, userId), eq(usageEvents.eventType, eventType), gte(usageEvents.occurredAt, since)))
   return row?.n ?? 0
 }
 
@@ -52,7 +53,8 @@ export async function aiRoutes(app: FastifyInstance) {
     const plan = (req.auth!.user.plan ?? 'starter') as PlanTier
     const used = await usedToday(req.auth!.user.id)
     const reportsUsed = await reportNarrativesThisMonth(req.workspace.id)
-    return { used, limit: DAILY_QUOTA[plan], configured: aiEnabled(), model: config.LLM_MODEL, reports: { used: reportsUsed, limit: REPORT_MONTHLY_QUOTA[plan], model: reportModel() } }
+    const chatUsed = await usedToday(req.auth!.user.id, CHAT_EVENT)
+    return { used, limit: DAILY_QUOTA[plan], configured: aiEnabled(), model: config.LLM_MODEL, reports: { used: reportsUsed, limit: REPORT_MONTHLY_QUOTA[plan], model: reportModel() }, chat: { used: chatUsed, limit: CHAT_DAILY_QUOTA[plan] } }
   })
 
   r.post(
@@ -136,5 +138,52 @@ export async function aiRoutes(app: FastifyInstance) {
     const row = await getReport(req.workspace.id, req.params.id)
     if (!row) throw new HttpError(404, 'NOT_FOUND', 'Report not found')
     return { id: row.id, report: row.report, narrativeSource: row.narrativeSource, createdAt: row.createdAt }
+  })
+
+  // ---- Chat over workspace data (read-only tools). SSE: status events while
+  // tools run, then one `done` event with the answer.
+  const convParams = z.object({ workspaceId: z.uuid(), id: z.uuid() })
+  r.post(
+    '/workspaces/:workspaceId/ai/chat',
+    { preHandler: app.requireWorkspace, config: { rateLimit: { max: 20, timeWindow: '1 minute' } }, schema: { params: z.object({ workspaceId: z.uuid() }), body: z.object({ conversationId: z.uuid().nullable().default(null), message: z.string().min(1).max(2000) }) } },
+    async (req, reply) => {
+      if (!aiEnabled()) throw new HttpError(503, 'AI_NOT_CONFIGURED', 'AI chat is not configured on this deployment')
+      const plan = (req.auth!.user.plan ?? 'starter') as PlanTier
+      const used = await usedToday(req.auth!.user.id, CHAT_EVENT)
+      if (used >= CHAT_DAILY_QUOTA[plan]) throw new HttpError(429, 'AI_QUOTA_EXCEEDED', `Daily limit of ${CHAT_DAILY_QUOTA[plan]} chat messages reached for the ${plan} plan`)
+      const platforms = await db.select({ platform: integrations.platform }).from(integrations).where(and(eq(integrations.workspaceId, req.workspace.id), eq(integrations.status, 'connected')))
+
+      reply.raw.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
+      const send = (e: unknown) => reply.raw.write(`data: ${JSON.stringify(e)}\n\n`)
+      const heartbeat = setInterval(() => reply.raw.write(': ping\n\n'), 10_000)
+      try {
+        const out = await chatTurn({
+          workspace: { id: req.workspace.id, name: req.workspace.name, platforms: platforms.map((p) => p.platform) },
+          user: { id: req.auth!.user.id, plan },
+          conversationId: req.body.conversationId,
+          message: req.body.message,
+          onEvent: send,
+        })
+        send({ type: 'done', conversationId: out.conversationId, messageId: out.messageId, content: out.content, tools: out.tools.map((t) => ({ name: t.name, ok: t.ok })), quota: { used: used + 1, limit: CHAT_DAILY_QUOTA[plan] } })
+      } catch (err) {
+        req.log.error({ err }, 'chat turn failed')
+        send({ type: 'error', code: 'AI_FAILED', message: 'The assistant could not answer. Try again.' })
+      } finally {
+        clearInterval(heartbeat)
+        reply.raw.end()
+      }
+      return reply
+    },
+  )
+
+  r.get('/workspaces/:workspaceId/ai/conversations', { preHandler: app.requireWorkspace, schema: { params: z.object({ workspaceId: z.uuid() }) } }, async (req) => ({ conversations: await listConversations(req.workspace.id, req.auth!.user.id) }))
+  r.get('/workspaces/:workspaceId/ai/conversations/:id', { preHandler: app.requireWorkspace, schema: { params: convParams } }, async (req) => {
+    const c = await getConversation(req.workspace.id, req.auth!.user.id, req.params.id)
+    if (!c) throw new HttpError(404, 'NOT_FOUND', 'Conversation not found')
+    return c
+  })
+  r.delete('/workspaces/:workspaceId/ai/conversations/:id', { preHandler: app.requireWorkspace, schema: { params: convParams } }, async (req, reply) => {
+    if (!(await deleteConversation(req.workspace.id, req.auth!.user.id, req.params.id))) throw new HttpError(404, 'NOT_FOUND', 'Conversation not found')
+    return reply.status(204).send()
   })
 }

@@ -679,6 +679,52 @@ export const aiReports = pgTable(
 )
 export type AiReportRow = typeof aiReports.$inferSelect
 
+// Chat over workspace data (modules/ai/chat). Conversations are per user and
+// per workspace; messages keep the text and the tool calls made for it.
+export const aiConversations = pgTable(
+  'ai_conversations',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    title: text('title'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index('ai_conversations_ws_user_idx').on(t.workspaceId, t.userId, t.updatedAt)],
+)
+
+export const aiMessages = pgTable(
+  'ai_messages',
+  {
+    id: id(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => aiConversations.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+    content: text('content').notNull(),
+    toolCalls: jsonb('tool_calls').$type<{ name: string; input: Record<string, unknown>; ok: boolean; ms: number }[]>().notNull().default([]),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('ai_messages_conv_idx').on(t.conversationId, t.createdAt)],
+)
+
+// Curated product documentation (backend/help/*.md), indexed for the chat's
+// search_help tool with Postgres full-text search. Reloaded at API boot.
+export const helpDocs = pgTable(
+  'help_docs',
+  {
+    slug: text('slug').primaryKey(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    updatedAt: updatedAt(),
+  },
+)
+
 // --- Governance -------------------------------------------------------------
 export const usageEvents = pgTable(
   'usage_events',
