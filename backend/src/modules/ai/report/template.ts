@@ -121,6 +121,8 @@ export interface Report {
   recommendations: Recommendation[]
   methodology: string[]
   narrativeSource: 'rules' | 'llm'
+  /** Why the narrative is what it is; shown as a small note in the UI. */
+  narrativeMeta: { reason: 'ok' | 'disabled' | 'quota' | 'failed' | 'gated' | 'partial'; llmSlots: number; totalSlots: number; model: string | null }
 }
 
 export const PERIOD_DAYS: Record<Exclude<PeriodKind, 'custom'>, number> = { '7d': 7, '30d': 30, '90d': 90 }

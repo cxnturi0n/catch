@@ -2,12 +2,16 @@
 // P2 adds an optional generative narrative between "insights" and "stored";
 // everything before that stays byte-for-byte deterministic.
 import { createHash } from 'node:crypto'
+import { logger } from '../../../logger.js'
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../../../db/client.js'
 import { aiReports, type AiReportRow } from '../../../db/schema/index.js'
 import { runInsights, SEVERITY_RANK } from './insights.js'
 import { collect, windows, windowsFor } from './metrics.js'
 import { buildSections } from './sections.js'
+import { applyNarrative, buildPack, callModel as defaultCallModel, gate, type CallModel } from './narrative.js'
+import { aiEnabled, recordUsage, REPORT_EVENT, REPORT_MONTHLY_QUOTA, reportModel, reportNarrativesThisMonth } from '../llm.js'
+import type { PlanTier } from '../../../lib/quota.js'
 import { PERIOD_DAYS, REPORT_VERSION, SCOPE_SECTIONS, type Insight, type PeriodKind, type Recommendation, type Report, type ReportPlatform, type Scope, type Section, type SectionId } from './template.js'
 
 export interface BuildOptions {
@@ -18,9 +22,13 @@ export interface BuildOptions {
   scope?: Scope
   platform?: ReportPlatform | null
   userId: string | null
+  /** Plan of the caller (quota for AI narrative). Omit = rules only. */
+  plan?: PlanTier
   now?: Date
   /** Reuse a stored report when the inputs have not changed (default true). */
   reuse?: boolean
+  /** Test seam. */
+  callModel?: CallModel
 }
 
 export async function buildReport(o: BuildOptions): Promise<{ report: Report; id: string; reused: boolean }> {
@@ -48,25 +56,79 @@ export async function buildReport(o: BuildOptions): Promise<{ report: Report; id
     sections: ordered,
     recommendations: ruleRecommendations(insights),
     methodology: methodology(data.coverage, cur.days),
-    narrativeSource: 'rules' as const,
+    narrativeSource: 'rules' as Report['narrativeSource'],
+    narrativeMeta: { reason: 'disabled', llmSlots: 0, totalSlots: 2 + ordered.filter((s) => s.state === 'ok').length, model: null } as Report['narrativeMeta'],
   }
-  // Hash excludes generatedAt so an unchanged dataset maps to one stored report.
-  const inputHash = createHash('sha256').update(JSON.stringify(body)).digest('hex')
+  // Hash covers the deterministic part only (rules narrative, no generatedAt),
+  // so an unchanged dataset maps to one stored report per narrative source.
+  const inputHash = createHash('sha256').update(JSON.stringify({ ...body, narrativeMeta: undefined })).digest('hex')
+
+  // Can we narrate with the model? Quota is monthly, per workspace.
+  let wantLlm = aiEnabled() && !!o.plan
+  let quotaReason: Report['narrativeMeta']['reason'] = 'disabled'
+  if (wantLlm) {
+    const used = await reportNarrativesThisMonth(o.workspace.id, now)
+    if (used >= REPORT_MONTHLY_QUOTA[o.plan!]) {
+      wantLlm = false
+      quotaReason = 'quota'
+    }
+  }
 
   if (o.reuse !== false) {
-    const [existing] = await db
+    const rows = await db
       .select()
       .from(aiReports)
       .where(and(eq(aiReports.workspaceId, o.workspace.id), eq(aiReports.inputHash, inputHash)))
       .orderBy(desc(aiReports.createdAt))
-      .limit(1)
-    if (existing) return { report: existing.report as unknown as Report, id: existing.id, reused: true }
+      .limit(5)
+    // An AI-narrated copy of the same data is always the best one to reuse;
+    // a rules copy is reused only when we could not do better now.
+    const llmRow = rows.find((r) => r.narrativeSource === 'llm')
+    const rulesRow = rows.find((r) => r.narrativeSource === 'rules')
+    const hit = llmRow ?? (wantLlm ? undefined : rulesRow)
+    if (hit) return { report: hit.report as unknown as Report, id: hit.id, reused: true }
+  }
+
+  let narrativeSource: Report['narrativeSource'] = 'rules'
+  let usage: { model: string; input: number; output: number } | null = null
+  body.narrativeMeta.reason = quotaReason
+  if (wantLlm) {
+    const pack = buildPack(body)
+    try {
+      const res = await (o.callModel ?? defaultCallModel)(pack, SCOPE_SECTIONS[scope] as SectionId[])
+      await recordUsage({ workspaceId: o.workspace.id, userId: o.userId, eventType: REPORT_EVENT, usage: res.usage, metadata: { stop: res.stop, period: o.period, scope } })
+      usage = { model: res.usage.model, input: res.usage.input, output: res.usage.output }
+      if (res.narrative) {
+        const g = gate(pack, res.narrative)
+        const { llmSlots, totalSlots } = applyNarrative(body, g)
+        narrativeSource = llmSlots > 0 ? 'llm' : 'rules'
+        body.narrativeSource = narrativeSource
+        body.narrativeMeta = { reason: llmSlots === 0 ? 'gated' : llmSlots < totalSlots ? 'partial' : 'ok', llmSlots, totalSlots, model: res.usage.model }
+      } else {
+        body.narrativeMeta = { reason: 'failed', llmSlots: 0, totalSlots: body.narrativeMeta.totalSlots, model: res.usage.model }
+      }
+    } catch (err) {
+      logger.error({ err }, 'report narrative call failed; using rule narrative')
+      body.narrativeMeta = { reason: 'failed', llmSlots: 0, totalSlots: body.narrativeMeta.totalSlots, model: reportModel() }
+    }
   }
 
   const report: Report = { ...body, generatedAt: now.toISOString() }
   const [row] = await db
     .insert(aiReports)
-    .values({ workspaceId: o.workspace.id, periodKind: o.period, periodStart: cur.start, periodEnd: cur.end, inputHash, report: report as unknown as Record<string, unknown>, narrativeSource: 'rules', createdBy: o.userId })
+    .values({
+      workspaceId: o.workspace.id,
+      periodKind: o.period,
+      periodStart: cur.start,
+      periodEnd: cur.end,
+      inputHash,
+      report: report as unknown as Record<string, unknown>,
+      narrativeSource,
+      model: usage?.model ?? null,
+      inputTokens: usage?.input ?? null,
+      outputTokens: usage?.output ?? null,
+      createdBy: o.userId,
+    })
     .returning({ id: aiReports.id })
   return { report, id: row!.id, reused: false }
 }

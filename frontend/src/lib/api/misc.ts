@@ -295,6 +295,7 @@ export interface IntelligenceReportDoc {
   recommendations: ReportRecommendation[]
   methodology: string[]
   narrativeSource: 'rules' | 'llm'
+  narrativeMeta: { reason: 'ok' | 'disabled' | 'quota' | 'failed' | 'gated' | 'partial'; llmSlots: number; totalSlots: number; model: string | null }
 }
 export interface IntelligenceReportListItem { id: string; periodKind: ReportPeriod; periodStart: string; periodEnd: string; narrativeSource: 'rules' | 'llm'; createdAt: string; report: IntelligenceReportDoc }
 

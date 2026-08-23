@@ -7,6 +7,9 @@ import { sendEmail } from '../../email/sender.js'
 import { decryptSecret } from '../../lib/crypto.js'
 import { logger } from '../../logger.js'
 import { gatherReport, renderReportEmail, renderReportText, reportTitle, sendNotion, sendSlack } from './report.js'
+import { buildReport } from '../ai/report/build.js'
+import { user, workspaces } from '../../db/schema/index.js'
+import type { PlanTier } from '../../lib/quota.js'
 
 const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
 
@@ -51,6 +54,18 @@ export async function deliverSchedule(s: ReportSchedule, now = new Date()): Prom
   if (!report) {
     out.errors.push('workspace not found')
     return out
+  }
+  // Attach the deterministic narrative (AI when the owner's plan has quota
+  // left, rule text otherwise). Never blocks delivery.
+  try {
+    const [ws] = await db.select({ id: workspaces.id, name: workspaces.name, plan: user.plan }).from(workspaces).innerJoin(user, eq(user.id, workspaces.ownerId)).where(eq(workspaces.id, s.workspaceId)).limit(1)
+    if (ws) {
+      const iso = (d: Date) => d.toISOString().slice(0, 10)
+      const r = await buildReport({ workspace: { id: ws.id, name: ws.name }, period: 'custom', range: { start: iso(periodStart), end: iso(new Date(periodEnd.getTime() - 86_400_000)) }, scope: s.reportType === 'general' ? 'moderation' : 'overview', userId: null, plan: (ws.plan ?? 'starter') as PlanTier, now })
+      report.narrative = { summary: r.report.summary, recommendations: r.report.recommendations.slice(0, 3).map((x) => ({ title: x.title, priority: x.priority })), source: r.report.narrativeSource }
+    }
+  } catch (err) {
+    logger.warn({ err, workspaceId: s.workspaceId }, 'report narrative unavailable for scheduled delivery')
   }
   const subject = `${reportTitle(report)} — ${report.workspaceName}`
   const { html, text } = renderReportEmail(report)

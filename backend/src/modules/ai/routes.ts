@@ -10,6 +10,7 @@ import { usageEvents } from '../../db/schema/index.js'
 import { HttpError } from '../../lib/errors.js'
 import type { PlanTier } from '../../lib/quota.js'
 import { buildReport, getReport, listReports } from './report/build.js'
+import { aiEnabled, REPORT_MONTHLY_QUOTA, reportModel, reportNarrativesThisMonth } from './llm.js'
 import { PERIOD_KINDS, REPORT_PLATFORMS, SCOPES } from './report/template.js'
 
 // Catch Intelligence — the only generative call in the product. The model
@@ -50,7 +51,8 @@ export async function aiRoutes(app: FastifyInstance) {
   r.get('/workspaces/:workspaceId/ai/quota', { preHandler: app.requireWorkspace, schema: { params: z.object({ workspaceId: z.uuid() }) } }, async (req) => {
     const plan = (req.auth!.user.plan ?? 'starter') as PlanTier
     const used = await usedToday(req.auth!.user.id)
-    return { used, limit: DAILY_QUOTA[plan], configured: !!config.ANTHROPIC_API_KEY, model: config.LLM_MODEL }
+    const reportsUsed = await reportNarrativesThisMonth(req.workspace.id)
+    return { used, limit: DAILY_QUOTA[plan], configured: aiEnabled(), model: config.LLM_MODEL, reports: { used: reportsUsed, limit: REPORT_MONTHLY_QUOTA[plan], model: reportModel() } }
   })
 
   r.post(
@@ -122,6 +124,7 @@ export async function aiRoutes(app: FastifyInstance) {
         scope: b.scope,
         platform: b.platform,
         userId: req.auth!.user.id,
+        plan: (req.auth!.user.plan ?? 'starter') as PlanTier,
       })
       return { id, reused, report }
     },

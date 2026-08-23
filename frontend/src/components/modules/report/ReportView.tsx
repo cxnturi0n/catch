@@ -22,7 +22,7 @@ export function ReportView({ doc }: { doc: IntelligenceReportDoc }) {
               {doc.period.start} → {doc.period.end} ({doc.period.days} days), compared with {doc.period.prevStart} → {doc.period.prevEnd}
             </p>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Generated {new Date(doc.generatedAt).toLocaleString()} · {doc.scope} · narrative: {doc.narrativeSource === 'llm' ? 'AI (validated)' : 'rules'}
+              Generated {new Date(doc.generatedAt).toLocaleString()} · {doc.scope} · {narrativeLabel(doc)}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -86,6 +86,25 @@ export function ReportView({ doc }: { doc: IntelligenceReportDoc }) {
       </Card>
     </article>
   )
+}
+
+function narrativeLabel(doc: IntelligenceReportDoc): string {
+  const m = doc.narrativeMeta
+  if (!m) return doc.narrativeSource === 'llm' ? 'AI narrative (validated)' : 'rule-based narrative'
+  switch (m.reason) {
+    case 'ok':
+      return `AI narrative (${m.model ?? 'model'}, every figure validated against the data)`
+    case 'partial':
+      return `AI narrative (${m.model ?? 'model'}); ${m.totalSlots - m.llmSlots} of ${m.totalSlots} slots fell back to rule text after validation`
+    case 'quota':
+      return 'rule-based narrative — monthly AI report quota reached for this plan'
+    case 'disabled':
+      return 'rule-based narrative — AI not enabled on this deployment'
+    case 'failed':
+      return 'rule-based narrative — AI call failed, numbers unaffected'
+    case 'gated':
+      return 'rule-based narrative — AI output rejected by validation'
+  }
 }
 
 const STATE_LABEL: Record<ReportSection['state'], string> = { ok: '', no_data: 'No data', not_connected: 'Not connected', not_available: 'Not available yet' }
