@@ -103,9 +103,8 @@ export function MainLayout() {
           <TopBar onMenuClick={() => setMobileNavOpen(true)} />
         </div>
 
-        {/* Bottom padding tracks the fixed Catch bar's real height (set by CatchBar),
-            so the end of every page stays readable even with its answer panel open. */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 print:overflow-visible print:p-0" style={{ paddingBottom: 'calc(var(--catch-bar-h, 96px) + 1.5rem)' }}>
+        {/* Extra bottom padding keeps the last rows clear of the corner Catch widget. */}
+        <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-24 print:overflow-visible print:p-0">
           {/* No route transition — content swaps instantly (no "jump on itself"). */}
           <div className="mx-auto w-full max-w-[1600px]">
             <Outlet />

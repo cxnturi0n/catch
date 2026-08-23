@@ -16,32 +16,14 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { useWorkspace } from '../../context/WorkspaceContext'
 import { useAuth } from '../../context/AuthContext'
-import { respond, type ChatAction } from '../../lib/chatEngine'
+import { useCatchChat } from '../../hooks/useCatchChat'
+import { renderContent } from '../chat/ChatMarkdown'
 import {
   hasSeenLayoutPromptLocally,
   hasSeenLayoutPromptRemotely,
   rememberLayoutPromptSeen,
 } from '../../lib/layoutPrompt'
 
-interface Msg {
-  id: number
-  role: 'user' | 'assistant'
-  content: string
-  actions?: ChatAction[]
-}
-
-let nextId = 1
-
-/** Renders the engine's light markup: **bold** and newlines. */
-function renderContent(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') ? (
-      <strong key={i} className="font-semibold text-[var(--text-primary)]">{part.slice(2, -2)}</strong>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  )
-}
 
 // ── What you can ask, grouped like a short manual ────────────────────────────
 
@@ -137,7 +119,7 @@ export function CatchAI() {
   const navigate = useNavigate()
   const { activeWorkspaceId, workspaces } = useWorkspace()
   const { user } = useAuth()
-  const [messages, setMessages] = useState<Msg[]>([])
+  const { messages, busy, aiReady, ask: send, clear } = useCatchChat(activeWorkspaceId)
   const [input, setInput] = useState('')
   const [category, setCategory] = useState('setup')
   const [introOpen, setIntroOpen] = useState(false)
@@ -145,11 +127,6 @@ export function CatchAI() {
   const endRef = useRef<HTMLDivElement>(null)
 
   const workspaceName = workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'this workspace'
-
-  // Clear the thread when the workspace changes — it's a different client.
-  useEffect(() => {
-    setMessages([])
-  }, [activeWorkspaceId])
 
   // One-shot first run: the invitation to describe the project is shown the very
   // first time only. If it has ever been seen — on this device or on any other —
@@ -192,13 +169,8 @@ export function CatchAI() {
 
   function ask(text: string) {
     const q = text.trim()
-    if (!q) return
-    const reply = respond(q)
-    setMessages((m) => [
-      ...m,
-      { id: nextId++, role: 'user', content: q },
-      { id: nextId++, role: 'assistant', content: reply.content, actions: reply.actions },
-    ])
+    if (!q || busy) return
+    send(q)
     setInput('')
   }
 
@@ -235,7 +207,13 @@ export function CatchAI() {
                       : 'border border-[var(--border-card)] bg-white/[0.03] text-[var(--text-secondary)]'
                   }`}
                 >
-                  {renderContent(m.content)}
+                  {m.pending ? (
+                    <span className="inline-flex items-center gap-2 text-[var(--text-muted)]">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:rgba(230,184,77,0.9)]" /> {m.pending}
+                    </span>
+                  ) : (
+                    renderContent(m.content)
+                  )}
                 </div>
                 {m.actions && m.actions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -283,13 +261,13 @@ export function CatchAI() {
           />
           <div className="flex items-center justify-between gap-2 pt-1">
             <span className="pl-1.5 font-mono text-[10.5px] text-[var(--text-muted)]">
-              {workspaceName} · runs locally, nothing leaves the app
+              {workspaceName} · {aiReady ? 'answers from your workspace data' : 'local assistant'}
             </span>
             <div className="flex items-center gap-1.5">
               {started && (
                 <button
                   type="button"
-                  onClick={() => setMessages([])}
+                  onClick={clear}
                   aria-label="New chat"
                   className="focus-ring rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
