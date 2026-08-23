@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { respond, type ChatAction } from '../lib/chatEngine'
-import { fetchAiQuota, sendChatMessage } from '../lib/api/misc'
+import { deleteChatConversation, fetchAiQuota, fetchChatConversation, fetchChatConversations, sendChatMessage } from '../lib/api/misc'
 
 // One chat thread per workspace, shared by the floating widget and the full
 // Catch page: both read the same store, so "expand" simply navigates.
@@ -21,9 +21,11 @@ interface Thread {
   messages: ChatMsg[]
   conversationId: string | null
   busy: boolean
+  /** Latest stored conversation loaded from the server (once per workspace). */
+  hydrated: boolean
 }
 
-const EMPTY: Thread = { messages: [], conversationId: null, busy: false }
+const EMPTY: Thread = { messages: [], conversationId: null, busy: false, hydrated: false }
 const threads = new Map<string, Thread>()
 const listeners = new Set<() => void>()
 let nextId = 1
@@ -67,6 +69,26 @@ export function useCatchChat(workspaceId: string) {
     }
   }, [workspaceId])
 
+  // Resume the most recent stored conversation so the thread survives reloads
+  // (the server keeps 30 days).
+  useEffect(() => {
+    if (!workspaceId || workspaceId.startsWith('local-') || get(workspaceId).hydrated) return
+    set(workspaceId, { hydrated: true })
+    let cancelled = false
+    fetchChatConversations(workspaceId)
+      .then(async (list) => {
+        const latest = list[0]
+        if (!latest || cancelled) return
+        const c = await fetchChatConversation(workspaceId, latest.id)
+        if (cancelled || get(workspaceId).messages.length > 0) return
+        set(workspaceId, { conversationId: c.id, messages: c.messages.map((m) => ({ id: nextId++, role: m.role, content: m.content, source: 'ai' as const })) })
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
+
   const ask = useCallback(
     (text: string) => {
       const q = text.trim()
@@ -96,7 +118,12 @@ export function useCatchChat(workspaceId: string) {
     [workspaceId, aiReady],
   )
 
-  const clear = useCallback(() => set(workspaceId, { messages: [], conversationId: null }), [workspaceId])
+  /** New chat: forgets the thread locally and deletes it on the server. */
+  const clear = useCallback(() => {
+    const id = get(workspaceId).conversationId
+    set(workspaceId, { messages: [], conversationId: null })
+    if (id) void deleteChatConversation(workspaceId, id).catch(() => undefined)
+  }, [workspaceId])
 
   return { messages: thread.messages, busy: thread.busy, aiReady, ask, clear }
 }

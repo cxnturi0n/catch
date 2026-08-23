@@ -361,3 +361,14 @@ export interface AiQuota { configured: boolean; model: string; used: number; lim
 export function fetchAiQuota(workspaceId: WorkspaceId) {
   return api<AiQuota>(`/workspaces/${workspaceId}/ai/quota`)
 }
+
+export interface ChatConversation { id: string; title: string | null; updatedAt: string }
+export async function fetchChatConversations(workspaceId: WorkspaceId): Promise<ChatConversation[]> {
+  return (await api<{ conversations: ChatConversation[] }>(`/workspaces/${workspaceId}/ai/conversations`)).conversations
+}
+export function fetchChatConversation(workspaceId: WorkspaceId, id: string) {
+  return api<ChatConversation & { messages: { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }[] }>(`/workspaces/${workspaceId}/ai/conversations/${id}`)
+}
+export function deleteChatConversation(workspaceId: WorkspaceId, id: string) {
+  return api<void>(`/workspaces/${workspaceId}/ai/conversations/${id}`, { method: 'DELETE' })
+}
