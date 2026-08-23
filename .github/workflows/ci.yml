@@ -40,6 +40,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - run: npm install -g npm@11 # lockfiles are written by npm 11
       - run: npm ci
       - run: npm run typecheck
       - run: npm run db:migrate
@@ -57,6 +58,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: npm install -g npm@11 # lockfiles are written by npm 11
       - run: npm ci
       - run: npm run lint
       - run: npm run build
@@ -89,6 +91,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm install -g npm@11 # lockfiles are written by npm 11
       - run: npm ci
         working-directory: backend
       - run: npm ci
