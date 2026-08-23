@@ -30,7 +30,7 @@ function readStored(): string | null {
 /**
  * Account-level display timezone. Resolution order:
  *   1. the zone saved on the user's profile (authoritative, cross-device)
- *   2. the last zone chosen on this browser (localStorage) — also used for guests
+ *   2. the last zone chosen on this browser (localStorage), also used for guests
  *   3. the browser's auto-detected zone
  * Choosing a zone writes it to localStorage immediately and, when signed in,
  * best-effort to the profile so it follows the account. Display-only: no stored
@@ -53,7 +53,7 @@ export function TimezoneProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         const saved = profile?.timezone
         if (saved && isValidTimeZone(saved)) {
-          // Profile wins — adopt it everywhere.
+          // Profile wins, adopt it everywhere.
           setTz(saved)
           setIsExplicit(true)
           try { window.localStorage.setItem(STORAGE_KEY, saved) } catch { /* ignore */ }
@@ -62,7 +62,7 @@ export function TimezoneProvider({ children }: { children: ReactNode }) {
           void updateProfileTimezone(user.id, timezone).catch(() => {})
         }
       } catch {
-        /* profile unavailable — keep the locally-resolved zone */
+        /* profile unavailable, keep the locally-resolved zone */
       } finally {
         if (!cancelled) setLoading(false)
       }

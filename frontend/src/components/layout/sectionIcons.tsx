@@ -28,7 +28,7 @@ function base(size: number, className?: string): SVGProps<SVGSVGElement> {
   }
 }
 
-/** Community Analytics — an upward pulse with a lit sapphire endpoint node. */
+/** Community Analytics, an upward pulse with a lit sapphire endpoint node. */
 export function AnalyticsGlyph({ size = 15, className }: SectionIconProps) {
   return (
     <svg {...base(size, className)}>
@@ -39,7 +39,7 @@ export function AnalyticsGlyph({ size = 15, className }: SectionIconProps) {
   )
 }
 
-/** Team — three linked members; the lead node is lit in sapphire. */
+/** Team, three linked members; the lead node is lit in sapphire. */
 export function TeamGlyph({ size = 15, className }: SectionIconProps) {
   return (
     <svg {...base(size, className)}>
@@ -51,7 +51,7 @@ export function TeamGlyph({ size = 15, className }: SectionIconProps) {
   )
 }
 
-/** Operations — an open dual-arc cycle with sapphire beads at the leading ends. */
+/** Operations, an open dual-arc cycle with sapphire beads at the leading ends. */
 export function OperationsGlyph({ size = 15, className }: SectionIconProps) {
   return (
     <svg {...base(size, className)}>
@@ -63,7 +63,7 @@ export function OperationsGlyph({ size = 15, className }: SectionIconProps) {
   )
 }
 
-/** Setup — an integration hub: a lit core wired out to three connectors. */
+/** Setup, an integration hub: a lit core wired out to three connectors. */
 export function SetupGlyph({ size = 15, className }: SectionIconProps) {
   return (
     <svg {...base(size, className)}>
@@ -76,7 +76,7 @@ export function SetupGlyph({ size = 15, className }: SectionIconProps) {
   )
 }
 
-/** CatchLab — a bespoke flask with sapphire reaction bubbles. */
+/** CatchLab, a bespoke flask with sapphire reaction bubbles. */
 export function CatchLabGlyph({ size = 15, className }: SectionIconProps) {
   return (
     <svg {...base(size, className)}>

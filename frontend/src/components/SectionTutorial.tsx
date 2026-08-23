@@ -12,7 +12,7 @@ function hasSeen(id: string): boolean {
   try {
     return localStorage.getItem(storageKey(id)) === '1'
   } catch {
-    // localStorage unavailable — treat as "not seen" but the markSeen write
+    // localStorage unavailable, treat as "not seen" but the markSeen write
     // below will also no-op, so it simply shows once per mount at worst.
     return false
   }
@@ -22,7 +22,7 @@ function markSeen(id: string) {
   try {
     localStorage.setItem(storageKey(id), '1')
   } catch {
-    // Ignore — nothing we can persist; the pop-up may reappear next session.
+    // Ignore, nothing we can persist; the pop-up may reappear next session.
   }
 }
 
@@ -47,7 +47,7 @@ export function SectionTutorial() {
     if (match && !hasSeen(match.id)) {
       setEntry(match)
     } else {
-      // Navigated to a seen / non-tutorial section — hide any open card.
+      // Navigated to a seen / non-tutorial section, hide any open card.
       setEntry(null)
     }
   }, [location.pathname])

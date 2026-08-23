@@ -111,7 +111,7 @@ export function reportTitle(r: WorkspaceReport) {
 
 export function renderReportEmail(r: WorkspaceReport): { html: string; text: string } {
   const typeLabel = reportTitle(r)
-  const periodLabel = `${fmtDate(r.periodStart)} – ${fmtDate(r.periodEnd)}`
+  const periodLabel = `${fmtDate(r.periodStart)}, ${fmtDate(r.periodEnd)}`
   const kpis: [string, string][] = []
   if (r.members != null) kpis.push(['Members', fmtNum(r.members)])
   if (r.reportType === 'general') {
@@ -137,7 +137,7 @@ function narrativeHtml(r: WorkspaceReport): string {
 }
 
 export function renderReportText(r: WorkspaceReport): string {
-  const lines = [`${reportTitle(r)} — ${r.workspaceName}`, `Period: ${r.periodStart.slice(0, 10)} → ${r.periodEnd.slice(0, 10)}`, '']
+  const lines = [`${reportTitle(r)}, ${r.workspaceName}`, `Period: ${r.periodStart.slice(0, 10)} → ${r.periodEnd.slice(0, 10)}`, '']
   if (r.narrative) {
     lines.push('Key points:', ...r.narrative.summary.map((t) => `- ${t}`))
     if (r.narrative.recommendations.length) lines.push('Recommended this week:', ...r.narrative.recommendations.map((x, i) => `${i + 1}. ${x.title} (${x.priority})`))

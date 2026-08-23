@@ -16,20 +16,20 @@ const HOUR_TICKS = [0, 6, 12, 18]
 
 /**
  * Honest region inference from the busiest UTC hours. This is a PROXY read of a
- * community's centre of gravity from *when* it talks — never declared demographics.
+ * community's centre of gravity from *when* it talks, never declared demographics.
  * Bands are deliberately coarse and overlapping-aware so we never over-claim.
  */
 function inferRegion(peakHour: number): string {
   if (peakHour >= 13 && peakHour <= 21) return 'sovrapposizione Europa / Americhe'
   if (peakHour >= 6 && peakHour < 13) return 'Europa / Africa / Medio Oriente'
   if (peakHour >= 0 && peakHour < 6) return 'Asia / Pacifico'
-  return 'Americhe / Pacifico' // 22–23 UTC
+  return 'Americhe / Pacifico' // 22 to 23 UTC
 }
 
 /**
  * Audience panel for the Analytics Overview. Infers WHEN the community is active
  * (a proxy for timezone/geography) purely from the real activity heatmap Catch
- * already ingests — no new data source, no backend. Every number below is derived
+ * already ingests, no new data source, no backend. Every number below is derived
  * from real message buckets; absent hours are genuine zeros.
  */
 export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
@@ -89,10 +89,10 @@ export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
             <Users size={16} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-white">Audience — when the community is active</h3>
+            <h3 className="text-sm font-semibold text-white">Audience, when the community is active</h3>
             <p className="text-xs text-[var(--text-secondary)]">
               Hourly distribution (UTC) · last 28 days
-              {summary.partial && ` · storico parziale — ${summary.daysTracked} giorn${summary.daysTracked === 1 ? 'o' : 'i'}`}
+              {summary.partial && ` · storico parziale, ${summary.daysTracked} giorn${summary.daysTracked === 1 ? 'o' : 'i'}`}
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
         </div>
       ) : (
         <div className="flex flex-col gap-5 p-5">
-          {/* 24-bar hour-of-day distribution — tallest bar highlighted. */}
+          {/* 24-bar hour-of-day distribution, tallest bar highlighted. */}
           <div>
             <div className="flex h-32 items-end gap-[3px]">
               {HOURS.map((hour) => {
@@ -153,7 +153,7 @@ export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
             </div>
           </div>
 
-          {/* Estimated region — an INFERENCE, clearly labelled as such. */}
+          {/* Estimated region, an INFERENCE, clearly labelled as such. */}
           <div className="rounded-xl border border-[var(--border-card)] bg-white/[0.02] p-4">
             <div className="flex flex-wrap items-center gap-2">
               <Globe2 size={14} className="text-[var(--accent-emerald-bright)]" />
@@ -167,11 +167,11 @@ export function AudiencePanel({ workspaceId }: { workspaceId: string }) {
               → <span className="font-semibold">{inferRegion(peakHour)}</span>.
             </p>
             <p className="mt-1.5 text-xs text-[var(--text-muted)]">
-              Estimated from activity patterns (UTC) — not self-reported demographics.
+              Estimated from activity patterns (UTC), not self-reported demographics.
             </p>
           </div>
 
-          {/* Shift split — reuses the honest shiftTotals from the heatmap. */}
+          {/* Shift split, reuses the honest shiftTotals from the heatmap. */}
           <div className="flex flex-col gap-1.5">
             {shifts.map((s) => (
               <div key={s.shift} className="flex items-center gap-3">

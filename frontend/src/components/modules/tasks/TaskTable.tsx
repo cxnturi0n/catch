@@ -124,17 +124,17 @@ export function TaskTable({
               const overdue = task.status !== 'Done' && isOverdue(task.dueDate)
               return (
                 <tr key={task.id} className="group border-b border-[var(--border-card)]/60 last:border-0 hover:bg-white/[0.02]">
-                  {/* Area — client-side free text */}
+                  {/* Area, client-side free text */}
                   <td className="px-2 py-1.5 align-middle">
                     <input
                       className={cellInput}
                       value={m.area ?? ''}
-                      placeholder="—"
+                      placeholder="n/a"
                       onChange={(e) => onMetaChange(task.id, { area: e.target.value })}
                     />
                   </td>
 
-                  {/* To do — task title, opens edit modal */}
+                  {/* To do, task title, opens edit modal */}
                   <td className="px-2 py-1.5 align-middle">
                     <button
                       onClick={() => onEdit(task)}
@@ -145,7 +145,7 @@ export function TaskTable({
                     </button>
                   </td>
 
-                  {/* Status — inline select */}
+                  {/* Status, inline select */}
                   <td className="px-2 py-1.5 align-middle">
                     <select
                       value={task.status}
@@ -160,7 +160,7 @@ export function TaskTable({
                     </select>
                   </td>
 
-                  {/* Assignee — free text + suggestions (Me / moderators) */}
+                  {/* Assignee, free text + suggestions (Me / moderators) */}
                   <td className="px-2 py-1.5 align-middle">
                     <input
                       className={cellInput}
@@ -177,7 +177,7 @@ export function TaskTable({
                     />
                   </td>
 
-                  {/* Start date — client-side */}
+                  {/* Start date, client-side */}
                   <td className="px-2 py-1.5 align-middle">
                     <input
                       type="date"
@@ -188,7 +188,7 @@ export function TaskTable({
                     />
                   </td>
 
-                  {/* Due date — persisted */}
+                  {/* Due date, persisted */}
                   <td className="px-2 py-1.5 align-middle">
                     <input
                       type="date"

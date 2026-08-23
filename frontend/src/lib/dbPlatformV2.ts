@@ -53,7 +53,7 @@ export function buildGoogleCalendarUrl(m: {
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
-/** Outlook Live web deep-link — same shape, different host. */
+/** Outlook Live web deep-link, same shape, different host. */
 export function buildOutlookCalendarUrl(m: {
   title: string
   description?: string | null

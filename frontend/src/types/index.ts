@@ -259,7 +259,7 @@ export interface NewPaymentInput {
   paidAt: string
 }
 
-// ── Compensation v2 (dedicated section — migration 016) ──
+// ── Compensation v2 (dedicated section, migration 016) ──
 
 export type CompensationKind = 'fixed' | 'variable' | 'both'
 export type FixedPeriod = 'monthly' | 'weekly' | 'hourly'

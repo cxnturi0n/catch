@@ -67,7 +67,7 @@ export async function deliverSchedule(s: ReportSchedule, now = new Date()): Prom
   } catch (err) {
     logger.warn({ err, workspaceId: s.workspaceId }, 'report narrative unavailable for scheduled delivery')
   }
-  const subject = `${reportTitle(report)} — ${report.workspaceName}`
+  const subject = `${reportTitle(report)}, ${report.workspaceName}`
   const { html, text } = renderReportEmail(report)
   for (const to of s.recipientEmails) {
     try {

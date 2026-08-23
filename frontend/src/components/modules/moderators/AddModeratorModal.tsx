@@ -144,7 +144,7 @@ export function AddModeratorModal({
         messagesThisMonth: 0,
         bansExecuted: 0,
         timeoutsGiven: 0,
-        avgResponseTime: '—',
+        avgResponseTime: 'n/a',
         lastActiveDate: new Date().toISOString().slice(0, 10),
         shiftsCompleted: 0,
         shiftsAssigned: 0,

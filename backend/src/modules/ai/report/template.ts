@@ -72,7 +72,7 @@ export interface Insight {
   id: string
   sectionId: SectionId
   severity: InsightSeverity
-  /** Metric ids the insight was computed from — the audit trail for any narrative. */
+  /** Metric ids the insight was computed from, the audit trail for any narrative. */
   metricIds: string[]
   text: string
 }

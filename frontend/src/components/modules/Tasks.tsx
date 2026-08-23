@@ -61,7 +61,7 @@ export function Tasks() {
   // full width, 0 = calendar full width, anything between = split view.
   const [leftMode, setLeftMode] = useState<LeftMode>('table')
   // Default to the SPLIT view (table/board + calendar side by side) so the split
-  // is discoverable — the client sees both panes without having to drag anything.
+  // is discoverable, the client sees both panes without having to drag anything.
   const [splitPct, setSplitPct] = useState(60)
   const dragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -73,7 +73,7 @@ export function Tasks() {
   const [moderators, setModerators] = useState<Moderator[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
 
-  // Task modal state — editingTask null = create; prefillDate seeds the due date.
+  // Task modal state, editingTask null = create; prefillDate seeds the due date.
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<CatchTask | null>(null)
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined)

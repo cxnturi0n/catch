@@ -1,7 +1,6 @@
 // ── Recap data ──────────────────────────────────────────────────────────────
 // Builds the cross-platform "recap" summary shown by <RecapPopup/>. It reads the
-// real daily rollup rows (platform_metrics jsonb) via the existing db helper —
-// nothing here is synthesised. Callers MUST only invoke buildRecap for a
+// real daily rollup rows (platform_metrics jsonb) via the existing db helper, // nothing here is synthesised. Callers MUST only invoke buildRecap for a
 // signed-in user with connected platforms; guests/no-data get the gentle
 // "connect a platform" state driven by an empty section list.
 
@@ -14,7 +13,7 @@ export const RECAP_PLATFORMS: IntegrationKey[] = ['discord', 'telegram', 'galxe'
 interface MetricDef {
   key: string
   label: string
-  /** The platform's headline metric — the one whose growth we highlight. */
+  /** The platform's headline metric, the one whose growth we highlight. */
   primary?: boolean
   suffix?: string
 }
@@ -120,7 +119,7 @@ function firstAndLast(rows: PlatformMetricDay[]): { first: PlatformMetricDay; la
  * rows for the connected platforms and computes the current level plus the
  * change since the earliest row in the window.
  *
- * Returns an empty (hasData:false) recap when nothing came back — callers render
+ * Returns an empty (hasData:false) recap when nothing came back, callers render
  * the "connect a platform" state in that case. Never fabricates numbers.
  */
 export async function buildRecap(
@@ -223,7 +222,7 @@ export async function buildRecap(
 
 // ── Catch AI insight layer ───────────────────────────────────────────────────
 // Turns the raw recap numbers into a short narrative, prioritised alerts, and
-// concrete corrective actions. Fully DETERMINISTIC — no external AI, no
+// concrete corrective actions. Fully DETERMINISTIC, no external AI, no
 // fabrication: every sentence and threshold is derived from the real metrics in
 // `RecapData`. This is the "insight → action" layer the recap popup renders as a
 // message from "Catch AI".
@@ -314,7 +313,7 @@ export function buildRecapInsights(data: RecapData): RecapInsights {
     parts.push(trend + '.')
   }
   if (worst && worst.headlinePct <= -3 && (!best || worst.platform !== best.platform)) {
-    parts.push(`${worst.label} slipped ${pctText(worst.headlinePct)} — worth a look.`)
+    parts.push(`${worst.label} slipped ${pctText(worst.headlinePct)}, worth a look.`)
   }
   const narrative: RecapNarrative = { headline, body: parts.join(' ') }
 
@@ -330,22 +329,22 @@ export function buildRecapInsights(data: RecapData): RecapInsights {
 
   // Per-platform sharp decline (skip if already the top-line story on one platform).
   if (worst && worst.headlinePct <= -5 && data.activePlatforms > 1) {
-    alerts.push({ level: 'warning', title: `${worst.label} dropped ${pctText(worst.headlinePct)}`, detail: `${worst.label} lost ground while other platforms held — investigate recent activity.` })
+    alerts.push({ level: 'warning', title: `${worst.label} dropped ${pctText(worst.headlinePct)}`, detail: `${worst.label} lost ground while other platforms held, investigate recent activity.` })
   }
 
-  // Discord moderation signal — bans relative to member base.
+  // Discord moderation signal, bans relative to member base.
   const discord = data.sections.find((s) => s.platform === 'discord')
   if (discord) {
     const bans = metricValue(discord, 'Bans (7d)')
     const members = discord.headline?.value ?? 0
     if (bans !== null && (bans >= 10 || (members > 0 && bans / members >= 0.01))) {
-      alerts.push({ level: 'warning', title: 'Elevated bans on Discord', detail: `${formatNumber(bans)} bans in 7 days — possible raid or spam wave. Check moderation.` })
+      alerts.push({ level: 'warning', title: 'Elevated bans on Discord', detail: `${formatNumber(bans)} bans in 7 days, possible raid or spam wave. Check moderation.` })
     }
   }
 
   // Strong single-platform surge (positive reinforcement).
   if (best && best.headlinePct >= 12) {
-    alerts.push({ level: 'positive', title: `${best.label} surged ${pctText(best.headlinePct)}`, detail: `${best.label} is outpacing the rest — double down on what's working there.` })
+    alerts.push({ level: 'positive', title: `${best.label} surged ${pctText(best.headlinePct)}`, detail: `${best.label} is outpacing the rest, double down on what's working there.` })
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -357,24 +356,24 @@ export function buildRecapInsights(data: RecapData): RecapInsights {
   if (g !== null && g <= -5) {
     pushAction({ label: 'Investigate the decline', detail: 'Review analytics to see where members are leaving and when.', to: '/dashboard/analytics' })
   } else if (g !== null && g < 0.5) {
-    pushAction({ label: 'Plan a growth campaign', detail: 'Engagement is flat — schedule a quest, AMA or content push.', to: '/dashboard/tasks' })
+    pushAction({ label: 'Plan a growth campaign', detail: 'Engagement is flat, schedule a quest, AMA or content push.', to: '/dashboard/tasks' })
   }
   if (discord) {
     const bans = metricValue(discord, 'Bans (7d)')
     const members = discord.headline?.value ?? 0
     if (bans !== null && (bans >= 10 || (members > 0 && bans / members >= 0.01))) {
-      pushAction({ label: 'Review Discord moderation', detail: 'Unusual ban volume — check for a raid and tighten filters.', to: '/dashboard/analytics' })
+      pushAction({ label: 'Review Discord moderation', detail: 'Unusual ban volume, check for a raid and tighten filters.', to: '/dashboard/analytics' })
     }
   }
   if (worst && worst.headlinePct <= -5 && data.activePlatforms > 1) {
-    pushAction({ label: `Dig into ${worst.label}`, detail: `${worst.label} is trending down — compare it against your other channels.`, to: '/dashboard/analytics' })
+    pushAction({ label: `Dig into ${worst.label}`, detail: `${worst.label} is trending down, compare it against your other channels.`, to: '/dashboard/analytics' })
   }
   if (data.activePlatforms === 1) {
     pushAction({ label: 'Connect more platforms', detail: 'A single source limits your cross-platform picture.', to: '/dashboard/integrations' })
   }
   // Always leave the CM with a next step.
   if (actions.length === 0) {
-    pushAction({ label: 'Share this recap', detail: 'Metrics look healthy — send a report to your client or team.', to: '/dashboard/report' })
+    pushAction({ label: 'Share this recap', detail: 'Metrics look healthy, send a report to your client or team.', to: '/dashboard/report' })
   }
 
   return {

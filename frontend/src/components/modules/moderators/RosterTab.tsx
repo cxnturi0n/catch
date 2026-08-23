@@ -111,7 +111,7 @@ function compensationLabel(m: Moderator): { amount: string; muted: boolean } {
   if (m.monthlyRate && m.currency) return { amount: `${m.monthlyRate} ${m.currency}`, muted: false }
   if (m.contractType === 'Volunteer') return { amount: 'Volunteer', muted: true }
   if (m.contractType === 'Trial') return { amount: 'Trial', muted: true }
-  return { amount: '—', muted: true }
+  return { amount: 'n/a', muted: true }
 }
 
 function roleLine(m: Moderator): string {
@@ -321,7 +321,7 @@ function filterValue(m: Moderator, key: FilterKey, onNow: boolean): string {
     case 'status':
       return pillFor(m.status, onNow).label
     case 'country':
-      return m.country || '—'
+      return m.country || 'n/a'
     case 'shift':
       return shiftBand(m)
     case 'contract':
@@ -350,7 +350,7 @@ export function RosterTab({
   onInvite: () => void
   onViewActivity: () => void
 }) {
-  // Ticking UTC instant — drives "on shift now", the now-marker and coverage.
+  // Ticking UTC instant, drives "on shift now", the now-marker and coverage.
   const now = useNow()
   const [view, setView] = useState<ViewMode>('board')
   const [profileTarget, setProfileTarget] = useState<Moderator | null>(null)
@@ -444,11 +444,11 @@ export function RosterTab({
       return [
         m.fullName,
         pill.label,
-        m.country || '—',
-        w ? `${pad(w.start)}-${pad(w.end)}` : '—',
+        m.country || 'n/a',
+        w ? `${pad(w.start)}-${pad(w.end)}` : 'n/a',
         m.timezone,
         comp.amount,
-        sinceLabel(m.startDate) ?? '—',
+        sinceLabel(m.startDate) ?? 'n/a',
       ]
     })
     const csv = [header, ...rows]
@@ -617,14 +617,14 @@ export function RosterTab({
                         <Badge tone={pill.tone}>{pill.label}</Badge>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] text-[var(--text-primary)]">{m.country || '—'}</span>
+                        <span className="text-[13px] text-[var(--text-primary)]">{m.country || 'n/a'}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         {w ? (
                           <div className="min-w-[180px]">
                             <CoverageBar start={w.start} end={w.end} nowFrac={nowFrac} />
                             <div className="mt-1.5 font-mono text-[10px] text-[var(--text-muted)]">
-                              {pad(w.start)}–{pad(w.end)} UTC
+                              {pad(w.start)}, {pad(w.end)} UTC
                             </div>
                           </div>
                         ) : (
@@ -680,7 +680,7 @@ export function RosterTab({
                 </div>
 
                 <div className="mb-2 flex items-center justify-between font-mono text-[11px] text-[var(--text-secondary)]">
-                  <span>{w ? `${pad(w.start)} – ${pad(w.end)} UTC` : 'shift not set'}</span>
+                  <span>{w ? `${pad(w.start)}, ${pad(w.end)} UTC` : 'shift not set'}</span>
                   <span className="text-[var(--text-muted)]">{m.country || m.timezone}</span>
                 </div>
 
@@ -688,7 +688,7 @@ export function RosterTab({
 
                 <div className="mt-4 flex items-center justify-between border-t border-[var(--border-card)] pt-3">
                   <span className="truncate font-mono text-[11px] text-[var(--text-muted)]">
-                    {m.platforms.length > 0 ? m.platforms.join(' · ') : '—'}
+                    {m.platforms.length > 0 ? m.platforms.join(' · ') : 'n/a'}
                   </span>
                   <span className={`font-mono text-[13px] font-bold tabular-nums ${comp.muted ? 'text-[var(--text-muted)]' : 'text-white'}`}>
                     {comp.amount}
@@ -709,7 +709,7 @@ export function RosterTab({
       {gap && gap.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:rgba(255,143,127,0.3)] bg-[color:rgba(255,143,127,0.08)] px-4 py-2.5">
           <span className="text-[12.5px] text-[#ffb3a6]">
-            Uncovered {pad(gap.start)}–{pad(gap.end)} UTC · no moderator on shift for {gap.length}h.
+            Uncovered {pad(gap.start)}, {pad(gap.end)} UTC · no moderator on shift for {gap.length}h.
           </span>
           <button type="button" className="text-[12.5px] font-semibold text-[#ff8f7f] hover:underline">
             Assign shift

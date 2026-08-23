@@ -11,7 +11,7 @@ interface Props {
   open: boolean
   onClose: () => void
   moderators: Moderator[]
-  /** Current stored/effective value for a cell — used to pre-fill the manual grid. */
+  /** Current stored/effective value for a cell, used to pre-fill the manual grid. */
   valueOf: (moderatorId: string, metricKey: string) => number
   /** Commit one (moderator, metric) value (parent handles guest vs Supabase). */
   onCommit: (moderatorId: string, metricKey: string, value: number) => void

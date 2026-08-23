@@ -143,11 +143,11 @@ export function MeetingFormModal({ open, onClose, workspaceId, moderators, onCre
       {savedLink ? (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-[var(--text-secondary)]">
-            Saved. Open your calendar to send the invite — {savedLink.provider === 'google' ? 'Google auto-attaches a Meet link on Save' : 'the event will open in Outlook Live'}.
+            Saved. Open your calendar to send the invite, {savedLink.provider === 'google' ? 'Google auto-attaches a Meet link on Save' : 'the event will open in Outlook Live'}.
           </p>
           {savedLink.missingEmails.length > 0 && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 text-xs text-amber-200">
-              These moderators have no email on file — add them manually in the calendar: {savedLink.missingEmails.join(', ')}
+              These moderators have no email on file, add them manually in the calendar: {savedLink.missingEmails.join(', ')}
             </div>
           )}
           <a

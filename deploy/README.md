@@ -67,5 +67,5 @@ optional (defaults above). Rollback = run Deploy with the previous commit SHA.
 - Error tracking: set `SENTRY_DSN` (api + worker) and build the frontend with
   `VITE_SENTRY_DSN`; both are no-ops when unset.
 - Recommended external check: a free uptime monitor (e.g. UptimeRobot) on
-  `https://catch-labs.com/api/readyz` every minute — catches the host itself
+  `https://catch-labs.com/api/readyz` every minute, catches the host itself
   being down, which the watchdog cannot.

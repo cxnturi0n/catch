@@ -220,7 +220,7 @@ export function Listening() {
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [posts, setPosts] = useState<Mention[]>([])
   const [loading, setLoading] = useState(false)
-  // Per-source soft failures — the feed still renders whatever succeeded.
+  // Per-source soft failures, the feed still renders whatever succeeded.
   const [failed, setFailed] = useState<SourceId[]>([])
   const [rateLimited, setRateLimited] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -400,7 +400,7 @@ export function Listening() {
 
       {/* Honest source caption */}
       <p className="mt-6 text-center font-mono text-[11px] leading-relaxed text-[var(--text-muted)]">
-        Fonti: Bluesky · Nostr · Snapshot (protocolli aperti). Listening pubblico, €0 — Farcaster/Lens/X in arrivo.
+        Fonti: Bluesky · Nostr · Snapshot (protocolli aperti). Listening pubblico, €0, Farcaster/Lens/X in arrivo.
       </p>
     </div>
   )

@@ -97,13 +97,13 @@ function narrativeLabel(doc: IntelligenceReportDoc): string {
     case 'partial':
       return `AI narrative (${m.model ?? 'model'}); ${m.totalSlots - m.llmSlots} of ${m.totalSlots} slots fell back to rule text after validation`
     case 'quota':
-      return 'rule-based narrative — monthly AI report quota reached for this plan'
+      return 'rule-based narrative, monthly AI report quota reached for this plan'
     case 'disabled':
-      return 'rule-based narrative — AI not enabled on this deployment'
+      return 'rule-based narrative, AI not enabled on this deployment'
     case 'failed':
-      return 'rule-based narrative — AI call failed, numbers unaffected'
+      return 'rule-based narrative, AI call failed, numbers unaffected'
     case 'gated':
-      return 'rule-based narrative — AI output rejected by validation'
+      return 'rule-based narrative, AI output rejected by validation'
   }
 }
 
@@ -158,7 +158,7 @@ function SectionView({ s }: { s: ReportSection }) {
                     <tr key={i} className="border-t border-[var(--border-card)]">
                       {t.columns.map((c) => (
                         <td key={c.key} className="py-1.5 pr-4 text-[var(--text-primary)]">
-                          {r[c.key] === null || r[c.key] === undefined ? '—' : typeof r[c.key] === 'number' ? formatMetricValue(r[c.key] as number, c.unit ?? 'count') : String(r[c.key])}
+                          {r[c.key] === null || r[c.key] === undefined ? 'n/a' : typeof r[c.key] === 'number' ? formatMetricValue(r[c.key] as number, c.unit ?? 'count') : String(r[c.key])}
                         </td>
                       ))}
                     </tr>

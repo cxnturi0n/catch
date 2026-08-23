@@ -64,7 +64,7 @@ const INTEGRATION_META: Record<IntegrationKey, IntegrationMeta> = {
     icon: AtSign,
     live: false,
     fields: [],
-    note: 'X API costs $100/month minimum — available on Enterprise plan.',
+    note: 'X API costs $100/month minimum, available on Enterprise plan.',
   },
   zealy: {
     name: 'Zealy',
@@ -93,21 +93,21 @@ const INTEGRATION_META: Record<IntegrationKey, IntegrationMeta> = {
     icon: Tv,
     live: false,
     fields: [],
-    note: 'Live streams, chat activity, followers and subs — coming soon.',
+    note: 'Live streams, chat activity, followers and subs, coming soon.',
   },
   youtube: {
     name: 'YouTube Live',
     icon: MonitorPlay,
     live: false,
     fields: [],
-    note: 'Live chat, super chats and stream analytics — coming soon.',
+    note: 'Live chat, super chats and stream analytics, coming soon.',
   },
   kick: {
     name: 'Kick',
     icon: Cast,
     live: false,
     fields: [],
-    note: 'Channel followers, live sessions and chat — coming soon.',
+    note: 'Channel followers, live sessions and chat, coming soon.',
   },
 }
 
@@ -421,7 +421,7 @@ export function Integrations() {
                   placeholder={field.placeholder}
                   // Hard-mask these credential fields (bot tokens / API keys) in
                   // Clarity recordings, independent of the dashboard masking mode.
-                  // Passive attribute — read only by Clarity, no effect on value,
+                  // Passive attribute, read only by Clarity, no effect on value,
                   // onChange, submission or storage.
                   data-clarity-mask="true"
                 />

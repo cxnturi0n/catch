@@ -1,7 +1,7 @@
 // Structured, render-ready model for the Catch report one-pager.
 //
 // `reportBuilder.ts` produces the human/text view of a report (summary, sections,
-// recommendations) AND — via `buildReportModel` here — a structured `ReportModel`
+// recommendations) AND, via `buildReportModel` here, a structured `ReportModel`
 // carrying the numbers already shaped for charts. Keeping the model separate from
 // the text keeps the builder tidy and lets the preview / printable / email pick
 // exactly the visualizations they can each render (recharts in the app; plain
@@ -16,7 +16,7 @@ export const REPORT_TYPES: { id: ReportType; label: string; blurb: string }[] = 
   { id: 'general', label: 'General', blurb: 'Analytics + moderation, moderator activity, payments and tasks.' },
 ]
 
-// Sapphire categorical series — ordered for maximum adjacent contrast so pie
+// Sapphire categorical series, ordered for maximum adjacent contrast so pie
 // slices stay legible. Every value is on-brand (see index.css accent tokens).
 export const SAPPHIRE_SERIES = ['#2f7cf6', '#8cc5ff', '#1e3a8a', '#6db3ff', '#14276b', '#4d9fff', '#a9d5ff']
 export const SAPPHIRE = {
@@ -53,7 +53,7 @@ export interface PlatformBreakdownRow {
   platform: string
   /** Human label, e.g. 'Discord'. */
   label: string
-  /** Primary audience count (members / followers) — real latest value. */
+  /** Primary audience count (members / followers), real latest value. */
   members: number
   /** What `members` actually is on this platform ('Members' vs 'Followers'). */
   memberLabel: string
@@ -63,7 +63,7 @@ export interface PlatformBreakdownRow {
 }
 
 /**
- * Cross-platform rollup — the "one dashboard that unifies every platform"
+ * Cross-platform rollup, the "one dashboard that unifies every platform"
  * headline. Built ONLY from platforms that really reported data (see
  * `buildUnifiedOverview`); it is omitted entirely when fewer than two platforms
  * have data, because a "unified" view of a single source is not unified.
@@ -105,7 +105,7 @@ export interface PaymentSummaryInput {
  * The structured, chart-ready view of a report. Sections are optional so the
  * same shape covers the "community" type (analytics only) and "general"
  * (analytics + moderation + moderators + payments + tasks), and so guest
- * sessions — which have no moderator/payment data — simply omit
+ * sessions, which have no moderator/payment data, simply omit
  * those blocks instead of rendering empty charts.
  */
 export interface ReportModel {
@@ -143,7 +143,7 @@ export function formatCount(n: number): string {
 /**
  * Per-platform metric map for the unified overview. `memberKey` is the audience
  * count on that platform's daily rollup jsonb; `keyMetric` is an optional second
- * real metric. Only platforms that actually report `memberKey` appear — nothing
+ * real metric. Only platforms that actually report `memberKey` appear, nothing
  * is invented. Order here is only the tie-break; rows are re-sorted by audience.
  */
 const UNIFIED_PLATFORMS: {
@@ -163,7 +163,7 @@ const UNIFIED_PLATFORMS: {
  * Fold the raw per-platform daily rollup rows into the cross-platform
  * `UnifiedOverview`. Uses each platform's LATEST row for the audience count, sums
  * honestly (subscriptions, not unique users), and returns `undefined` unless at
- * least two platforms genuinely reported data — never fabricates a metric.
+ * least two platforms genuinely reported data, never fabricates a metric.
  */
 export function buildUnifiedOverview(
   rows: { platform: string; date: string; metrics: Record<string, number> }[],
@@ -220,9 +220,9 @@ export function formatMoney(amount: number, currency: string): string {
   })} ${currency}`
 }
 
-/** "+12%", "−3%", or "—" when null. */
+/** "+12%", "−3%", or "n/a" when null. */
 export function formatDelta(delta: number | null): string {
-  if (delta === null) return '—'
+  if (delta === null) return 'n/a'
   const sign = delta >= 0 ? '+' : '−'
   return `${sign}${Math.abs(delta)}%`
 }

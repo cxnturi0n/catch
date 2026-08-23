@@ -31,7 +31,7 @@ export function CatchBar() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const section = sectionName(pathname)
-  // The full Catch section already is the assistant — no widget on top of itself.
+  // The full Catch section already is the assistant, no widget on top of itself.
   const onCatchSection = pathname.startsWith('/dashboard/catch')
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export function CatchBar() {
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
               {messages.length === 0 && (
                 <div className="px-1 py-2 text-[12.5px] text-[var(--text-muted)]">
-                  Ask about {section ? `${section} or ` : ''}your community data — growth, engagement, moderators, incidents — or how Catch works.
+                  Ask about {section ? `${section} or ` : ''}your community data, growth, engagement, moderators, incidents, or how Catch works.
                 </div>
               )}
               {messages.map((m) => (

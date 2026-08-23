@@ -13,6 +13,6 @@ Catch is built for freelance and agency community managers managing multiple Web
 6. Plan work in Operations → Task Manager and track KOLs
 
 ## Pro tips
-- Create one workspace per client — never mix data across clients.
+- Create one workspace per client, never mix data across clients.
 - Connect integrations before inviting moderators, so live stats are ready when your team joins.
 - Use the Report module to send weekly updates to clients from day one.

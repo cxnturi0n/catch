@@ -68,7 +68,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const [now, setNow] = useState(() => Date.now())
   const bellRef = useRef<HTMLDivElement>(null)
 
-  // Live clock in the account's timezone — updates each minute.
+  // Live clock in the account's timezone, updates each minute.
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000)
     return () => window.clearInterval(id)
@@ -269,7 +269,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
                 </div>
                 {notifications.length === 0 ? (
                   <div className="px-2 py-6 text-center text-sm text-[var(--text-secondary)]">
-                    You&apos;re all caught up — no shift issues.
+                    You&apos;re all caught up, no shift issues.
                   </div>
                 ) : (
                   <div className="max-h-96 overflow-y-auto">

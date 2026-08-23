@@ -97,7 +97,7 @@ export function Profile() {
           <div className="min-w-0">
             <div className="text-sm font-semibold text-[var(--text-primary)]">Account timezone</div>
             <div className="text-xs text-[var(--text-secondary)]">
-              Used to display every time, date, calendar and schedule across Catch. Data itself stays in UTC — this only changes what you read.
+              Used to display every time, date, calendar and schedule across Catch. Data itself stays in UTC, this only changes what you read.
             </div>
           </div>
         </div>
@@ -119,12 +119,12 @@ export function Profile() {
               onChange={(e) => handleTimezoneChange(e.target.value)}
               size={1}
             >
-              {zoneGroups.length === 0 && <option value={timezone}>No match — {zoneCity(timezone)}</option>}
+              {zoneGroups.length === 0 && <option value={timezone}>No match, {zoneCity(timezone)}</option>}
               {zoneGroups.map((g) => (
                 <optgroup key={g.region} label={g.region}>
                   {g.zones.map((z) => (
                     <option key={z} value={z}>
-                      {zoneCity(z)} ({zoneShortOffset(z, new Date(now))}) — {z}
+                      {zoneCity(z)} ({zoneShortOffset(z, new Date(now))}), {z}
                     </option>
                   ))}
                 </optgroup>

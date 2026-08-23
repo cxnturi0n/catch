@@ -25,7 +25,7 @@ const OFFSCREEN_POSITION: TooltipPosition = { top: -9999, left: -9999, arrowLeft
 /**
  * Hover-triggered tooltip portaled to <body> and positioned with `position: fixed`
  * from the trigger's live getBoundingClientRect(). Portaling is required because the
- * card is a `motion.div` with `whileHover` — applying a transform on hover would turn
+ * card is a `motion.div` with `whileHover`, applying a transform on hover would turn
  * it into the containing block for any `position: fixed` descendant, breaking
  * viewport-relative placement right when the tooltip opens.
  */
@@ -71,7 +71,7 @@ function HoverTooltip({ content, children }: { content: ReactNode; children: Rea
       window.removeEventListener('resize', recalculate)
       window.removeEventListener('scroll', recalculate, true)
     }
-    // recalculate reads live refs/DOM state — only the open transition should re-trigger it.
+    // recalculate reads live refs/DOM state, only the open transition should re-trigger it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -173,7 +173,7 @@ export function StatCard({
       {positive && <ArrowUpRight size={12} />}
       {negative && <ArrowDownRight size={12} />}
       {delta === null ? <Minus size={12} /> : null}
-      {delta === null ? '—' : `${Math.abs(delta)}%`}
+      {delta === null ? 'n/a' : `${Math.abs(delta)}%`}
     </div>
   )
 

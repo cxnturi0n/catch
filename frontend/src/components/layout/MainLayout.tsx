@@ -50,7 +50,7 @@ export function MainLayout() {
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
     } catch {
-      /* storage unavailable — width still applies for this session */
+      /* storage unavailable, width still applies for this session */
     }
   }
 
@@ -60,7 +60,7 @@ export function MainLayout() {
   }, [location.pathname])
 
   if (workspacesLoading) return <LayoutFallback />
-  // Only signed-in users are forced through onboarding — guests can freely
+  // Only signed-in users are forced through onboarding, guests can freely
   // explore the dashboard shell without ever creating a workspace.
   if (user && workspaces.length === 0) return <Navigate to="/onboarding" replace />
 
@@ -69,7 +69,7 @@ export function MainLayout() {
       className="relative min-h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] print:bg-white print:text-black"
       style={{ ['--sidebar-w' as string]: `${effectiveWidth}px` }}
     >
-      {/* Sapphire ambient — three slow blurred lights + vignette, the signature
+      {/* Sapphire ambient, three slow blurred lights + vignette, the signature
           background element. Kept inside .shell-ambient so day-mode dimming applies. */}
       <div aria-hidden="true" className="shell-ambient pointer-events-none fixed inset-0 z-0 print:hidden">
         <div className="sf-ambient absolute inset-0">
@@ -105,20 +105,20 @@ export function MainLayout() {
 
         {/* Extra bottom padding keeps the last rows clear of the corner Catch widget. */}
         <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-24 print:overflow-visible print:p-0">
-          {/* No route transition — content swaps instantly (no "jump on itself"). */}
+          {/* No route transition, content swaps instantly (no "jump on itself"). */}
           <div className="mx-auto w-full max-w-[1600px]">
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* Catch Intelligence — the always-present bar along the bottom of the shell. */}
+      {/* Catch Intelligence, the always-present bar along the bottom of the shell. */}
       <CatchBar />
 
-      {/* Cross-platform recap — self-manages visibility (at most once / 2h, on return). */}
+      {/* Cross-platform recap, self-manages visibility (at most once / 2h, on return). */}
       <RecapPopup />
 
-      {/* First-visit tutorial — one small floating card per macro section. */}
+      {/* First-visit tutorial, one small floating card per macro section. */}
       <SectionTutorial />
     </div>
   )

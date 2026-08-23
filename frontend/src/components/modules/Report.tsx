@@ -73,7 +73,7 @@ export function Report() {
     ? LIVE_PLATFORMS.filter((p) => getWorkspaceIntegrations(activeWorkspace.id)[p]?.status === 'Connected')
     : []
 
-  // Workspace switched — cancel any in-flight generation and clear the
+  // Workspace switched, cancel any in-flight generation and clear the
   // stale report so we never render/apply a result for the wrong workspace.
   useEffect(() => {
     setLoading(false)
@@ -168,7 +168,7 @@ export function Report() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Clipboard API unavailable — silently ignore, the text is still on screen.
+      // Clipboard API unavailable, silently ignore, the text is still on screen.
     }
   }
 
@@ -237,7 +237,7 @@ export function Report() {
                 </div>
               </label>
 
-              {/* SECOND dropdown — only for Single platform */}
+              {/* SECOND dropdown, only for Single platform */}
               {uiKind === 'single' && (
                 <label className="flex min-w-[10rem] flex-col gap-1.5 text-xs">
                   <span className="font-medium uppercase tracking-wide text-[var(--text-secondary)]">Platform</span>
@@ -261,7 +261,7 @@ export function Report() {
               )}
             </div>
 
-            {/* TIME HORIZON — date inputs */}
+            {/* TIME HORIZON, date inputs */}
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex flex-col gap-1.5 text-xs">
                 <span className="font-medium uppercase tracking-wide text-[var(--text-secondary)]">From</span>
@@ -315,7 +315,7 @@ export function Report() {
               {UI_KINDS.find((k) => k.id === uiKind)?.blurb}
             </p>
 
-            {/* Generate — small */}
+            {/* Generate, small */}
             <Button
               onClick={handleGenerate}
               loading={loading}

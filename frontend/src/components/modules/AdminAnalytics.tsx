@@ -109,7 +109,7 @@ export function AdminAnalytics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner])
 
-  // Non-owner accounts never see this page at all — redirect away before render.
+  // Non-owner accounts never see this page at all, redirect away before render.
   // (Defence-in-depth: the nav hides the link and the edge function 403s them too.)
   if (!isOwner) return <Navigate to="/dashboard/analytics" replace />
 
@@ -131,7 +131,7 @@ export function AdminAnalytics() {
     return (
       <div className="flex flex-col gap-3">
         <div className="rounded-[18px] border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
-          {error ?? 'No data.'} — the edge function may not be deployed yet.
+          {error ?? 'No data.'}, the edge function may not be deployed yet.
         </div>
         <button onClick={load} className="self-start rounded-[11px] border border-[var(--border-card)] bg-white/[0.04] px-3 py-1.5 text-sm text-[var(--text-primary)]">
           Retry

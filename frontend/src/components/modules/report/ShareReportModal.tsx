@@ -7,7 +7,7 @@ import { useToast } from '../../../context/ToastContext'
 
 /**
  * Share sheet for a generated report. The primary action uses the native
- * Web Share API (navigator.share) when the device supports it — that surfaces
+ * Web Share API (navigator.share) when the device supports it, that surfaces
  * the user's real targets (WhatsApp, Instagram, Google Drive, OneDrive,
  * iCloud Drive, Mail, …). We provide honest fallbacks (Email via mailto:,
  * WhatsApp via wa.me, and Copy link) for browsers without it. No fake OAuth.
@@ -27,8 +27,8 @@ export function ShareReportModal({
   const reportData = data
 
   const shareUrl = `https://catch.app/report/${reportData.workspaceSlug}-${reportData.periodEnd.slice(0, 10)}`
-  const title = `Community Report — ${reportData.workspaceName}`
-  const periodLine = `${formatLongDate(reportData.periodStart)} – ${formatLongDate(reportData.periodEnd)}`
+  const title = `Community Report, ${reportData.workspaceName}`
+  const periodLine = `${formatLongDate(reportData.periodStart)}, ${formatLongDate(reportData.periodEnd)}`
   const plainText = reportDataToPlainText(reportData)
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 

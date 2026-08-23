@@ -9,7 +9,7 @@ export const PRIORITY_TONE: Record<TaskPriority, BadgeTone> = {
   Low: 'blue',
 }
 
-// Calendar chip colors — High red-ish, Medium amber, Low slate/blue.
+// Calendar chip colors, High red-ish, Medium amber, Low slate/blue.
 export const PRIORITY_CHIP: Record<TaskPriority, string> = {
   High: 'bg-red-500/15 text-red-200 border-red-500/40 hover:border-red-400/70',
   Medium: 'bg-amber-500/15 text-amber-200 border-amber-500/40 hover:border-amber-400/70',

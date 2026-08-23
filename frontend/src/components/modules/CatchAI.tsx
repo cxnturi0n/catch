@@ -53,12 +53,12 @@ const CATEGORIES: Category[] = [
     cards: [
       {
         title: 'Build your layout',
-        body: 'Describe the project in your own words — who it’s for, which platforms you run, how big the team is. I shape the workspace around it.',
+        body: 'Describe the project in your own words, who it’s for, which platforms you run, how big the team is. I shape the workspace around it.',
         prompts: [SETUP_EXAMPLE],
       },
       {
         title: 'Connect a platform',
-        body: 'Bot tokens, server IDs, API keys — I tell you exactly what each integration needs.',
+        body: 'Bot tokens, server IDs, API keys, I tell you exactly what each integration needs.',
         prompts: ['How do I connect Discord?', 'How do I connect Telegram?'],
       },
     ],
@@ -70,7 +70,7 @@ const CATEGORIES: Category[] = [
     cards: [
       {
         title: 'What each platform tracks',
-        body: 'Straight answers on what is really measured — and what isn’t, so you never report a number that doesn’t exist.',
+        body: 'Straight answers on what is really measured, and what isn’t, so you never report a number that doesn’t exist.',
         prompts: ['What does Discord track?', 'What does Telegram track?', 'What about Galxe and Zealy?'],
       },
       {
@@ -133,8 +133,7 @@ export function CatchAI() {
   const workspaceName = workspaces.find((w) => w.id === activeWorkspaceId)?.name ?? 'this workspace'
 
   // One-shot first run: the invitation to describe the project is shown the very
-  // first time only. If it has ever been seen — on this device or on any other —
-  // it never comes back, on any workspace.
+  // first time only. If it has ever been seen, on this device or on any other, // it never comes back, on any workspace.
   useEffect(() => {
     if (hasSeenLayoutPromptLocally()) return
     let cancelled = false
@@ -142,7 +141,7 @@ export function CatchAI() {
       const seenRemotely = user ? await hasSeenLayoutPromptRemotely(user.id) : false
       if (cancelled) return
       if (seenRemotely) {
-        // Another device already showed it — record it here so we stop asking.
+        // Another device already showed it, record it here so we stop asking.
         rememberLayoutPromptSeen(null)
         return
       }
@@ -160,7 +159,7 @@ export function CatchAI() {
 
   function dismissIntro(startNow: boolean) {
     setIntroOpen(false)
-    // Either way it counts as seen — dismissing is still having received it.
+    // Either way it counts as seen, dismissing is still having received it.
     rememberLayoutPromptSeen(user?.id ?? null)
     if (startNow) {
       setInput(SETUP_EXAMPLE)
@@ -231,7 +230,7 @@ export function CatchAI() {
           )}
         </div>
       )}
-      {/* Hero — gold mark, question, motto */}
+      {/* Hero, gold mark, question, motto */}
       <div className={`flex flex-col items-center text-center ${started ? 'pt-2' : 'pt-10'}`}>
         <CatchMark size={started ? 40 : 60} variant="gold" play={!started} />
         {!started && (
@@ -397,7 +396,7 @@ export function CatchAI() {
             </p>
           </div>
           <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-            Tell me about this project in one message — who it’s for, which platforms you run the community on, and how big
+            Tell me about this project in one message, who it’s for, which platforms you run the community on, and how big
             your team is. I’ll shape <span className="text-[var(--text-primary)]">{workspaceName}</span> around it and hand
             you the exact setup steps.
           </p>

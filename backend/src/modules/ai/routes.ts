@@ -14,7 +14,7 @@ import { aiEnabled, REPORT_MONTHLY_QUOTA, reportModel, reportNarrativesThisMonth
 import { CHAT_DAILY_QUOTA, CHAT_EVENT, chatTurn, deleteConversation, getConversation, listConversations } from './chat/run.js'
 import { PERIOD_KINDS, REPORT_PLATFORMS, SCOPES } from './report/template.js'
 
-// Catch Intelligence — the only generative call in the product. The model
+// Catch Intelligence, the only generative call in the product. The model
 // sees a snapshot of numbers the client already computed and writes prose
 // over them; it never touches the database (BP §9.2). Cost governance
 // (BP §9.3): closed operation list, per-call caps, per-plan daily quota,
@@ -22,9 +22,9 @@ import { PERIOD_KINDS, REPORT_PLATFORMS, SCOPES } from './report/template.js'
 
 const SYSTEM = `You write the "Status Update" briefing for a Web3 community manager who is about to walk into a call. They need to sound informed in fifteen seconds.
 You receive a JSON snapshot of REAL measurements from their connected platforms. Your only job is to turn those numbers into prose.
-Hard rules — these matter more than style:
+Hard rules, these matter more than style:
 - Use ONLY numbers present in the snapshot. Never estimate, extrapolate, or invent a figure.
-- Never assert a cause. "Retention fell and the evening shift was uncovered" is allowed; "retention fell BECAUSE the shift was uncovered" is not — you cannot see causation in this data.
+- Never assert a cause. "Retention fell and the evening shift was uncovered" is allowed; "retention fell BECAUSE the shift was uncovered" is not, you cannot see causation in this data.
 - If the snapshot is thin or a metric is missing, say so plainly. "Telegram has no history yet" is a useful sentence; a confident summary built on one data point is not.
 - Never mention a platform that is not in the snapshot.
 Style: direct, specific, no filler. Lead with what changed or what needs attention, not with a greeting. No emoji. Name the platform when you cite a number.`

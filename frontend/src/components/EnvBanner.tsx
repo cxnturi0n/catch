@@ -9,7 +9,7 @@ export function EnvBanner() {
       role="status"
       className="fixed inset-x-0 top-0 z-[100] bg-amber-500 px-3 py-0.5 text-center text-[11px] font-semibold uppercase tracking-wider text-black"
     >
-      {env} environment — test data only
+      {env} environment, test data only
     </div>
   )
 }

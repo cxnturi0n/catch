@@ -89,7 +89,7 @@ export function Payments() {
       setLoading(true)
 
       if (!user) {
-        // Guest mode — render seeded moderators and empty comp/payment state in memory.
+        // Guest mode, render seeded moderators and empty comp/payment state in memory.
         if (cancelled) return
         setModerators(getSeedModerators(activeWorkspaceId))
         setMetrics(DEFAULT_POINTS_METRICS.map((m, i) => ({ id: `local-${i}`, ...m })))
@@ -184,7 +184,7 @@ export function Payments() {
     }
 
     if (!user) {
-      // Guest mode — keep the payment in memory only.
+      // Guest mode, keep the payment in memory only.
       const local: Payment = { id: `local-${Date.now()}`, ...payload }
       setPayments((prev) => [local, ...prev])
       setRecordDraft(null)
@@ -520,7 +520,7 @@ export function Payments() {
         {payTarget && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-[var(--text-secondary)]">
-              Payments are completed in your own external wallet — Catch never moves funds. Send{' '}
+              Payments are completed in your own external wallet, Catch never moves funds. Send{' '}
               <span className="font-semibold text-[var(--accent-emerald-bright)]">
                 {formatMoney(Math.max(0, earnedFor(payTarget.id) - paidFor(payTarget.id)), conversion.currency)}
               </span>{' '}
@@ -570,11 +570,11 @@ function GroupBody({
         <tr key={p.id} className="border-b border-[var(--border-card)] last:border-0 hover:bg-white/[0.02]">
           <td className="whitespace-nowrap px-5 py-3 text-slate-300">{formatLongDate(p.paidAt.slice(0, 10))}</td>
           <td className="whitespace-nowrap px-3 py-3 font-medium text-white">{moderatorName.get(p.moderatorId) ?? 'Unknown'}</td>
-          <td className="whitespace-nowrap px-3 py-3 text-slate-300">{p.period || '—'}</td>
+          <td className="whitespace-nowrap px-3 py-3 text-slate-300">{p.period || 'n/a'}</td>
           <td className="whitespace-nowrap px-3 py-3 text-right font-semibold text-[var(--accent-emerald-bright)]">
             {formatMoney(p.amount, p.currency)}
           </td>
-          <td className="px-5 py-3 text-slate-400">{p.note || '—'}</td>
+          <td className="px-5 py-3 text-slate-400">{p.note || 'n/a'}</td>
         </tr>
       ))}
     </>

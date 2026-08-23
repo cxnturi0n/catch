@@ -127,7 +127,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
   // Today only Telegram exposes a per-member breakdown (member_messages), which
   // we attribute to a moderator by matching their Telegram handle. Discord's
   // platform_metrics is workspace-level only, so dc_* stays manual until a
-  // per-moderator source exists. Auto values are a display default — any stored
+  // per-moderator source exists. Auto values are a display default, any stored
   // value in `values` (a CM override) always wins, so nothing is double-counted.
   const autoValues = useMemo(() => {
     const out: Record<string, number> = {}
@@ -300,7 +300,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
             <div>
               <h3 className="text-sm font-semibold text-white">Moderator earnings</h3>
               <p className="text-xs text-[var(--text-secondary)]">
-                Auto metrics pull from your integrations; the rest you enter — totals update live.
+                Auto metrics pull from your integrations; the rest you enter, totals update live.
               </p>
             </div>
           </div>
@@ -354,7 +354,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
                             <input
                               type="text"
                               inputMode="numeric"
-                              title={auto ? 'Auto-filled from your integration — edit to override' : undefined}
+                              title={auto ? 'Auto-filled from your integration, edit to override' : undefined}
                               className={`w-20 rounded-lg border bg-black/30 px-2 py-1.5 text-right text-sm text-white outline-none focus:border-[color:var(--accent-emerald)] ${
                                 auto ? 'border-[var(--accent-emerald)]/40' : 'border-white/[0.09]'
                               }`}
@@ -397,7 +397,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
     </>
   )
 
-  // Compact points catalog — lives in the resizable right rail. Rows are small so
+  // Compact points catalog, lives in the resizable right rail. Rows are small so
   // the whole catalog fits; the list scrolls vertically when it overflows.
   const catalogRail = (
     <Card className="flex max-h-[calc(100vh-7rem)] flex-col p-0 lg:min-h-[440px]">
@@ -416,7 +416,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
         </Button>
       </div>
 
-      {/* Conversion rate — moved here from the summary row */}
+      {/* Conversion rate, moved here from the summary row */}
       <div className="flex items-center gap-2 border-b border-[var(--border-card)] px-4 py-2.5">
         <Coins size={13} className="shrink-0 text-[var(--accent-emerald-bright)]" />
         <span className="text-[11px] text-slate-400">1 pt =</span>
@@ -441,7 +441,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
       </div>
 
       {metrics.length === 0 ? (
-        <p className="p-4 text-sm text-[var(--text-secondary)]">No metrics yet — add one to start.</p>
+        <p className="p-4 text-sm text-[var(--text-secondary)]">No metrics yet, add one to start.</p>
       ) : (
         <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
           {metrics.map((m) => {
@@ -494,10 +494,10 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
         right={catalogRail}
       />
 
-      {/* Add metric — pick from the curated, trackable catalog only */}
+      {/* Add metric, pick from the curated, trackable catalog only */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add a metric">
         <p className="mb-4 text-xs text-[var(--text-secondary)]">
-          Only metrics Catch can actually measure are listed — automatically from an integration, or entered manually (e.g. the X
+          Only metrics Catch can actually measure are listed, automatically from an integration, or entered manually (e.g. the X
           CSV export). Pick one to add it to the points catalog.
         </p>
         {available.length === 0 ? (
@@ -529,7 +529,7 @@ export function CompensationTab({ moderators }: { moderators: Moderator[] }) {
         )}
       </Modal>
 
-      {/* X / Twitter manual import — per-moderator, quick entry or CSV paste */}
+      {/* X / Twitter manual import, per-moderator, quick entry or CSV paste */}
       <XMetricsImportModal
         open={xImportOpen}
         onClose={() => setXImportOpen(false)}

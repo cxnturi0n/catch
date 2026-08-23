@@ -1,4 +1,4 @@
-// Microsoft Clarity loader — consent-gated. Clarity is only injected AFTER the
+// Microsoft Clarity loader, consent-gated. Clarity is only injected AFTER the
 // user grants analytics consent AND only when a project id is configured via the
 // VITE_CLARITY_PROJECT_ID build env var. No id → this is a total no-op, so the
 // app ships safe until the owner wires the id in Vercel.
@@ -27,7 +27,7 @@ export function setConsent(state: 'granted' | 'denied') {
   try {
     localStorage.setItem(CONSENT_KEY, state)
   } catch {
-    /* storage unavailable — consent just won't persist */
+    /* storage unavailable, consent just won't persist */
   }
 }
 

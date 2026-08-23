@@ -1,5 +1,5 @@
 // ============================================================================
-// Resource folders / sections (migration 019) — knowledge-drive helpers.
+// Resource folders / sections (migration 019), knowledge-drive helpers.
 // Kept separate from dbPlatformV2.ts (which owns the flat `resources` table)
 // so parallel agents don't collide. Reuses the `resources` bucket + rows,
 // adding a nullable `folder_id` grouping layer on top.
@@ -23,7 +23,7 @@ export const SECTION_TYPES = [
 
 export type SectionType = (typeof SECTION_TYPES)[number]
 
-// ── Local types (kept in this file — not in the shared src/types) ──
+// ── Local types (kept in this file, not in the shared src/types) ──
 
 export interface ResourceFolder {
   id: string
@@ -81,7 +81,7 @@ export interface FolderFile {
  * Computed client-side from a single pass over the workspace's resources so we
  * avoid a per-folder round-trip.
  */
-/** Count of resources that have no folder — surfaced as an "Unfiled" pseudo-folder. */
+/** Count of resources that have no folder, surfaced as an "Unfiled" pseudo-folder. */
 
 /** Files inside a folder. Pass `null` to fetch the Unfiled bucket. */
 // ── Writes ──

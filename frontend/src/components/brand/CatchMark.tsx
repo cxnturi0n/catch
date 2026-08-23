@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 
 /**
- * Catch brand mark — a faceted, crystalline "C": an angular letterform cut into
+ * Catch brand mark, a faceted, crystalline "C": an angular letterform cut into
  * flat planes, with a pale facet catching the light top-left and a deep navy
  * facet falling away bottom-right.
  *
@@ -19,13 +19,13 @@ import { motion, useReducedMotion } from 'framer-motion'
 // Outer silhouette + the inner mouth, traced as one path.
 const C_PATH =
   'M 34 7 L 78 7 L 95 25 L 66 35 L 38 37 L 26 50 L 38 63 L 66 65 L 95 75 L 78 93 L 34 93 L 5 50 Z'
-// Upper-left plane — the facet that catches the light.
+// Upper-left plane, the facet that catches the light.
 const FACET_LIGHT = 'M 34 7 L 78 7 L 66 35 L 38 37 L 26 50 L 5 50 Z'
-// Lower plane — falls away into shadow.
+// Lower plane, falls away into shadow.
 const FACET_DARK = 'M 26 50 L 38 63 L 66 65 L 95 75 L 78 93 L 34 93 L 5 50 Z'
 // The wedge tip of the top arm.
 const FACET_TIP = 'M 78 7 L 95 25 L 66 35 Z'
-// Four-pointed spark hooked onto the lower facet — the AI signature. It stays
+// Four-pointed spark hooked onto the lower facet, the AI signature. It stays
 // sapphire even on the gold mark: gold = intelligence, blue = Catch itself.
 const SPARK = 'M 88 46 Q 89.5 58.5 101 60 Q 89.5 61.5 88 74 Q 86.5 61.5 75 60 Q 86.5 58.5 88 46 Z'
 
@@ -72,8 +72,7 @@ export const CatchMark = memo(function CatchMark({
       animate={animate ? { scale: 1 } : undefined}
       transition={{ type: 'spring', stiffness: 200, damping: 16 }}
     >
-      {/* The gold mark carries the spark, which reaches past the letterform —
-          widen its viewBox so it isn't clipped. The sapphire mark is unchanged. */}
+      {/* The gold mark carries the spark, which reaches past the letterform, widen its viewBox so it isn't clipped. The sapphire mark is unchanged. */}
       <svg width={size} height={size} viewBox={variant === 'gold' ? '0 0 106 100' : '0 0 100 100'}>
         <defs>
           <linearGradient id={uid('Spark')} x1="75" y1="46" x2="101" y2="74" gradientUnits="userSpaceOnUse">
@@ -98,7 +97,7 @@ export const CatchMark = memo(function CatchMark({
           </linearGradient>
         </defs>
 
-        {/* Body — the full letterform, so no gap can ever show between facets */}
+        {/* Body, the full letterform, so no gap can ever show between facets */}
         <path d={C_PATH} fill={`url(#${uid('Body')})`} />
 
         {/* Planes: light top-left, deep bottom-right, mid wedge at the arm tip */}
@@ -110,7 +109,7 @@ export const CatchMark = memo(function CatchMark({
         <path d="M 5 50 L 26 50 L 38 37" fill="none" stroke="#FFFFFF" strokeOpacity="0.28" strokeWidth="0.9" strokeLinejoin="round" />
         <path d="M 66 35 L 78 7" fill="none" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="0.9" />
 
-        {/* AI spark — gold mark only, and always Catch sapphire */}
+        {/* AI spark, gold mark only, and always Catch sapphire */}
         {variant === 'gold' && <path d={SPARK} fill={`url(#${uid('Spark')})`} className="cm-spark" />}
       </svg>
     </motion.div>

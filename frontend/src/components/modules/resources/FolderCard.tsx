@@ -12,7 +12,7 @@ export interface FolderCardProps {
   pinned: boolean
   /** Newest-first preview of the files inside, rendered as inset rows. */
   filePreview?: FolderFilePreview[]
-  /** The "Unfiled" pseudo-folder — no pin / delete controls. */
+  /** The "Unfiled" pseudo-folder, no pin / delete controls. */
   isUnfiled?: boolean
   onOpen: () => void
   onTogglePin?: () => void
@@ -37,7 +37,7 @@ export function FolderCard({
 
   return (
     <Card hover className="group relative">
-      {/* Whole box is the open control — folder behaviour. */}
+      {/* Whole box is the open control, folder behaviour. */}
       <button
         type="button"
         onClick={onOpen}

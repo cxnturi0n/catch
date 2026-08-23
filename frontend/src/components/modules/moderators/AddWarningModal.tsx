@@ -57,7 +57,7 @@ export function AddWarningModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Add Warning — ${moderatorName}`}>
+    <Modal open={open} onClose={onClose} title={`Add Warning, ${moderatorName}`}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormField label="Severity">
           <select className={inputClass} value={severity} onChange={(e) => setSeverity(e.target.value as WarningSeverity)}>

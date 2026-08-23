@@ -20,7 +20,7 @@ import type { Moderator } from '../types'
 const pad = (h: number) => `${String(((h % 24) + 24) % 24).padStart(2, '0')}:00`
 
 function pct(v: number | null): string {
-  if (v === null) return '—'
+  if (v === null) return 'n/a'
   return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`
 }
 
@@ -61,7 +61,7 @@ export function StatusUpdatePanel({ open, onClose }: { open: boolean; onClose: (
     }
   }, [user, activeWorkspaceId, getWorkspaceIntegrations, workspaceName, lang])
 
-  // Every open is a fresh read — a stale briefing is worse than none.
+  // Every open is a fresh read, a stale briefing is worse than none.
   useEffect(() => {
     if (open) void refresh()
   }, [open, refresh])
@@ -157,7 +157,7 @@ export function StatusUpdatePanel({ open, onClose }: { open: boolean; onClose: (
                         )}
                       </div>
                       <div className="sf-value mt-2 text-[var(--text-primary)]">
-                        {s.headline ? formatCompactNumber(s.headline.value) : '—'}
+                        {s.headline ? formatCompactNumber(s.headline.value) : 'n/a'}
                       </div>
                       <div className="mt-1 text-[11px] text-[var(--text-muted)]">
                         {s.headline?.label ?? 'no headline metric'}
@@ -191,7 +191,7 @@ export function StatusUpdatePanel({ open, onClose }: { open: boolean; onClose: (
                 </div>
               )}
 
-              {/* Coverage — the ops half of the briefing */}
+              {/* Coverage, the ops half of the briefing */}
               {onShift > 0 && (
                 <CoverageStrip moderators={moderators} onOpen={() => { onClose(); navigate('/dashboard/moderators') }} />
               )}
@@ -223,7 +223,7 @@ function CoverageStrip({ moderators, onOpen }: { moderators: Moderator[]; onOpen
         <div>
           <div className="font-mono text-[10px] uppercase tracking-wide text-[var(--text-muted)]">Uncovered</div>
           <div className="font-mono text-[15px] font-semibold text-[#ff8f7f]">
-            {pad(c.gap.start)}–{pad(c.gap.end)} UTC
+            {pad(c.gap.start)}, {pad(c.gap.end)} UTC
           </div>
         </div>
       )}

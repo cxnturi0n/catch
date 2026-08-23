@@ -1,6 +1,6 @@
-// ── "Build your layout with Catch" — one-shot gate ──────────────────────────
+// ── "Build your layout with Catch", one-shot gate ──────────────────────────
 // The prompt is a first-run moment, not a recurring nudge: once a user has seen
-// it, they never see it again — not on a new workspace, not on a new device.
+// it, they never see it again, not on a new workspace, not on a new device.
 //
 // Two layers, mirroring how the account timezone is resolved:
 //   • localStorage → instant and offline-safe, answers before the first paint
@@ -26,7 +26,7 @@ function rememberLocally() {
   try {
     window.localStorage.setItem(STORAGE_KEY, 'done')
   } catch {
-    /* nothing to do — the profile flag still covers signed-in users */
+    /* nothing to do, the profile flag still covers signed-in users */
   }
 }
 
@@ -48,6 +48,6 @@ export function rememberLayoutPromptSeen(userId: string | null) {
   rememberLocally()
   if (!userId) return
   void markLayoutPromptSeen(userId).catch(() => {
-    /* pre-024 or offline — the local flag still holds on this device */
+    /* pre-024 or offline, the local flag still holds on this device */
   })
 }

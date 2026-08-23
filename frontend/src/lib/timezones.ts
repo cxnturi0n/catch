@@ -3,7 +3,7 @@
 // grouped by region with a live UTC-offset label, plus helpers to read/sort/
 // search them. Sourced from `Intl.supportedValuesOf('timeZone')` (~420 zones) so
 // it stays current with the runtime; a curated fallback covers the rare engine
-// that lacks that API. Everything here is display-only — data is stored in UTC.
+// that lacks that API. Everything here is display-only, data is stored in UTC.
 
 const FALLBACK_ZONES: string[] = [
   'UTC',
@@ -76,7 +76,7 @@ export function zoneOffsetMinutes(tz: string, at: Date = new Date()): number {
   }
 }
 
-/** "GMT+2", "GMT−5:30", "GMT" — the current short offset label for `tz`. */
+/** "GMT+2", "GMT−5:30", "GMT", the current short offset label for `tz`. */
 export function zoneShortOffset(tz: string, at: Date = new Date()): string {
   try {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(at)
@@ -106,7 +106,7 @@ export function zoneCity(tz: string): string {
   return seg.replace(/_/g, ' ')
 }
 
-/** "Rome · GMT+2" — a compact one-line label for a zone. */
+/** "Rome · GMT+2", a compact one-line label for a zone. */
 export function zoneLabel(tz: string, at: Date = new Date()): string {
   return `${zoneCity(tz)} · ${zoneShortOffset(tz, at)}`
 }

@@ -1,13 +1,13 @@
-// Client-side Nostr listening — public search API, no auth, no API key.
+// Client-side Nostr listening, public search API, no auth, no API key.
 // Docs: https://api.nostr.band/ (public relay + search index by nostr.band).
 //
 // Nostr is an OPEN protocol; nostr.band exposes a keyword search over kind-1
-// (text) notes that is callable directly from the browser — €0, no backend.
+// (text) notes that is callable directly from the browser, €0, no backend.
 
 const SEARCH_ENDPOINT = 'https://api.nostr.band/v0/search'
 
 export interface NostrPost {
-  /** Stable key — the note's hex event id. */
+  /** Stable key, the note's hex event id. */
   id: string
   /** bech32 npub of the author, or a short hex fallback. */
   npub: string

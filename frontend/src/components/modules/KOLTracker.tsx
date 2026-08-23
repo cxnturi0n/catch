@@ -80,7 +80,7 @@ export function KOLTracker() {
     }
 
     if (!user) {
-      // Guest mode — keep the KOL in memory only, no API write.
+      // Guest mode, keep the KOL in memory only, no API write.
       const localKol: KOL = { id: `local-${Date.now()}`, ...kolInput }
       setKols((prev) => [localKol, ...prev])
       closeModal()

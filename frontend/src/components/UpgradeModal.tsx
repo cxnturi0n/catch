@@ -42,7 +42,7 @@ export function UpgradeModal({ open, onClose, resource, used }: UpgradeModalProp
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 Upgrading to <span className="font-semibold text-white">{nextMeta.label}</span> raises the cap to{' '}
                 <span className="font-semibold text-white">{formatLimit(nextLimit)}</span> {labels.plural}
-                {nextMeta.next && Number.isFinite(nextLimit) ? ' — and higher tiers are unlimited.' : '.'}
+                {nextMeta.next && Number.isFinite(nextLimit) ? ', and higher tiers are unlimited.' : '.'}
               </p>
             )}
             {!nextMeta && (
@@ -61,7 +61,7 @@ export function UpgradeModal({ open, onClose, resource, used }: UpgradeModalProp
             href={mailto}
             className="sheen inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-emerald)] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--glow-emerald)] transition-all hover:shadow-[var(--glow-emerald-strong)]"
           >
-            Upgrade — contact us <ArrowUpRight size={14} />
+            Upgrade, contact us <ArrowUpRight size={14} />
           </a>
         </div>
       </div>

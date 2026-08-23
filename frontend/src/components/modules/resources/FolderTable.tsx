@@ -65,7 +65,7 @@ export function FolderTable({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-[var(--text-secondary)]">
-                    {f.lastUpdated ? formatRelativeTime(f.lastUpdated) : '—'}
+                    {f.lastUpdated ? formatRelativeTime(f.lastUpdated) : 'n/a'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">

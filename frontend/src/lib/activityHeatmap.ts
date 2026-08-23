@@ -2,7 +2,7 @@ import { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform } from
 export { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform }
 
 /**
- * Community activity heatmap — real message volume per UTC hour × weekday.
+ * Community activity heatmap, real message volume per UTC hour × weekday.
  *
  * TIMEZONE: every bucket is stored and aggregated in **UTC**. We deliberately do
  * NOT localise: moderator shifts are defined on a fixed 24h grid (06-14 / 14-22 /
@@ -11,8 +11,7 @@ export { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform }
  *
  * DATA HONESTY: rows only exist for hours that actually saw traffic, and only
  * from the moment ingestion was enabled (Telegram webhook has no history at all;
- * Discord sync fills forward from activation). Nothing here invents a value —
- * absent hours are genuine zeros, and `hasData` tells the caller whether to show
+ * Discord sync fills forward from activation). Nothing here invents a value, * absent hours are genuine zeros, and `hasData` tells the caller whether to show
  * the grid or an explanatory empty state.
  */
 
@@ -30,13 +29,13 @@ export { fetchActivityBuckets, type ActivityBucket, type ActivityPlatform }
 export const SHIFT_LABELS = ['Morning (06-14)', 'Afternoon (14-22)', 'Night (22-06)'] as const
 export type ShiftLabel = (typeof SHIFT_LABELS)[number]
 
-/** Weekday labels for rows — index 0 = Monday, matching ScheduleTab. */
+/** Weekday labels for rows, index 0 = Monday, matching ScheduleTab. */
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 export interface PeakHour {
   /** 0 = Mon … 6 = Sun */
   weekday: number
-  /** 0–23, UTC */
+  /** 0 to 23, UTC */
   hour: number
   messages: number
 }
@@ -44,7 +43,7 @@ export interface PeakHour {
 export interface ShiftTotal {
   shift: ShiftLabel
   messages: number
-  /** Share of all tracked messages, 0–100. */
+  /** Share of all tracked messages, 0 to 100. */
   share: number
 }
 
@@ -55,11 +54,11 @@ export interface HeatmapSummary {
   max: number
   /** Sum of every cell. */
   total: number
-  /** False when nothing has been tracked yet — show the empty state. */
+  /** False when nothing has been tracked yet, show the empty state. */
   hasData: boolean
   /** Distinct UTC days that contain at least one bucket (how much history we hold). */
   daysTracked: number
-  /** True when we hold less than a full week — label the view "partial history". */
+  /** True when we hold less than a full week, label the view "partial history". */
   partial: boolean
   /** Platforms that actually contributed at least one message. */
   platforms: ActivityPlatform[]
@@ -74,7 +73,7 @@ function weekdayIndexUTC(date: Date): number {
   return (date.getUTCDay() + 6) % 7
 }
 
-/** Which moderator shift an hour (0–23, UTC) belongs to. */
+/** Which moderator shift an hour (0 to 23, UTC) belongs to. */
 export function shiftIndexForHour(hour: number): number {
   if (hour >= 6 && hour < 14) return 0
   if (hour >= 14 && hour < 22) return 1
@@ -108,7 +107,7 @@ export function buildHeatmap(buckets: ActivityBucket[], peakCount = 3): HeatmapS
     if (b.count > 0) platforms.add(b.platform)
   }
 
-  // Peak cells — only real, non-zero ones.
+  // Peak cells, only real, non-zero ones.
   const cells: PeakHour[] = []
   for (let weekday = 0; weekday < 7; weekday++) {
     for (let hour = 0; hour < 24; hour++) {
@@ -145,7 +144,7 @@ export function buildHeatmap(buckets: ActivityBucket[], peakCount = 3): HeatmapS
   }
 }
 
-/** "Mon 20:00" — the label used in cell tooltips and the peak-hour list. */
+/** "Mon 20:00", the label used in cell tooltips and the peak-hour list. */
 export function formatCellLabel(weekday: number, hour: number): string {
   return `${WEEKDAY_LABELS[weekday]} ${String(hour).padStart(2, '0')}:00`
 }

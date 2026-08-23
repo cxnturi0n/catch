@@ -1,15 +1,15 @@
-// Client-side Snapshot listening — public GraphQL hub, no auth, no API key.
+// Client-side Snapshot listening, public GraphQL hub, no auth, no API key.
 // Docs: https://docs.snapshot.org/tools/graphql-api
 //
 // Snapshot is the OPEN off-chain governance layer for most DAOs; its GraphQL
-// hub is callable directly from the browser with CORS — €0, no backend.
+// hub is callable directly from the browser with CORS, €0, no backend.
 // There is no free-text search on proposals, so we pull the most recent
 // proposals and filter by keyword in the title/body on the client.
 
 const GRAPHQL_ENDPOINT = 'https://hub.snapshot.org/graphql'
 
 export interface SnapshotProposal {
-  /** Stable key — the proposal id. */
+  /** Stable key, the proposal id. */
   id: string
   /** Space (DAO) name, used as the "author" of the governance post. */
   space: string

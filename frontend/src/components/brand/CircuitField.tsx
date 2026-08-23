@@ -25,7 +25,7 @@ interface Dot {
   vy: number
 }
 
-// Sapphire palette — from deep to icy bright, so lit shards read as sparks of light.
+// Sapphire palette, from deep to icy bright, so lit shards read as sparks of light.
 const SHARD_RGB: [number, number, number][] = [
   [77, 159, 255], // sapphire
   [109, 179, 255], // brighter
@@ -34,7 +34,7 @@ const SHARD_RGB: [number, number, number][] = [
 ]
 
 /**
- * Sapphire ember field — the app background. Thin blue-sapphire SHARDS drift
+ * Sapphire ember field, the app background. Thin blue-sapphire SHARDS drift
  * slowly through the air and light up on a slow, staggered intermittence (like
  * embers of fire dust, but shard-shaped), over a few steady luminous points.
  * No circuit lines. Canvas, DPR-aware, draws a static frame first so it's
@@ -64,7 +64,7 @@ export function CircuitField({ intensity = 1, className }: { intensity?: number;
     function seed() {
       const shardCount = Math.round(Math.min(30, Math.max(12, (w * h) / 70000)) * intensity)
       shards = Array.from({ length: shardCount }).map(() => {
-        const period = 4 + Math.random() * 6 // seconds — slow intermittence
+        const period = 4 + Math.random() * 6 // seconds, slow intermittence
         return {
           x: Math.random() * w,
           y: Math.random() * h,
@@ -101,7 +101,7 @@ export function CircuitField({ intensity = 1, className }: { intensity?: number;
       ctx.rotate(s.angle)
       ctx.shadowBlur = 6 + lit * 20 // glow swells when the shard lights up
       ctx.shadowColor = `rgba(${r},${g},${b},${Math.min(1, alpha * 2)})`
-      // Rectangular ember shard — a small glowing bar
+      // Rectangular ember shard, a small glowing bar
       ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`
       const hl = s.len * 0.5
       const hw = s.w * 0.5
@@ -109,7 +109,7 @@ export function CircuitField({ intensity = 1, className }: { intensity?: number;
       if (ctx.roundRect) ctx.roundRect(-hl, -hw, s.len, s.w, hw)
       else ctx.rect(-hl, -hw, s.len, s.w)
       ctx.fill()
-      // Hot bright core when strongly lit — the spark catching light
+      // Hot bright core when strongly lit, the spark catching light
       if (lit > 0.35) {
         ctx.shadowBlur = 10 + lit * 22
         ctx.fillStyle = `rgba(${Math.min(255, r + 60)},${Math.min(255, g + 40)},255,${alpha * lit})`

@@ -7,7 +7,7 @@ import type { ReportKpi } from './reportModel'
 import type { ReportDataWithMeta } from '../components/modules/report/reportMeta'
 
 export function formatMetricValue(v: number | null, unit: ReportMetric['unit']): string {
-  if (v === null) return '—'
+  if (v === null) return 'n/a'
   switch (unit) {
     case 'pct':
       return `${v.toFixed(1)}%`
@@ -34,7 +34,7 @@ function sectionLines(s: ReportSection): string[] {
   const lines = [s.note, ...s.insights.map((i) => `[${i.severity}] ${i.text}`), ...s.metrics.map(metricLine)]
   for (const t of s.tables) {
     lines.push(`${t.label}:`)
-    for (const r of t.rows) lines.push('  ' + t.columns.map((c) => `${c.label} ${typeof r[c.key] === 'number' ? formatMetricValue(r[c.key] as number, c.unit ?? 'count') : (r[c.key] ?? '—')}`).join(' · '))
+    for (const r of t.rows) lines.push('  ' + t.columns.map((c) => `${c.label} ${typeof r[c.key] === 'number' ? formatMetricValue(r[c.key] as number, c.unit ?? 'count') : (r[c.key] ?? 'n/a')}`).join(' · '))
   }
   return lines
 }
@@ -64,7 +64,7 @@ export function toReportData(doc: IntelligenceReportDoc): ReportDataWithMeta {
       ...doc.sections.map((s) => ({ title: s.title, lines: sectionLines(s) })),
       { title: 'Methodology & data gaps', lines: doc.methodology },
     ],
-    recommendations: doc.recommendations.map((r) => `${r.title} — ${r.rationale}`),
+    recommendations: doc.recommendations.map((r) => `${r.title}, ${r.rationale}`),
     model: { type: doc.scope === 'moderation' ? 'general' : 'community', kpis: kpis(doc) },
   }
   return {

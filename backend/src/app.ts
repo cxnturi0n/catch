@@ -32,7 +32,7 @@ import multipart from '@fastify/multipart'
 import { hasZodFastifySchemaValidationErrors, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod'
 import { captureException } from './lib/sentry.js'
 
-// Builds the Fastify instance without listening — reused by api.ts and by tests.
+// Builds the Fastify instance without listening, reused by api.ts and by tests.
 export async function buildApp() {
   const app = Fastify({
     loggerInstance: logger,

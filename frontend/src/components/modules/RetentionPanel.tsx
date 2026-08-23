@@ -51,7 +51,7 @@ const INTENT_STEPS: ReactNode[] = [
 
 /**
  * A missing table surfaces as raw "Could not find the table … in the
- * schema cache" text — useless to the user. Treat those as "no data yet" so the
+ * schema cache" text, useless to the user. Treat those as "no data yet" so the
  * panel shows the friendly setup steps instead of the internal error string.
  */
 function friendlyLoadError(message: string | null): string | null {
@@ -60,10 +60,10 @@ function friendlyLoadError(message: string | null): string | null {
   return message
 }
 
-/** "just now" / "12m ago" / "5h ago" / "Mar 4, 2026" — sync freshness matters in minutes here. */
+/** "just now" / "12m ago" / "5h ago" / "Mar 4, 2026", sync freshness matters in minutes here. */
 function formatSyncTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
-  if (!Number.isFinite(diffMs)) return '—'
+  if (!Number.isFinite(diffMs)) return 'n/a'
   const minutes = Math.floor(diffMs / 60_000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${minutes}m ago`
@@ -75,7 +75,7 @@ function formatSyncTime(iso: string): string {
 }
 
 function formatDays(days: number | null): string {
-  if (days === null) return '—'
+  if (days === null) return 'n/a'
   if (days < 1) return '< 1 day'
   if (days < 60) return `${Math.round(days)} days`
   const months = days / 30.44
@@ -110,7 +110,7 @@ function SnapshotTooltip({ active, payload, label }: { active?: boolean; payload
 }
 
 /**
- * Member tenure & retention for Discord — "how long do people stay?".
+ * Member tenure & retention for Discord, "how long do people stay?".
  *
  * Every number comes from `discord_member_tenure` / `discord_membership_snapshots`,
  * both written by the discord-members-sync edge function. Nothing is estimated:
@@ -163,7 +163,7 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
       if (!result.success) {
         if (result.error === MISSING_MEMBERS_INTENT) {
           setMissingIntent(true)
-          showToast('Discord blocked the member list — enable the Server Members Intent.', 'error')
+          showToast('Discord blocked the member list, enable the Server Members Intent.', 'error')
         } else {
           showToast(result.error ?? 'Members sync failed.', 'error')
         }
@@ -236,7 +236,7 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
             title={missingIntent ? 'Discord is blocking the member list' : 'No member tenure data yet'}
             description={
               missingIntent
-                ? 'Reading join dates needs the Server Members privileged intent. It is a switch in your own Discord application — no Discord approval is required while your bot is in fewer than 100 servers.'
+                ? 'Reading join dates needs the Server Members privileged intent. It is a switch in your own Discord application, no Discord approval is required while your bot is in fewer than 100 servers.'
                 : friendlyLoadError(loadError) ??
                   'Run a member sync to read every current member’s join date from Discord. Nothing is shown until real data exists.'
             }
@@ -270,10 +270,10 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
             />
             <StatCard
               label="Members over 90 days"
-              value={stats.retained90Pct === null ? '—' : `${stats.retained90Pct}%`}
+              value={stats.retained90Pct === null ? 'n/a' : `${stats.retained90Pct}%`}
               delta={null}
               icon={<Clock size={18} />}
-              deltaTooltip={`${stats.retained30Pct ?? '—'}% over 30 days · ${stats.retained180Pct ?? '—'}% over 180 days`}
+              deltaTooltip={`${stats.retained30Pct ?? 'n/a'}% over 30 days · ${stats.retained180Pct ?? 'n/a'}% over 180 days`}
             />
             <StatCard
               label="Members tracked"
@@ -364,7 +364,7 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
                       <td className="py-2.5 text-right text-slate-300">{formatCompactNumber(c.joined)}</td>
                       <td className="py-2.5 text-right text-slate-300">{formatCompactNumber(c.stillPresent)}</td>
                       <td className="py-2.5 text-right font-medium text-white">
-                        {c.retentionPct === null ? '—' : `${c.retentionPct}%`}
+                        {c.retentionPct === null ? 'n/a' : `${c.retentionPct}%`}
                       </td>
                     </tr>
                   ))}
@@ -434,7 +434,7 @@ export function RetentionPanel({ workspaceId }: { workspaceId: string }) {
             </Card>
           )}
 
-          {/* Honest limitations — stated in the UI, not hidden in a doc. */}
+          {/* Honest limitations, stated in the UI, not hidden in a doc. */}
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2">
               <AlertTriangle size={14} className="text-[var(--text-secondary)]" />

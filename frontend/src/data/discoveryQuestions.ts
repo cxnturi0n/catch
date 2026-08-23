@@ -1,4 +1,4 @@
-// Discovery questionnaire — Web3 community interview framework.
+// Discovery questionnaire, Web3 community interview framework.
 //
 // The form routes each respondent to ONE of five short variants based on a
 // single start question ("Which option best describes your work?"). Each variant
@@ -50,9 +50,9 @@ export interface DiscoveryVariantDef {
 
 export const START_QUESTION = 'Which option best describes your work?'
 
-const SIZE_CHOICES = ['Under 1k', '1k–10k', '10k–50k', '50k–200k', '200k+']
+const SIZE_CHOICES = ['Under 1k', '1k, 10k', '10k, 50k', '50k, 200k', '200k+']
 
-// Community platforms — most common in Web3 first, then the wider set.
+// Community platforms, most common in Web3 first, then the wider set.
 export const PLATFORM_CHOICES = [
   'X',
   'Telegram',
@@ -78,7 +78,7 @@ export const DISCOVERY_VARIANTS: DiscoveryVariantDef[] = [
     label: 'Freelance community manager',
     hint: 'You work with more than one client.',
     questions: [
-      { id: 'fl_clients', text: 'How many clients do you work with right now, and on which platforms?', choices: ['Just 1', '2–5', '6–10', '10+'], platforms: PLATFORM_CHOICES },
+      { id: 'fl_clients', text: 'How many clients do you work with right now, and on which platforms?', choices: ['Just 1', '2 to 5', '6 to 10', '10+'], platforms: PLATFORM_CHOICES },
       { id: 'fl_tools', text: 'Which tools do you use every day to stay organized (tasks, notes, calendar, metrics)?' },
       { id: 'fl_pain', text: 'Which part of your week takes the most time or causes the most stress?' },
       { id: 'fl_switching', text: 'When you work with many clients, how do you organize your time for each one of them?' },
@@ -112,7 +112,7 @@ export const DISCOVERY_VARIANTS: DiscoveryVariantDef[] = [
     label: 'Agency',
     hint: 'You manage several clients, usually with a team.',
     questions: [
-      { id: 'ag_scale', text: 'How many clients do you work with, and on which platforms?', choices: ['1–5', '6–15', '16–30', '30+'], platforms: PLATFORM_CHOICES, notePlaceholder: 'How big is your team?' },
+      { id: 'ag_scale', text: 'How many clients do you work with, and on which platforms?', choices: ['1 to 5', '6 to 15', '16 to 30', '30+'], platforms: PLATFORM_CHOICES, notePlaceholder: 'How big is your team?' },
       { id: 'ag_tools', text: 'Which tools does your team use to work together and stay organized across all your clients?' },
       { id: 'ag_bottleneck', text: 'What is the biggest thing that slows you down as you grow?' },
       { id: 'ag_moderators', text: 'How do you find, train, and manage moderators? How do you cover shifts 24/7?' },

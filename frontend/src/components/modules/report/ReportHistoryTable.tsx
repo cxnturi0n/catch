@@ -15,7 +15,7 @@ export interface ReportContact {
   email: string
 }
 
-/** dd/mm/YYYY — the format the History rows use. */
+/** dd/mm/YYYY, the format the History rows use. */
 function formatDayMonthYear(dateStr: string): string {
   const d = new Date(dateStr)
   if (Number.isNaN(d.getTime())) return dateStr
@@ -45,7 +45,7 @@ export function ReportHistoryTable({
 
   function mailtoReport(entry: ReportHistoryEntry, email: string) {
     const data = entry.data
-    const subject = encodeURIComponent(`Community Report — ${data.workspaceName}`)
+    const subject = encodeURIComponent(`Community Report, ${data.workspaceName}`)
     const body = encodeURIComponent(reportDataToPlainText(data))
     window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`
     setShareWith(null)
@@ -111,7 +111,7 @@ export function ReportHistoryTable({
         </table>
       </div>
 
-      {/* "Share with…" — pick a person by name (has an email) or type a custom one. */}
+      {/* "Share with…", pick a person by name (has an email) or type a custom one. */}
       <Modal open={shareWith !== null} onClose={() => setShareWith(null)} title="Share with…">
         <div className="flex flex-col gap-3">
           <p className="text-xs text-[var(--text-secondary)]">
@@ -136,7 +136,7 @@ export function ReportHistoryTable({
             </div>
           ) : (
             <p className="rounded-xl border border-[var(--border-card)] bg-white/[0.02] px-4 py-3 text-xs text-[var(--text-secondary)]">
-              No saved contacts with an email yet — enter one below.
+              No saved contacts with an email yet, enter one below.
             </p>
           )}
 

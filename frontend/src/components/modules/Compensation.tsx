@@ -27,7 +27,7 @@ import { Modal } from '../ui/Modal'
 const CURRENCY_OPTIONS: CompCurrency[] = ['USD', 'EUR', 'USDT']
 const PERIOD_OPTIONS: FixedPeriod[] = ['monthly', 'weekly', 'hourly']
 const KIND_OPTIONS: { value: CompensationKind; label: string; hint: string }[] = [
-  { value: 'fixed', label: 'Fixed', hint: 'Flat salary — same every period' },
+  { value: 'fixed', label: 'Fixed', hint: 'Flat salary, same every period' },
   { value: 'variable', label: 'Variable', hint: 'Paid from the points catalog' },
   { value: 'both', label: 'Both', hint: 'Base salary plus variable on top' },
 ]
@@ -41,7 +41,7 @@ const KIND_TONE: Record<CompensationKind, BadgeTone> = {
 const CURRENCY_SYMBOL: Record<CompCurrency, string> = { USD: '$', EUR: '€', USDT: '₮' }
 
 function formatFixed(cfg: CompensationConfig | undefined): string {
-  if (!cfg || cfg.kind === 'variable' || cfg.fixedAmount == null) return '—'
+  if (!cfg || cfg.kind === 'variable' || cfg.fixedAmount == null) return 'n/a'
   const sym = cfg.fixedCurrency ? CURRENCY_SYMBOL[cfg.fixedCurrency] : ''
   const per = cfg.fixedPeriod ? ` / ${cfg.fixedPeriod}` : ''
   return `${sym}${cfg.fixedAmount.toLocaleString()}${per}`
@@ -130,7 +130,7 @@ export function Compensation() {
 
   async function handleSave() {
     if (!draft) return
-    // Guest mode — persist in-memory so the CM can preview the flow.
+    // Guest mode, persist in-memory so the CM can preview the flow.
     if (!user) {
       const now = new Date().toISOString()
       const base: Omit<CompensationConfig, 'moderatorId' | 'workspaceId' | 'updatedAt'> = {
@@ -239,7 +239,7 @@ export function Compensation() {
                         </div>
                         <div>
                           <div className="font-medium text-white">{mod.fullName}</div>
-                          <div className="text-xs text-[var(--text-secondary)]">{mod.discordHandle || mod.telegramHandle || '—'}</div>
+                          <div className="text-xs text-[var(--text-secondary)]">{mod.discordHandle || mod.telegramHandle || 'n/a'}</div>
                         </div>
                       </div>
                     </Td>
@@ -255,8 +255,8 @@ export function Compensation() {
                         {formatFixed(cfg)}
                       </span>
                     </Td>
-                    <Td>{cfg?.fixedCurrency ?? '—'}</Td>
-                    <Td className="capitalize">{cfg?.fixedPeriod ?? '—'}</Td>
+                    <Td>{cfg?.fixedCurrency ?? 'n/a'}</Td>
+                    <Td className="capitalize">{cfg?.fixedPeriod ?? 'n/a'}</Td>
                     <Td className="text-right">
                       <button
                         type="button"
@@ -317,7 +317,7 @@ function CompensationModal({
   const title = draft?.applyToAll
     ? 'Apply compensation to all moderators'
     : activeMod
-      ? `Edit compensation — ${activeMod.fullName}`
+      ? `Edit compensation, ${activeMod.fullName}`
       : 'Edit compensation'
 
   return (
@@ -415,7 +415,7 @@ function CompensationModal({
               <p className="text-xs text-[var(--text-secondary)]">
                 Variable pay is computed from the points catalog in{' '}
                 <span className="text-white">Moderators → Compensation</span>. This section only owns
-                the fixed portion and the mix — use the notes below to record your formula.
+                the fixed portion and the mix, use the notes below to record your formula.
               </p>
               <div className="mt-3">
                 <FormField label="Variable notes">

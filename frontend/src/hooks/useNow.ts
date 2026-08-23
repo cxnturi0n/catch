@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** 60s matches shift granularity — now-markers move in minutes, not seconds. */
+/** 60s matches shift granularity, now-markers move in minutes, not seconds. */
 const DEFAULT_INTERVAL_MS = 60_000
 
 /** Current instant, re-rendered on an interval so time-derived UI (now-markers,

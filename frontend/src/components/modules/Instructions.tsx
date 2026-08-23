@@ -46,7 +46,7 @@ function PlatformGrid() {
   const [active, setActive] = useState<PlatformSetup | null>(null)
   return (
     <div>
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Setup guide — pick a platform</h3>
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Setup guide, pick a platform</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {PLATFORM_SETUP.map((p) => {
           const Icon = p.icon
@@ -69,7 +69,7 @@ function PlatformGrid() {
         })}
       </div>
 
-      <Modal open={active !== null} onClose={() => setActive(null)} title={active ? `${active.name} — step-by-step setup` : ''}>
+      <Modal open={active !== null} onClose={() => setActive(null)} title={active ? `${active.name}, step-by-step setup` : ''}>
         {active && (
           <div className="flex flex-col gap-4">
             {active.paste && (
@@ -123,7 +123,7 @@ function SectionContent({ section }: { section: InstructionSection }) {
         {linkify(section.intro)}
       </p>
 
-      {/* How to use it — numbered steps */}
+      {/* How to use it, numbered steps */}
       <div className="mt-8">
         <Eyebrow>{section.howToUseTitle}</Eyebrow>
         <ol className="mt-3.5 flex flex-col gap-3">
@@ -229,7 +229,7 @@ function PrintableInstructions() {
       <div className="mb-6 flex items-center gap-3 border-b-2 border-black pb-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black text-lg font-extrabold text-white">C</div>
         <div>
-          <div className="text-xl font-bold">Catch — Instructions Guide</div>
+          <div className="text-xl font-bold">Catch, Instructions Guide</div>
           <div className="text-sm">Everything you need to run Catch like a pro.</div>
         </div>
       </div>

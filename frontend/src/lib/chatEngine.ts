@@ -1,10 +1,10 @@
-// ── Catch internal assistant — engine ────────────────────────────────────────
+// ── Catch internal assistant, engine ────────────────────────────────────────
 // Deterministic, NO-AI, zero-cost, and privacy-safe: nothing leaves the app.
 // It routes the user around the platform and answers grounded questions about
 // what Catch really does (knowledge base mirrors the honest capability facts).
 //
 // PLUGGABLE BRAIN: `respond()` is the local engine. When an AI backend is wired
-// later, call it first and fall back to `respond()` — the ChatReply shape stays
+// later, call it first and fall back to `respond()`, the ChatReply shape stays
 // the same, so the UI never changes. Keep answers honest: never invent metrics.
 
 export interface ChatAction {
@@ -18,7 +18,7 @@ export interface ChatReply {
   kind?: 'setup' | 'nav' | 'kb' | 'kb-weak' | 'fallback'
 }
 
-// Navigation targets — "go to / open / show <x>" or a bare keyword jumps here.
+// Navigation targets, "go to / open / show <x>" or a bare keyword jumps here.
 // Keys keep a few Italian synonyms too, so older habits still match.
 const NAV: { keys: string[]; label: string; to: string }[] = [
   { keys: ['overview', 'analytics', 'analisi', 'community analytics'], label: 'Overview', to: '/dashboard/analytics' },
@@ -37,7 +37,7 @@ const NAV: { keys: string[]; label: string; to: string }[] = [
   { keys: ['profil', 'timezone', 'fuso', 'account', 'lingua', 'language'], label: 'Profile', to: '/dashboard/profile' },
 ]
 
-// Knowledge base — grounded, honest answers. `score` = keyword hits.
+// Knowledge base, grounded, honest answers. `score` = keyword hits.
 const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['what do you do', 'who are you', 'help', 'what can you', 'how do you work', 'cosa fai', 'chi sei', 'aiuto', 'cosa puoi', 'come funzioni'],
@@ -47,7 +47,7 @@ const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['discord', 'what does discord', 'discord metrics', 'cosa fa discord', 'metriche discord'],
     answer:
-      'With Discord (bot: Token + Server ID) Catch tracks: members (≈ approximate), 7-day bans (needs “View Audit Log”), an hour×day activity heatmap, messages/bans/timeouts per moderator, and tenure/retention (requires the privileged MEMBERS intent). It doesn’t read message content yet (sentiment/scam) — that comes with AI.',
+      'With Discord (bot: Token + Server ID) Catch tracks: members (≈ approximate), 7-day bans (needs “View Audit Log”), an hour×day activity heatmap, messages/bans/timeouts per moderator, and tenure/retention (requires the privileged MEMBERS intent). It doesn’t read message content yet (sentiment/scam), that comes with AI.',
     actions: [{ label: 'Open Discord', to: '/dashboard/analytics?platform=discord' }, { label: 'Integrations', to: '/dashboard/integrations' }],
   },
   {
@@ -77,7 +77,7 @@ const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['moderator', 'moderatori', 'turni', 'copertura', 'shift', 'coverage'],
     answer:
-      'The Moderators section runs the team: directory (handle, timezone, shift, CV), analytics/punctuality, points-based compensation, reports and leaderboard. Activity metrics come from the bot (matching the mod’s handle) — moderators do NOT need to log in or grant personal permissions.',
+      'The Moderators section runs the team: directory (handle, timezone, shift, CV), analytics/punctuality, points-based compensation, reports and leaderboard. Activity metrics come from the bot (matching the mod’s handle), moderators do NOT need to log in or grant personal permissions.',
     actions: [{ label: 'Moderators', to: '/dashboard/moderators' }],
   },
   {
@@ -89,7 +89,7 @@ const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['kol', 'ambassador', 'influencer'],
     answer:
-      'The KOL Tracker is a CRM for ambassadors: name, channel, reach, status, notes. Today the data is entered by hand (no automatic social listening — that would require the paid X API).',
+      'The KOL Tracker is a CRM for ambassadors: name, channel, reach, status, notes. Today the data is entered by hand (no automatic social listening, that would require the paid X API).',
     actions: [{ label: 'KOLs', to: '/dashboard/kol' }],
   },
   {
@@ -119,7 +119,7 @@ const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['scam', 'sentiment', 'ai', 'phishing', 'agent', 'agente', 'intelligenza'],
     answer:
-      'Today Catch counts activity but doesn’t read message content. With AI (coming) you unlock: real-time scam/phishing detection, community sentiment and topics, real response-time and monitoring agents. It’s under evaluation — it requires client consent and a commercial AI backend (zero-retention).',
+      'Today Catch counts activity but doesn’t read message content. With AI (coming) you unlock: real-time scam/phishing detection, community sentiment and topics, real response-time and monitoring agents. It’s under evaluation, it requires client consent and a commercial AI backend (zero-retention).',
   },
   {
     keys: ['price', 'pricing', 'plan', 'cost', 'tier', 'free', 'prezzo', 'piano'],
@@ -132,8 +132,7 @@ const GREETING = /^(ciao|hey|salve|hello|hi|buongiorno|buonasera)\b/i
 
 // ── Workspace setup prompt ───────────────────────────────────────────────────
 // "This project is for company X, I run Discord and Telegram with 5 moderators."
-// We only recognise platforms Catch can genuinely connect — never invent one —
-// and answer with the concrete setup checklist rather than pretending we built it.
+// We only recognise platforms Catch can genuinely connect, never invent one, // and answer with the concrete setup checklist rather than pretending we built it.
 
 const SETUP_PLATFORMS: { key: string; label: string; patterns: RegExp }[] = [
   { key: 'discord', label: 'Discord', patterns: /\bdiscord\b/i },
@@ -182,18 +181,18 @@ export function setupReply(plan: SetupPlan): ChatReply {
   const connectable = plan.platforms.filter((p) => p.key !== 'x')
 
   const lines = [
-    `Got it — I'll shape this workspace around **${list}**${team.length > 0 ? `, with ${team.join(' and ')}` : ''}.`,
+    `Got it, I'll shape this workspace around **${list}**${team.length > 0 ? `, with ${team.join(' and ')}` : ''}.`,
     '',
     'Here’s what that means concretely:',
     connectable.length > 0
-      ? `• **Analytics** gets one section per platform — ${connectable.map((p) => p.label).join(', ')} — as soon as each one is connected.`
+      ? `• **Analytics** gets one section per platform, ${connectable.map((p) => p.label).join(', ')}, as soon as each one is connected.`
       : '',
     x ? '• **X / Twitter** has no free API, so its numbers come in through the CSV import rather than a live connection.' : '',
     plan.moderators
       ? `• **Moderators** is where you add your ${plan.moderators}, set their shifts across time zones, and turn their activity into pay.`
       : '• **Moderators** is where you add your team, set shifts and turn activity into pay.',
     '',
-    `Next step: connect ${connectable.length > 0 ? connectable.map((p) => p.label).join(' and ') : 'your platforms'} — you’ll need a bot token for each. I can walk you through it.`,
+    `Next step: connect ${connectable.length > 0 ? connectable.map((p) => p.label).join(' and ') : 'your platforms'}, you’ll need a bot token for each. I can walk you through it.`,
   ].filter(Boolean)
 
   return {
@@ -242,7 +241,7 @@ export function isCanned(input: string): boolean {
 /** Local, deterministic reply. Never invents data; routes + explains. */
 export function respond(input: string): ChatReply {
   const text = ` ${input.toLowerCase().trim()} `
-  if (!input.trim()) return { content: 'Go ahead — I can take you to a section or explain what Catch tracks.' }
+  if (!input.trim()) return { content: 'Go ahead, I can take you to a section or explain what Catch tracks.' }
 
   // A workspace description wins over keyword routing: it's the onboarding path.
   const plan = parseSetupPrompt(input)
