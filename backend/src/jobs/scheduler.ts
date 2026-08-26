@@ -13,6 +13,7 @@ import { runRetention } from './retention.js'
 import { dispatchDueReports } from '../modules/reports/dispatch.js'
 import { recordShiftEventsForAll } from './moderatorPerformance.js'
 import { runDiscordBackfill } from './discordBackfill.js'
+import { runTelegramBackfill } from './telegramBackfill.js'
 
 // Scheduling rules (BP §5): per-platform floor, deterministic jitter per
 // workspace, throttle on the last ATTEMPT (a rejected call still spent quota).
@@ -157,6 +158,11 @@ export async function startWorker(boss: PgBoss) {
   await boss.work<{ workspaceId: string }>(QUEUES.discordBackfill, { batchSize: 1, pollingIntervalSeconds: 5 }, async ([job]) => {
     const r = await runDiscordBackfill(job!.data.workspaceId)
     if (r) logger.info({ workspaceId: job!.data.workspaceId, status: r.status, messages: r.messages, channels: r.channelsDone }, 'discord backfill')
+  })
+
+  await boss.work<{ workspaceId: string }>(QUEUES.telegramBackfill, { batchSize: 1, pollingIntervalSeconds: 5 }, async ([job]) => {
+    const r = await runTelegramBackfill(job!.data.workspaceId)
+    if (r) logger.info({ workspaceId: job!.data.workspaceId, status: r.status, messages: r.messages, reason: r.reason }, 'telegram backfill')
   })
 
   await boss.work(QUEUES.reports, { batchSize: 1 }, async () => {
