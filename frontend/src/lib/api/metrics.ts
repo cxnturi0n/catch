@@ -110,16 +110,52 @@ export interface MemberMessageStat {
   messages: number
 }
 
-async function memberMessages(workspaceId: WorkspaceId, sinceDays: number) {
-  return api<{ members: Array<{ memberRef: string; displayName: string | null; messages: number }>; trend: TrendPoint[] }>(`${m(workspaceId)}/member-messages?days=${sinceDays}`)
+export type MessagePlatform = 'telegram' | 'discord'
+
+async function memberMessages(workspaceId: WorkspaceId, sinceDays: number, platform: MessagePlatform = 'telegram') {
+  return api<{ members: Array<{ memberRef: string; displayName: string | null; messages: number }>; trend: TrendPoint[] }>(`${m(workspaceId)}/member-messages?days=${sinceDays}&platform=${platform}`)
 }
 
-export async function fetchMemberMessages(workspaceId: WorkspaceId, sinceDays = 30): Promise<MemberMessageStat[]> {
-  return (await memberMessages(workspaceId, sinceDays)).members.map((x) => ({ memberRef: x.memberRef, displayName: x.displayName ?? x.memberRef, messages: x.messages }))
+export async function fetchMemberMessages(workspaceId: WorkspaceId, sinceDays = 30, platform: MessagePlatform = 'telegram'): Promise<MemberMessageStat[]> {
+  return (await memberMessages(workspaceId, sinceDays, platform)).members.map((x) => ({ memberRef: x.memberRef, displayName: x.displayName ?? x.memberRef, messages: x.messages }))
 }
 
-export async function fetchMemberMessageTrend(workspaceId: WorkspaceId, sinceDays = 30): Promise<TrendPoint[]> {
-  return (await memberMessages(workspaceId, sinceDays)).trend
+export async function fetchMemberMessageTrend(workspaceId: WorkspaceId, sinceDays = 30, platform: MessagePlatform = 'telegram'): Promise<TrendPoint[]> {
+  return (await memberMessages(workspaceId, sinceDays, platform)).trend
+}
+
+// ── Channels, member picker, history import ─────────────────────────────────
+
+export interface ChannelActivityRow {
+  platform: MessagePlatform
+  channelId: string
+  name: string | null
+  type: string | null
+  messages: number
+  activeMembers: number
+  lastMessageAt: string | null
+}
+
+export async function fetchChannelActivity(workspaceId: WorkspaceId, sinceDays = 30, platform?: MessagePlatform): Promise<ChannelActivityRow[]> {
+  const q = new URLSearchParams({ days: String(sinceDays), ...(platform && { platform }) })
+  return (await api<{ rows: ChannelActivityRow[] }>(`${m(workspaceId)}/channels?${q}`)).rows
+}
+
+export interface PlatformMember {
+  memberRef: string
+  displayName: string | null
+  messages: number
+  lastMessageAt: string | null
+  isAdmin: boolean
+}
+
+export async function fetchPlatformMembers(workspaceId: WorkspaceId, platform: MessagePlatform, q = '', limit = 20): Promise<PlatformMember[]> {
+  const qs = new URLSearchParams({ platform, limit: String(limit), ...(q && { q }) })
+  return (await api<{ rows: PlatformMember[] }>(`${m(workspaceId)}/platform-members?${qs}`)).rows
+}
+
+export function requestBackfill(workspaceId: WorkspaceId, platform: MessagePlatform) {
+  return api<{ platform: string; backfill: { status: string } }>(`${intBase(workspaceId, platform)}/backfill`, { method: 'POST' })
 }
 
 export interface MembershipEventCounts {

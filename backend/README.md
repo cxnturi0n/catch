@@ -91,15 +91,31 @@ PostgreSQL, no Redis.
 |---|---|---|
 | `sync-tick` | every minute | enqueues due `(workspace, platform)` jobs: Discord/Telegram floor 60 s, Galxe/Zealy 300 s, throttled on last *attempt*, deterministic jitter ≤45 s per workspace, singleton key per pair |
 | `sync-platform` | on demand | member counts etc. → `platform_metrics` daily rollup + snapshot on change (30-min heartbeat) |
-| `discord-activity` | every minute | per-channel cursor message counting → `message_activity` |
+| `discord-activity` | every minute, only while the gateway is not live | REST fallback: per-channel cursor message reading through the shared ingest |
 | `discord-members` | every 20 h | full member list → tenure + membership snapshot; missing intent recorded in `integration_sync_state` |
-| `retention` | 03:00 UTC | snapshots > 30 d, security events > 365 d, Telegram dedup > 7 d |
+| `discord-backfill` | after connect, or `POST /integrations/discord/backfill` | 30 day history of text channels and threads (50k cap) + audit log → messages, counters, moderator actions; progress in `integrations.metadata.backfill` |
+| `telegram-backfill` | after connect (public groups, MTProto configured) | 30 day history through the MTProto client → same ingest |
+| `shift-events` | 00:10 UTC | punctuality per scheduled moderator |
+| `response-metrics` | 00:20 UTC | first moderator answer within 60 min per channel → `moderator_response_metrics` |
+| `retention` | 03:00 UTC | snapshots > 30 d, stored message text > 30 d, security events > 365 d, Telegram dedup > 7 d, AI chats > 30 d |
+
+Discord gateway (not a queue): `integrations/discord/gatewayManager.ts` runs
+inside the worker process, one websocket per connected Discord workspace,
+guarded by a Postgres advisory lock per workspace so a second worker owns
+nothing. Messages, channels, joins/leaves and audit log entries arrive live;
+state lives in `discord_gateway_state` (also shown on the Integrations card).
+Every collector writes through `jobs/ingest.ts`: a message is stored once
+(`platform_messages`, text encrypted, pruned after 30 days) and the counters
+only move when the row was new, so overlapping sources never double count.
 
 Live updates: every writer calls `publish(workspaceId, topic)` (Postgres
 `NOTIFY`); the API listens and fans out over `GET /workspaces/:id/events`
 (Server-Sent Events, topics named after the tables that changed). The SPA
 refetches on `change` and keeps polling as a floor.
 
-Telegram is push: `POST /webhooks/telegram` (secret header, idempotent on `update_id`)
-counts messages per member/hour and join/leave transitions. Register with
-`setWebhook` using `allowed_updates=["message","chat_member"]`.
+Telegram is push: connect registers `POST /webhooks/telegram/<integration id>`
+with a per-integration secret (only its hash is stored); the route is
+idempotent on `update_id` and handles messages, join/leave transitions, admin
+actions (bans, mutes) and the bot being removed or re-added. The legacy
+`POST /webhooks/telegram` (global `TELEGRAM_WEBHOOK_SECRET`) still works for
+bots registered by hand.

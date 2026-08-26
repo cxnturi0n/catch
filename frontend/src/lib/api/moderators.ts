@@ -24,6 +24,8 @@ interface ApiModerator {
   fullName: string
   discordHandle: string | null
   telegramHandle: string | null
+  discordUserId?: string | null
+  telegramUserId?: string | null
   platforms: string[]
   startDate: string | null
   contractType: string
@@ -64,6 +66,8 @@ function mapModerator(m: ApiModerator): Moderator {
     fullName: m.fullName,
     discordHandle: m.discordHandle ?? '',
     telegramHandle: m.telegramHandle ?? '',
+    discordUserId: m.discordUserId ?? undefined,
+    telegramUserId: m.telegramUserId ?? undefined,
     avatarInitials: initialsOf(m.fullName),
     startDate: m.startDate ?? m.createdAt.slice(0, 10),
     contractType: m.contractType as Moderator['contractType'],
@@ -72,8 +76,8 @@ function mapModerator(m: ApiModerator): Moderator {
     shift: shiftLabel(m.shiftStartUtc),
     platforms: m.platforms as Moderator['platforms'],
     status: m.status as Moderator['status'],
-    // Filled by fetchModerators from measured activity; bans/timeouts/response
-    // time have no per-moderator source and stay n/a.
+    // Filled by fetchModerators from measured activity, moderation actions
+    // (Discord audit log, Telegram admin actions) and response metrics.
     messagesThisMonth: 0,
     bansExecuted: 0,
     timeoutsGiven: 0,
@@ -107,6 +111,8 @@ function toBody(m: Partial<ModeratorInput>) {
     ...(m.fullName !== undefined && { fullName: m.fullName }),
     ...(m.discordHandle !== undefined && { discordHandle: m.discordHandle || null }),
     ...(m.telegramHandle !== undefined && { telegramHandle: m.telegramHandle || null }),
+    ...(m.discordUserId !== undefined && { discordUserId: m.discordUserId || null }),
+    ...(m.telegramUserId !== undefined && { telegramUserId: m.telegramUserId || null }),
     ...(m.platforms !== undefined && { platforms: m.platforms }),
     ...(m.startDate !== undefined && { startDate: m.startDate || null }),
     ...(m.contractType !== undefined && { contractType: m.contractType }),
@@ -143,15 +149,48 @@ interface ShiftEventRow {
   firstActivityUtc: string | null
 }
 
-// Roster + measured activity (30 days) + punctuality (30 days), merged. The
-// counters stay 0 / 'n/a' when no handle matches platform members.
+interface ActionsByModerator {
+  moderatorId: string
+  bans: number
+  unbans: number
+  kicks: number
+  timeouts: number
+  untimeouts: number
+  deletes: number
+  mutes: number
+  unmutes: number
+}
+interface ResponseMetricRow {
+  moderatorId: string
+  platform: string
+  day: string
+  responsesCount: number
+  avgResponseSeconds: number | null
+}
+
+function formatResponse(rows: ResponseMetricRow[]): string {
+  const n = rows.reduce((s, r) => s + r.responsesCount, 0)
+  if (n === 0) return 'n/a'
+  const total = rows.reduce((s, r) => s + r.responsesCount * (r.avgResponseSeconds ?? 0), 0)
+  const minutes = total / n / 60
+  return minutes < 1 ? `${Math.round(minutes * 60)} s` : `${minutes.toFixed(1)} min`
+}
+
+// Roster + measured activity (30 days) + punctuality (30 days) + moderation
+// actions + response times, merged. The counters stay 0 / 'n/a' when no
+// platform user id or handle matches.
 export async function fetchModerators(workspaceId: WorkspaceId): Promise<Moderator[]> {
-  const [list, perf, shifts] = await Promise.all([
+  const [list, perf, shifts, actions, responses] = await Promise.all([
     api<{ moderators: ApiModerator[] }>(base(workspaceId)),
     api<{ rows: PerformanceRow[] }>(`${base(workspaceId)}/performance?sinceDays=30`).catch(() => ({ rows: [] as PerformanceRow[] })),
     api<{ events: ShiftEventRow[] }>(`${base(workspaceId)}/shift-events?sinceDays=30`).catch(() => ({ events: [] as ShiftEventRow[] })),
+    api<{ byModerator: ActionsByModerator[] }>(`${base(workspaceId)}/actions?sinceDays=30`).catch(() => ({ byModerator: [] as ActionsByModerator[] })),
+    api<{ metrics: ResponseMetricRow[] }>(`${base(workspaceId)}/response-metrics?sinceDays=30`).catch(() => ({ metrics: [] as ResponseMetricRow[] })),
   ])
   const perfBy = new Map(perf.rows.map((r) => [r.moderatorId, r]))
+  const actionsBy = new Map(actions.byModerator.map((a) => [a.moderatorId, a]))
+  const responsesBy = new Map<string, ResponseMetricRow[]>()
+  for (const r of responses.metrics) responsesBy.set(r.moderatorId, [...(responsesBy.get(r.moderatorId) ?? []), r])
   const shiftBy = new Map<string, { assigned: number; completed: number }>()
   for (const e of shifts.events) {
     const s = shiftBy.get(e.moderatorId) ?? { assigned: 0, completed: 0 }
@@ -162,10 +201,14 @@ export async function fetchModerators(workspaceId: WorkspaceId): Promise<Moderat
   return list.moderators.map((m) => {
     const p = perfBy.get(m.id)
     const sh = shiftBy.get(m.id)
+    const ac = actionsBy.get(m.id)
     const mapped = mapModerator(m)
     return {
       ...mapped,
       messagesThisMonth: p?.messages ?? 0,
+      bansExecuted: (ac?.bans ?? 0) + (ac?.kicks ?? 0),
+      timeoutsGiven: (ac?.timeouts ?? 0) + (ac?.mutes ?? 0),
+      avgResponseTime: formatResponse(responsesBy.get(m.id) ?? []),
       lastActiveDate: p?.lastActiveAt ? p.lastActiveAt.slice(0, 10) : mapped.lastActiveDate,
       shiftsAssigned: sh?.assigned ?? 0,
       shiftsCompleted: sh?.completed ?? 0,

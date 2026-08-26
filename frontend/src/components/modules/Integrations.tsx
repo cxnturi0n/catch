@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { AtSign, BookOpen, Cast, Gem, Loader2, MessageSquare, MonitorPlay, RefreshCw, Send, Trophy, Tv, Upload, Vote } from 'lucide-react'
+import { AlertTriangle, AtSign, BookOpen, Cast, Gem, History, Loader2, MessageSquare, MonitorPlay, Radio, RefreshCw, Send, Trophy, Tv, Upload, Vote } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { IntegrationConnection, IntegrationKey } from '../../types'
+import type { BackfillProgress, IntegrationConnection, IntegrationHealth, IntegrationKey } from '../../types'
+import { requestBackfill } from '../../lib/api/metrics'
 import {
   discordConnect,
   discordSync,
@@ -154,15 +155,131 @@ function runSync(key: IntegrationKey, workspaceId: string): Promise<SyncResult> 
       throw new Error('This integration is not yet available.')
   }
 }
-// Live metrics refresh hourly server-side (cron-sync); poll a little more often
-// than that so a manual sync elsewhere / the cron shows up without a reload.
+// The worker syncs every minute and pushes changes over SSE; the poll is a
+// safety net for tabs that lost the event stream.
 const AUTO_REFRESH_MS = 5 * 60 * 1000
 const INTEGRATION_TABLES = ['integrations'] as const
 
 const STATUS_TONE: Record<IntegrationConnection['status'], BadgeTone> = {
   Connected: 'emerald',
   'Not Connected': 'gray',
+  Error: 'red',
   'Coming Soon': 'yellow',
+}
+
+const DEV_PORTAL = 'https://discord.com/developers/applications'
+const INTENT_LABEL: Record<string, string> = { message_content: 'Message Content Intent', guild_members: 'Server Members Intent' }
+
+function backfillText(b: BackfillProgress): { text: string; tone: 'ok' | 'warn' | 'error' | 'muted' } {
+  const n = new Intl.NumberFormat('en-US').format(b.messages)
+  switch (b.status) {
+    case 'queued':
+      return { text: 'History import queued, starts within a minute', tone: 'muted' }
+    case 'running':
+      return { text: `Importing history: ${b.channelsDone}/${b.channelsTotal || '?'} channels, ${n} messages so far`, tone: 'muted' }
+    case 'done':
+      return { text: `History imported: ${n} messages from the last 30 days`, tone: 'ok' }
+    case 'partial':
+      return { text: `History imported (capped at 50,000 messages): ${n} messages`, tone: 'warn' }
+    case 'failed':
+      return { text: `History import failed: ${b.error ?? 'unknown error'}`, tone: 'error' }
+    case 'skipped':
+      return b.reason === 'private_group' ? { text: 'History import needs a public group (one with an @username)', tone: 'muted' } : { text: 'History import is not enabled on this server', tone: 'muted' }
+  }
+}
+
+const TONE_CLASS = { ok: 'text-[var(--accent-emerald)]', warn: 'text-yellow-300', error: 'text-red-400', muted: 'text-[var(--text-secondary)]' } as const
+
+function HealthBlock({ platform, health, workspaceId, onChanged }: { platform: IntegrationKey; health: IntegrationHealth; workspaceId: string; onChanged: () => void }) {
+  const { showToast } = useToast()
+  const [busy, setBusy] = useState(false)
+  if (platform !== 'discord' && platform !== 'telegram') return null
+  const rerun = async () => {
+    setBusy(true)
+    try {
+      await requestBackfill(workspaceId, platform)
+      showToast('History import queued')
+      onChanged()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not queue the import', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const b = health.backfill ?? null
+  const bf = b ? backfillText(b) : null
+  const canRerun = b && (b.status === 'done' || b.status === 'partial' || b.status === 'failed' || (b.status === 'skipped' && b.reason !== 'not_configured'))
+  const g = health.gateway ?? null
+  const live = g?.status === 'connected'
+  return (
+    <div className="mb-4 flex flex-col gap-1.5 rounded-xl border border-[var(--border-card)] bg-white/[0.02] px-3 py-2 text-xs">
+      {platform === 'discord' && (
+        <>
+          <div className="flex items-center gap-2">
+            <Radio size={12} className={live ? 'text-[var(--accent-emerald)]' : 'text-[var(--text-secondary)]'} />
+            <span className={live ? 'text-white' : 'text-[var(--text-secondary)]'}>{live ? 'Live connection (gateway)' : g?.status === 'error' ? 'Gateway error, falling back to polling' : 'Polling every minute (gateway connecting)'}</span>
+            {live && g?.lastEventAt && <span className="text-[var(--text-secondary)]">· last event {formatRelativeTime(g.lastEventAt)}</span>}
+          </div>
+          {g && g.missingIntents.length > 0 && (
+            <div className="flex items-start gap-2 text-yellow-300">
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+              <span>
+                Missing {g.missingIntents.map((i) => INTENT_LABEL[i] ?? i).join(' and ')}. Enable it under Bot, Privileged Gateway Intents in the{' '}
+                <a href={DEV_PORTAL} target="_blank" rel="noreferrer" className="underline">
+                  Developer Portal
+                </a>
+                {g.missingIntents.includes('guild_members') ? ', otherwise joins and leaves are only sampled from snapshots' : ''}
+                {g.missingIntents.includes('message_content') ? ', otherwise message text is not available for AI analysis' : ''}.
+              </span>
+            </div>
+          )}
+          {g?.lastError && g.status === 'error' && <div className="text-red-400">{g.lastError}</div>}
+          {health.auditLog === 'forbidden' && (
+            <div className="flex items-start gap-2 text-yellow-300">
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+              <span>The bot lacks View Audit Log: bans, kicks and timeouts per moderator are not tracked.</span>
+            </div>
+          )}
+        </>
+      )}
+      {platform === 'telegram' && (
+        <>
+          <div className="flex items-center gap-2">
+            <Radio size={12} className={health.webhook === 'set' ? 'text-[var(--accent-emerald)]' : 'text-[var(--text-secondary)]'} />
+            <span className={health.webhook === 'set' ? 'text-white' : 'text-[var(--text-secondary)]'}>
+              {health.webhook === 'set' ? 'Webhook active, messages arrive in real time' : health.webhook === 'failed' ? 'Webhook registration failed, try Sync Now' : health.webhook === 'skipped_local' ? 'Webhook not registered (local environment)' : 'Webhook pending'}
+            </span>
+          </div>
+          {health.webhookLastError && <div className="text-yellow-300">Telegram reports: {health.webhookLastError}</div>}
+          {health.privacyMode && !health.botIsAdmin && (
+            <div className="flex items-start gap-2 text-yellow-300">
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+              <span>Privacy mode is on and the bot is not an admin: group messages are not delivered. Make the bot an admin, or send /setprivacy to @BotFather and choose Disable.</span>
+            </div>
+          )}
+          {health.botIsAdmin === false && !health.privacyMode && <div className="text-[var(--text-secondary)]">The bot is not an admin: member counts may be unavailable.</div>}
+        </>
+      )}
+      {bf && (
+        <div className="flex items-center justify-between gap-2">
+          <span className={`flex items-center gap-2 ${TONE_CLASS[bf.tone]}`}>
+            <History size={12} className="shrink-0" />
+            {bf.text}
+          </span>
+          {canRerun && (
+            <button type="button" onClick={rerun} disabled={busy} className="shrink-0 text-[var(--accent-emerald)] hover:underline disabled:opacity-50">
+              {busy ? 'Queuing' : 'Re-import'}
+            </button>
+          )}
+        </div>
+      )}
+      {b?.status === 'running' && b.channelsTotal > 0 && (
+        <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.05]">
+          <div className="h-full rounded-full bg-[var(--accent-emerald)]/70 transition-all" style={{ width: `${Math.round(((b.channelsDone + (b.channelsSkipped ?? 0)) / b.channelsTotal) * 100)}%` }} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 function formatMockValue(value: string | number): string {
@@ -316,7 +433,7 @@ export function Integrations() {
           <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
             <RefreshCw size={14} className={syncingAll ? 'animate-spin text-[var(--accent-emerald)]' : 'text-[var(--accent-emerald)]'} />
             <span>
-              {connectedPlatforms.length} live platform{connectedPlatforms.length === 1 ? '' : 's'} connected · auto-syncs hourly
+              {connectedPlatforms.length} live platform{connectedPlatforms.length === 1 ? '' : 's'} connected · auto-syncs every minute
             </span>
           </div>
           <Button variant="secondary" onClick={handleSyncAll} disabled={syncingAll} className="!px-3 !py-1.5 text-xs">
@@ -332,6 +449,7 @@ export function Integrations() {
           const Icon = meta.icon
           const connection = integrations[key]
           const isConnected = connection.status === 'Connected'
+          const isError = connection.status === 'Error'
           const isComingSoon = connection.status === 'Coming Soon' || !meta.live
           const isSyncing = syncingKey === key
 
@@ -351,6 +469,13 @@ export function Integrations() {
                 </div>
                 <Badge tone={STATUS_TONE[connection.status]}>{isConnected ? 'Connected' : connection.status}</Badge>
               </div>
+
+              {isError && (
+                <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                  <span>{connection.lastError ? connection.lastError.replace(/^[A-Z_]+:\s*/, '') : 'The connection stopped working.'} Reconnect with fresh credentials, or disconnect.</span>
+                </div>
+              )}
 
               {!isConnected && isComingSoon && meta.note && (
                 <div className="flex flex-col gap-2">
@@ -376,9 +501,13 @@ export function Integrations() {
                   ))}
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                     <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
-                    Last synced {connection.lastSync ? formatRelativeTime(connection.lastSync) : 'never'} · auto-syncs hourly
+                    Last synced {connection.lastSync ? formatRelativeTime(connection.lastSync) : 'never'} · auto-syncs every minute
                   </div>
                 </div>
+              )}
+
+              {isConnected && connection.health && activeWorkspaceId && (
+                <HealthBlock platform={key} health={connection.health} workspaceId={activeWorkspaceId} onChanged={() => void refreshIntegrations(activeWorkspaceId)} />
               )}
 
               <div className="flex flex-wrap gap-2">
@@ -387,6 +516,15 @@ export function Integrations() {
                     <Button variant="secondary" onClick={() => handleSync(key)} disabled={isSyncing} className="!px-3 !py-1.5 text-xs">
                       {isSyncing && <Loader2 size={12} className="animate-spin" />}
                       Sync Now
+                    </Button>
+                    <Button variant="danger" onClick={() => setDisconnectKey(key)} className="!px-3 !py-1.5 text-xs">
+                      Disconnect
+                    </Button>
+                  </>
+                ) : isError ? (
+                  <>
+                    <Button onClick={() => openConnect(key)} className="!px-3 !py-1.5 text-xs">
+                      Reconnect
                     </Button>
                     <Button variant="danger" onClick={() => setDisconnectKey(key)} className="!px-3 !py-1.5 text-xs">
                       Disconnect

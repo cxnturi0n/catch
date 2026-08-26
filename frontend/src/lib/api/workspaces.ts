@@ -1,6 +1,6 @@
 import { api } from './client'
 import { toWorkspace, type ApiWorkspace } from '../workspaceView'
-import type { IntegrationKey, WorkspaceIntegrations } from '../../types'
+import type { IntegrationHealth, IntegrationKey, WorkspaceIntegrations } from '../../types'
 
 export interface QuotaState {
   resource: string
@@ -36,7 +36,11 @@ interface ApiIntegration {
   metadata: Record<string, unknown>
   lastSync: string | null
   lastError: string | null
+  health?: IntegrationHealth
 }
+
+// Metadata keys that are state for the health block, not facts to list on the card.
+const HIDDEN_METADATA = new Set(['backfill', 'admins', 'webhook', 'webhook_checked_at', 'webhook_last_error', 'audit_log', 'chat_numeric_id', 'bot_id', 'privacy_mode', 'bot_is_admin', 'icon', 'demo'])
 
 export function defaultIntegrations(): WorkspaceIntegrations {
   const off = () => ({ status: 'Not Connected' as const, fields: {}, mockData: {}, lastSync: null })
@@ -49,10 +53,12 @@ export async function fetchIntegrations(workspaceId: string): Promise<WorkspaceI
   const out = defaultIntegrations()
   for (const i of r.integrations) {
     out[i.platform] = {
-      status: i.status === 'connected' ? 'Connected' : 'Not Connected',
+      status: i.status === 'connected' ? 'Connected' : i.status === 'error' ? 'Error' : 'Not Connected',
       fields: {},
-      mockData: Object.fromEntries(Object.entries(i.metadata).filter(([, v]) => typeof v === 'string' || typeof v === 'number')) as Record<string, string | number>,
+      mockData: Object.fromEntries(Object.entries(i.metadata).filter(([k, v]) => !HIDDEN_METADATA.has(k) && (typeof v === 'string' || typeof v === 'number'))) as Record<string, string | number>,
       lastSync: i.lastSync,
+      lastError: i.lastError,
+      health: i.health ?? {},
     }
   }
   return out

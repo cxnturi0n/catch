@@ -69,3 +69,29 @@ optional (defaults above). Rollback = run Deploy with the previous commit SHA.
 - Recommended external check: a free uptime monitor (e.g. UptimeRobot) on
   `https://catch-labs.com/api/readyz` every minute, catches the host itself
   being down, which the watchdog cannot.
+
+## Integrations v2 (Discord gateway, Telegram webhook, history import)
+
+- One worker per stack. The worker keeps a websocket per connected Discord
+  bot; a Postgres advisory lock per workspace makes a second worker harmless
+  (it simply owns no connection). `docker compose restart worker` closes the
+  sockets with a resumable code, the next process resumes the sessions.
+- Telegram webhooks point at `https://<host>/api/webhooks/telegram/<id>`,
+  already routed by the edge under `/api/*`; nothing to change in Caddy or
+  Cloudflare (POST is never cached).
+- Telegram history import needs a dedicated Telegram account: create the
+  account, enable two step verification, get an api id and hash at
+  https://my.telegram.org (API development tools), then on your machine
+  `cd backend && TELEGRAM_API_ID=... TELEGRAM_API_HASH=... npx tsx src/scripts/telegram-session.ts`
+  and paste the printed `TELEGRAM_SESSION` into the stack `.env` (staging and
+  production separately). The session string is a full login to that account:
+  keep it in the env only, rotate by re-running the script and terminating
+  other sessions in Telegram. Leave the three variables empty to disable.
+- Message text from Discord and Telegram is stored encrypted
+  (`CREDENTIALS_ENCRYPTION_KEYS`) for 30 days for the AI features, then pruned
+  nightly; disconnecting a platform deletes it immediately. Roughly 25 MB per
+  50k messages per workspace.
+- Memory: the worker adds about 60 MB for the MTProto client when in use and
+  about 1 MB per gateway socket; fine on a t3.medium running both stacks.
+- Staging (`APP_ENV=staging`) logs every gateway, backfill, webhook and
+  MTProto event at info level (`docker compose logs -f worker api | grep integration:`).

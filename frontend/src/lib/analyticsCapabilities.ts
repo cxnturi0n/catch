@@ -66,6 +66,7 @@ export const CAPABILITY_MATRIX: MetricCapability[] = [
   // Discord
   { platform: 'discord', metric: 'members', metricKey: 'members', label: 'Members', windows: ALL_WINDOWS, color: '#2f7cf6', approx: true, source: deltaOrDaily },
   { platform: 'discord', metric: 'bans', metricKey: 'bans_7d', label: 'Bans (7d)', windows: ['7d'], color: '#1e3a8a', source: () => 'daily-rollup' },
+  { platform: 'discord', metric: 'messages', metricKey: '', label: 'Messages', windows: ['24h', '7d', '30d'], color: '#6db3ff', source: () => 'member-messages' },
 
   // Discord, member tenure & retention (fed by the discord-members-sync run).
   // These are SNAPSHOT / COHORT measures: one data point per sync run, or a count
@@ -137,8 +138,10 @@ export interface AnalyticsDataset {
   daily: PlatformMetricDay[]
   /** Recent hourly snapshots (all platforms, last few hours). */
   snapshots: MetricSnapshot[]
-  /** Telegram daily message totals (member_messages rolled up per day). */
+  /** Telegram daily message totals (member_messages rolled up per day). Kept for older callers. */
   memberMessages: TrendPoint[]
+  /** Daily message totals per platform (Discord counts arrive with the gateway collector). */
+  memberMessagesByPlatform?: Partial<Record<'discord' | 'telegram', TrendPoint[]>>
   /** Imported X/Twitter CSV, if any. */
   x: XAnalyticsData | null
   /**
@@ -223,9 +226,19 @@ function tenureJoinSeries(ds: AnalyticsDataset, days: number): TrendPoint[] {
   return [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }))
 }
 
+/** Daily message series for the metric's platform. */
+function messageSeries(cap: MetricCapability, ds: AnalyticsDataset): TrendPoint[] {
+  if (cap.platform === 'discord' || cap.platform === 'telegram') {
+    const byPlatform = ds.memberMessagesByPlatform?.[cap.platform]
+    if (byPlatform) return byPlatform
+    return cap.platform === 'telegram' ? ds.memberMessages : []
+  }
+  return []
+}
+
 /** True when a metric has ANY backing data right now (used to hide empty metrics). */
 export function metricHasData(cap: MetricCapability, ds: AnalyticsDataset): boolean {
-  if (cap.metricKey === '' && cap.source('24h') === 'member-messages') return ds.memberMessages.length > 0
+  if (cap.metricKey === '' && cap.source('24h') === 'member-messages') return messageSeries(cap, ds).length > 0
   if (cap.source('24h') === 'membership-snapshot') return (ds.membershipSnapshots?.length ?? 0) > 0
   if (cap.source('24h') === 'member-tenure') return (ds.tenure ?? []).some((r) => r.joinedAt !== null)
   if (cap.source('24h') === 'csv' || cap.windows.length === 0) return ds.x !== null
@@ -280,7 +293,7 @@ export function availableWindows(cap: MetricCapability, ds: AnalyticsDataset): W
     if (source === 'member-messages') {
       const days = Math.max(1, Math.round(meta.hours / 24))
       const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
-      const has = ds.memberMessages.some((p) => p.date >= cutoff)
+      const has = messageSeries(cap, ds).some((p) => p.date >= cutoff)
       return has ? { window: w, enabled: true } : { window: w, enabled: false, hint: 'not enough history yet' }
     }
     if (source === 'membership-snapshot') {
@@ -377,7 +390,7 @@ export function computeWindow(cap: MetricCapability, w: AnalyticsWindow, ds: Ana
   if (source === 'member-messages') {
     const days = w === '24h' ? 2 : Math.max(1, Math.round(meta.hours / 24))
     const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
-    const series = ds.memberMessages.filter((p) => p.date >= cutoff)
+    const series = messageSeries(cap, ds).filter((p) => p.date >= cutoff)
     if (series.length === 0) return null
     const latest = series[series.length - 1].value
     const previous = series.length >= 2 ? series[0].value : null

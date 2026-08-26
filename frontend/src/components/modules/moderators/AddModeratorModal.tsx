@@ -4,6 +4,8 @@ import { Modal } from '../../ui/Modal'
 import { Button } from '../../ui/Button'
 import { FormField, inputClass } from '../../ui/FormControls'
 import { ShiftPicker, type ShiftPickerValue } from './ShiftPicker'
+import { PlatformUserPicker, type LinkedUser } from './PlatformUserPicker'
+import { useWorkspace } from '../../../context/WorkspaceContext'
 
 const CONTRACT_TYPES: ModeratorContractType[] = ['Volunteer', 'Paid', 'Trial']
 const CURRENCIES: ModeratorCurrency[] = ['USD', 'EUR', 'USDT']
@@ -28,6 +30,8 @@ interface FormState {
   fullName: string
   discordHandle: string
   telegramHandle: string
+  discordUser: LinkedUser | null
+  telegramUser: LinkedUser | null
   country: string
   platforms: ModeratorPlatform[]
   startDate: string
@@ -44,6 +48,8 @@ function emptyForm(): FormState {
     fullName: '',
     discordHandle: '',
     telegramHandle: '',
+    discordUser: null,
+    telegramUser: null,
     country: '',
     platforms: [],
     startDate: new Date().toISOString().slice(0, 10),
@@ -62,6 +68,8 @@ function moderatorToForm(m: Moderator): FormState {
     fullName: m.fullName,
     discordHandle: m.discordHandle,
     telegramHandle: m.telegramHandle,
+    discordUser: m.discordUserId ? { id: m.discordUserId, name: m.discordHandle || null } : null,
+    telegramUser: m.telegramUserId ? { id: m.telegramUserId, name: m.telegramHandle || null } : null,
     country: m.country ?? '',
     platforms: m.platforms,
     startDate: m.startDate,
@@ -97,6 +105,8 @@ export function AddModeratorModal({
   onSubmit: (moderator: Moderator) => void | Promise<void>
   editing: Moderator | null
 }) {
+  const { activeWorkspaceId, getWorkspaceIntegrations } = useWorkspace()
+  const integrations = getWorkspaceIntegrations(activeWorkspaceId)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [errors, setErrors] = useState<{ fullName?: string; startDate?: string; timezone?: string }>({})
   const [submitting, setSubmitting] = useState(false)
@@ -158,6 +168,9 @@ export function AddModeratorModal({
         fullName: form.fullName.trim(),
         discordHandle: form.discordHandle.trim(),
         telegramHandle: form.telegramHandle.trim(),
+        // '' clears a previous link on edit (the API maps it to null).
+        discordUserId: form.discordUser?.id ?? '',
+        telegramUserId: form.telegramUser?.id ?? '',
         avatarInitials: initialsOf(form.fullName.trim()),
         country: form.country.trim() || undefined,
         startDate: form.startDate,
@@ -201,7 +214,7 @@ export function AddModeratorModal({
                 className={inputClass}
                 value={form.discordHandle}
                 onChange={(e) => setForm((f) => ({ ...f, discordHandle: e.target.value }))}
-                placeholder="e.g. marco_mod#1234"
+                placeholder="e.g. marco_mod"
               />
             </FormField>
             <FormField label="Telegram Handle">
@@ -213,6 +226,21 @@ export function AddModeratorModal({
               />
             </FormField>
           </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <PlatformUserPicker
+              workspaceId={integrations.discord.status === 'Connected' ? activeWorkspaceId : null}
+              platform="discord"
+              value={form.discordUser}
+              onChange={(u) => setForm((f) => ({ ...f, discordUser: u, discordHandle: f.discordHandle || (u?.name ?? '').replace(/^@/, '') }))}
+            />
+            <PlatformUserPicker
+              workspaceId={integrations.telegram.status === 'Connected' ? activeWorkspaceId : null}
+              platform="telegram"
+              value={form.telegramUser}
+              onChange={(u) => setForm((f) => ({ ...f, telegramUser: u, telegramHandle: f.telegramHandle || (u?.name ?? '') }))}
+            />
+          </div>
+          <p className="text-xs text-[var(--text-secondary)]">Linking the platform user makes activity, punctuality, bans and response times follow the person even when the display name changes. Handles stay as a fallback.</p>
           <FormField label="Country">
             <input
               className={inputClass}

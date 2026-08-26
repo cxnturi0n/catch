@@ -6,11 +6,11 @@ How every number in Catch reports and analytics is computed. All days are UTC ca
 - **Total members**, latest daily membership snapshot per connected platform, summed. Not unique users across platforms.
 - **Net growth**, last snapshot minus first snapshot inside the period.
 - **Growth rate**, net growth divided by the first snapshot, in percent.
-- **Joins / Leaves**, Telegram: exact join/leave events from the bot webhook. Discord: new and left members from membership snapshots.
+- **Joins / Leaves**, Telegram: exact join/leave events from the bot webhook. Discord: live member events from the gateway when the Server Members Intent is enabled, otherwise new and left members from membership snapshots.
 - **Leave rate**, leaves divided by total members, in percent.
 
 ## Engagement
-- **Messages**, human messages counted per member per day; message text is never stored.
+- **Messages**, human messages counted per member, per channel and per day, collected live (Discord gateway, Telegram webhook) plus a 30 day import at connect time. Text is stored encrypted for 30 days for AI analysis, then deleted; counts are kept.
 - **Messages per day**, messages divided by the number of days in the period.
 - **Active members**, distinct members (platform + member id) with at least one message in the period.
 - **Engagement rate**, active members divided by total members, in percent.
@@ -20,11 +20,14 @@ How every number in Catch reports and analytics is computed. All days are UTC ca
 - **Share of messages in top 3 hours**, how concentrated activity is; above 40% means staffing should follow that window.
 
 ## Moderation team
-- **Moderator messages**, messages whose author display name matches a moderator's Discord or Telegram handle (case and @ insensitive).
+- **Moderator messages**, messages whose author is a roster moderator: matched by the linked platform user id first, otherwise by Discord or Telegram handle (case and @ insensitive).
 - **Shifts evaluated**, scheduled shift days in the period that were checked.
 - **Punctuality**, share of evaluated shifts where the moderator's first message fell within 15 minutes after the shift start.
 - **No-shows**, evaluated shifts with no moderator activity during the whole shift window.
 - **Peak hours without a shift**, how many of the 3 busiest UTC hours have no moderator shift covering them.
+- **Member questions answered**, member messages that received a moderator message in the same channel within 60 minutes (a reply targets that message, otherwise the latest unanswered one).
+- **Average response time**, mean delay between a member message and the moderator message that answered it, in seconds.
+- **Bans, kicks, timeouts, deletions, mutes**, moderation actions with their executor: Discord audit log (View Audit Log needed) and Telegram admin actions, attributed to moderators like messages are.
 - **Paid**, payments recorded in the period, per currency.
 
 ## Incidents & risk

@@ -8,12 +8,13 @@ Bot Token + Server ID
 1. Go to discord.com/developers/applications and log in.
 2. Open your bot application (or click "New Application" and give it a name).
 3. In the left menu click "Bot". Under Token, click "Reset Token" → confirm → "Copy". This is your Bot Token, keep it safe.
-4. In the left menu click "OAuth2" → "URL Generator". Under Scopes, tick "bot".
-5. Under Bot Permissions, tick: View Channels, Read Message History, and View Audit Log (needed for ban stats).
-6. Copy the generated URL at the bottom, open it in your browser, pick your server, and click "Authorize".
-7. In the Discord app: User Settings (⚙️) → Advanced → turn on "Developer Mode".
-8. Right-click your server name (top-left) → "Copy Server ID".
-9. Back in Catch → Integrations → Discord → Connect. Paste the Bot Token and the Server ID, then click Connect.
+4. Still under "Bot", scroll to Privileged Gateway Intents and enable "Server Members Intent" and "Message Content Intent" (free for bots in fewer than 100 servers). They give real time joins and leaves and the message text used by the AI features.
+5. In the left menu click "OAuth2" → "URL Generator". Under Scopes, tick "bot".
+6. Under Bot Permissions, tick: View Channels, Read Message History, and View Audit Log (needed for bans, kicks and timeouts per moderator).
+7. Copy the generated URL at the bottom, open it in your browser, pick your server, and click "Authorize".
+8. In the Discord app: User Settings (⚙️) → Advanced → turn on "Developer Mode".
+9. Right-click your server name (top-left) → "Copy Server ID".
+10. Back in Catch → Integrations → Discord → Connect. Paste the Bot Token and the Server ID, then click Connect. Catch imports the last 30 days of messages and then keeps a live connection to the server.
 
 ## Telegram (live connection)
 Bot Token + Chat ID
@@ -22,9 +23,10 @@ Bot Token + Chat ID
 2. Send /newbot, choose a display name, then a username that ends in "bot".
 3. BotFather replies with your Bot Token (a long string like 123456:ABC...). Copy it.
 4. Open your group → add your new bot as a member.
-5. Make the bot an Admin of the group (required to read the member count).
-6. Get the Chat ID: temporarily add "@RawDataBot" to the group, it posts the group id (a negative number like -1001234567890). Copy it, then remove that bot.
-7. Back in Catch → Integrations → Telegram → Connect. Paste the Bot Token and the Chat ID, then click Connect.
+5. Make the bot an Admin of the group (required to read the member count and to receive every message).
+6. If you prefer not to make it an admin, send /setprivacy to @BotFather, pick the bot and choose Disable, otherwise the bot only sees commands.
+7. Get the Chat ID: temporarily add "@RawDataBot" to the group, it posts the group id (a negative number like -1001234567890). Copy it, then remove that bot. A public group can also be entered as @username.
+8. Back in Catch → Integrations → Telegram → Connect. Paste the Bot Token and the Chat ID, then click Connect. Catch registers the webhook by itself; for public groups it also imports the last 30 days of history.
 
 ## Twitter / X (CSV import)
 Manual CSV import

@@ -45,6 +45,7 @@ import {
 } from '../../lib/analyticsComposition'
 import { MultiSelectDropdown } from './analytics/MultiSelectDropdown'
 import { AudiencePanel } from './analytics/AudiencePanel'
+import { TopChannelsPanel } from './analytics/TopChannelsPanel'
 import {
   fetchMembershipSnapshots,
   fetchTenure,
@@ -993,7 +994,10 @@ function LiveAnalyticsView({
       fetchPlatformMetricRows(workspaceId, connected, 30).catch(() => [] as PlatformMetricDay[]),
       fetchMetricSnapshots(workspaceId, 6).catch(() => [] as MetricSnapshot[]),
       connected.includes('telegram')
-        ? fetchMemberMessageTrend(workspaceId, 30).catch(() => [])
+        ? fetchMemberMessageTrend(workspaceId, 30, 'telegram').catch(() => [])
+        : Promise.resolve([] as { date: string; value: number }[]),
+      connected.includes('discord')
+        ? fetchMemberMessageTrend(workspaceId, 30, 'discord').catch(() => [])
         : Promise.resolve([] as { date: string; value: number }[]),
       // Member tenure / retention, Discord only, and only once it has been
       // synced at least once. Failures degrade to "metric unavailable".
@@ -1004,13 +1008,14 @@ function LiveAnalyticsView({
         ? fetchMembershipSnapshots(workspaceId, 30).catch(() => [] as MembershipSnapshotRow[])
         : Promise.resolve([] as MembershipSnapshotRow[]),
       loadXAnalytics(workspaceId).catch(() => null),
-    ]).then(([daily, snapshots, memberMessages, tenure, membershipSnapshots, x]) => {
+    ]).then(([daily, snapshots, memberMessages, discordMessages, tenure, membershipSnapshots, x]) => {
       if (cancelled) return
       setDataset({
         connected: connected as AnalyticsPlatformId[],
         daily,
         snapshots,
         memberMessages,
+        memberMessagesByPlatform: { telegram: memberMessages, discord: discordMessages },
         x,
         tenure,
         membershipSnapshots,
@@ -1223,6 +1228,12 @@ function LiveAnalyticsView({
       <div className="mt-2">
         <AudiencePanel workspaceId={workspaceId} />
       </div>
+
+      {(connected.includes('discord') || connected.includes('telegram')) && (
+        <div className="mt-2">
+          <TopChannelsPanel workspaceId={workspaceId} />
+        </div>
+      )}
 
       <div className="mt-2 flex flex-col gap-4">
         <XAnalyticsSection workspaceId={workspaceId} />

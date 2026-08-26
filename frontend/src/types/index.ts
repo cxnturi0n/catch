@@ -86,13 +86,50 @@ export type IntegrationKey =
   | 'twitch'
   | 'youtube'
   | 'kick'
-export type IntegrationConnectionStatus = 'Connected' | 'Not Connected' | 'Coming Soon'
+export type IntegrationConnectionStatus = 'Connected' | 'Not Connected' | 'Error' | 'Coming Soon'
+
+export interface BackfillProgress {
+  status: 'queued' | 'running' | 'done' | 'partial' | 'failed' | 'skipped'
+  channelsDone: number
+  channelsTotal: number
+  channelsSkipped?: number
+  messages: number
+  actions?: number
+  startedAt?: string
+  finishedAt?: string
+  error?: string
+  reason?: string
+}
+
+export interface GatewayHealth {
+  status: string
+  connectedAt: string | null
+  lastEventAt: string | null
+  lastAckAt: string | null
+  missingIntents: string[]
+  lastCloseCode: number | null
+  lastError: string | null
+}
+
+/** Collector health reported by the server (Discord gateway, Telegram webhook, history import). */
+export interface IntegrationHealth {
+  gateway?: GatewayHealth | null
+  backfill?: BackfillProgress | null
+  auditLog?: string | null
+  webhook?: string | null
+  webhookLastError?: string | null
+  privacyMode?: boolean | null
+  botIsAdmin?: boolean | null
+  username?: string | null
+}
 
 export interface IntegrationConnection {
   status: IntegrationConnectionStatus
   fields: Record<string, string>
   mockData: Record<string, string | number>
   lastSync: string | null
+  lastError?: string | null
+  health?: IntegrationHealth
 }
 
 export type WorkspaceIntegrations = Record<IntegrationKey, IntegrationConnection>
@@ -119,6 +156,9 @@ export interface Moderator {
   fullName: string
   discordHandle: string
   telegramHandle: string
+  /** Platform user ids linked from the member picker; handles stay as fallback. */
+  discordUserId?: string
+  telegramUserId?: string
   avatarInitials: string
   startDate: string
   contractType: ModeratorContractType

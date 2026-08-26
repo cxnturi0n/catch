@@ -47,13 +47,13 @@ const KB: { keys: string[]; answer: string; actions?: ChatAction[] }[] = [
   {
     keys: ['discord', 'what does discord', 'discord metrics', 'cosa fa discord', 'metriche discord'],
     answer:
-      'With Discord (bot: Token + Server ID) Catch tracks: members (≈ approximate), 7-day bans (needs “View Audit Log”), an hour×day activity heatmap, messages/bans/timeouts per moderator, and tenure/retention (requires the privileged MEMBERS intent). It doesn’t read message content yet (sentiment/scam), that comes with AI.',
+      'With Discord (bot: Token + Server ID) Catch keeps a live gateway connection and tracks: members (≈ approximate), messages per channel, thread and member, active members, an hour×day activity heatmap, joins and leaves in real time (Server Members Intent), bans, kicks, timeouts and deletions per moderator (View Audit Log), response times, and tenure/retention. The last 30 days are imported at connect time. Message text is stored encrypted for 30 days for the AI features, then deleted.',
     actions: [{ label: 'Open Discord', to: '/dashboard/analytics?platform=discord' }, { label: 'Integrations', to: '/dashboard/integrations' }],
   },
   {
     keys: ['telegram', 'what does telegram', 'telegram metrics', 'cosa fa telegram', 'metriche telegram'],
     answer:
-      'With Telegram (admin bot: Token + Chat ID) Catch tracks: member count, message count (only from activation on, no history) and messages per moderator (handle match). You need the admin bot + privacy OFF to count messages.',
+      'With Telegram (admin bot: Token + Chat ID) Catch registers a webhook and tracks: member count, messages per member and per topic, active members, joins and leaves, bans and mutes per admin, response times. Public groups also get the last 30 days of history imported. The bot must be an admin or have privacy mode off to see messages. Text is stored encrypted for 30 days for the AI features, then deleted.',
     actions: [{ label: 'Open Telegram', to: '/dashboard/analytics?platform=telegram' }, { label: 'Integrations', to: '/dashboard/integrations' }],
   },
   {
