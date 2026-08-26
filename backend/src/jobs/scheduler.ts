@@ -12,6 +12,7 @@ import { lastMembersRun, MEMBERS_MIN_INTERVAL_MS, syncDiscordMembers } from './d
 import { runRetention } from './retention.js'
 import { dispatchDueReports } from '../modules/reports/dispatch.js'
 import { recordShiftEventsForAll } from './moderatorPerformance.js'
+import { runDiscordBackfill } from './discordBackfill.js'
 
 // Scheduling rules (BP §5): per-platform floor, deterministic jitter per
 // workspace, throttle on the last ATTEMPT (a rejected call still spent quota).
@@ -37,6 +38,8 @@ export const QUEUES = {
   retention: 'retention',
   reports: 'report-dispatch',
   shifts: 'shift-events',
+  discordBackfill: 'discord-backfill',
+  telegramBackfill: 'telegram-backfill',
 } as const
 
 // FNV-1a → stable offset inside the minute so workspaces do not all fire at :00.
@@ -62,7 +65,7 @@ export function createBoss() {
 // (workspace, platform) with a singleton key so a slow job never stacks up.
 export async function enqueueDueSyncs(boss: PgBoss, now = Date.now()) {
   const rows = await db
-    .select({ workspaceId: integrations.workspaceId, platform: integrations.platform })
+    .select({ workspaceId: integrations.workspaceId, platform: integrations.platform, metadata: integrations.metadata })
     .from(integrations)
     .where(eq(integrations.status, 'connected'))
   const states = await db.select().from(integrationSyncState)
@@ -75,6 +78,14 @@ export async function enqueueDueSyncs(boss: PgBoss, now = Date.now()) {
     const startAfter = jitterMs(row.workspaceId) / 1000
     if (isDue(lastAttempt.get(`${row.workspaceId}:${platform}`), PLATFORM_MIN_INTERVAL_MS[platform], now)) {
       await boss.send(QUEUES.sync, { workspaceId: row.workspaceId, platform }, { singletonKey: `${row.workspaceId}:${platform}`, startAfter, expireInSeconds: 120, retryLimit: 0 })
+      queued++
+    }
+    // History imports requested by connect or by the manual endpoint. The
+    // singleton key makes the repeated send a no-op while one is queued.
+    const backfill = (row.metadata as { backfill?: { status?: string } }).backfill
+    if (backfill?.status === 'queued' && (platform === 'discord' || platform === 'telegram')) {
+      const q = platform === 'discord' ? QUEUES.discordBackfill : QUEUES.telegramBackfill
+      await boss.send(q, { workspaceId: row.workspaceId }, { singletonKey: `${row.workspaceId}:${platform}-backfill`, expireInSeconds: 3600, retryLimit: 2, retryDelay: 60 })
       queued++
     }
     if (platform === 'discord') {
@@ -141,6 +152,11 @@ export async function startWorker(boss: PgBoss) {
       // Record so the tick does not retry a missing intent every minute.
       await db.insert(integrationSyncState).values({ workspaceId, platform: 'discord:members', lastAttemptAt: new Date(), lastError: r.code }).onConflictDoUpdate({ target: [integrationSyncState.workspaceId, integrationSyncState.platform], set: { lastAttemptAt: new Date(), lastError: r.code } })
     }
+  })
+
+  await boss.work<{ workspaceId: string }>(QUEUES.discordBackfill, { batchSize: 1, pollingIntervalSeconds: 5 }, async ([job]) => {
+    const r = await runDiscordBackfill(job!.data.workspaceId)
+    if (r) logger.info({ workspaceId: job!.data.workspaceId, status: r.status, messages: r.messages, channels: r.channelsDone }, 'discord backfill')
   })
 
   await boss.work(QUEUES.reports, { batchSize: 1 }, async () => {

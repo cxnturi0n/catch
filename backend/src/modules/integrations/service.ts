@@ -22,6 +22,8 @@ function stable(v: unknown): string {
 export async function connect(workspaceId: string, platform: IntegrationPlatform, input: unknown) {
   const client = platformClients[platform] as (typeof platformClients)[IntegrationPlatform] & { connect(i: unknown): Promise<{ credentials: Record<string, string>; metadata: Record<string, unknown> }> }
   const result = await client.connect(input)
+  // History import runs in the worker; the minute tick picks up 'queued'.
+  if (platform === 'discord') result.metadata = { ...result.metadata, backfill: { status: 'queued', requestedAt: new Date().toISOString() } }
   await repo.upsertConnected(workspaceId, platform, result.credentials, result.metadata)
   await publishMany(workspaceId, ['integrations'])
   await db.delete(integrationSyncState).where(and(eq(integrationSyncState.workspaceId, workspaceId), eq(integrationSyncState.platform, platform)))
@@ -48,8 +50,8 @@ export async function syncPlatform(workspaceId: string, platform: IntegrationPla
     .onConflictDoUpdate({ target: [integrationSyncState.workspaceId, integrationSyncState.platform], set: { lastAttemptAt: now } })
 
   try {
-    const client = platformClients[platform] as { sync(c: Record<string, string>): Promise<{ metrics: Record<string, unknown> }> }
-    const { metrics } = await client.sync(credentials)
+    const client = platformClients[platform] as { sync(c: Record<string, string>, ctx: { workspaceId: string }): Promise<{ metrics: Record<string, unknown> }> }
+    const { metrics } = await client.sync(credentials, { workspaceId })
     await recordMetrics(workspaceId, platform, metrics, now)
     await publishMany(workspaceId, ['platform_metrics', 'platform_metric_snapshots', 'integrations'])
     return { ok: true, metrics }

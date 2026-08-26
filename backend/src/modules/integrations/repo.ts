@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { db } from '../../db/client.js'
 import { integrations, integrationSyncState, INTEGRATION_PLATFORMS, platformChannels, platformMessages } from '../../db/schema/index.js'
 import { decryptJson, encryptJson } from '../../lib/crypto.js'
@@ -64,6 +64,20 @@ export async function upsertConnected(
       target: [integrations.workspaceId, integrations.platform],
       set: { status: 'connected', credentialsEnc, metadata, updatedAt: new Date() },
     })
+}
+
+// Shallow merge into metadata (jsonb ||): a key present in `patch` replaces
+// the stored value wholesale.
+export async function patchMetadata(workspaceId: string, platform: IntegrationPlatform, patch: Record<string, unknown>): Promise<void> {
+  await db
+    .update(integrations)
+    .set({ metadata: sql`${integrations.metadata} || ${JSON.stringify(patch)}::jsonb`, updatedAt: new Date() })
+    .where(and(eq(integrations.workspaceId, workspaceId), eq(integrations.platform, platform)))
+}
+
+export async function getMetadata(workspaceId: string, platform: IntegrationPlatform): Promise<Record<string, unknown> | null> {
+  const [row] = await db.select({ metadata: integrations.metadata }).from(integrations).where(and(eq(integrations.workspaceId, workspaceId), eq(integrations.platform, platform))).limit(1)
+  return row?.metadata ?? null
 }
 
 // Disconnect wipes the secret; the row stays so history (metrics) keeps its

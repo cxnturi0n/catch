@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { discordChannelCursors } from '../db/schema/index.js'
 import { snowflakeToDate } from '../integrations/discord/client.js'
-import { upstreamFetch } from '../integrations/types.js'
+import { discordFetch } from '../integrations/discord/rest.js'
 import * as integrations from '../modules/integrations/repo.js'
 import { ingestBatch, type IngestInput } from './ingest.js'
 
@@ -12,7 +12,6 @@ export { bumpActivity, hourBucket } from './ingest.js'
 // channels using a per-channel cursor, so history is never re-read. Runs only
 // while the gateway connection for the workspace is not healthy. First run
 // only anchors the cursor (the backfill job covers history).
-const API = 'https://discord.com/api/v10'
 const CHANNEL_CAP = 20
 const PAGE_CAP = 5
 const GUILD_TEXT = 0
@@ -59,8 +58,7 @@ export function toIngest(workspaceId: string, m: DiscordRestMessage, channelId: 
 export async function syncDiscordActivity(workspaceId: string): Promise<ActivityResult | null> {
   const creds = await integrations.getCredentials<{ bot_token: string; server_id: string }>(workspaceId, 'discord')
   if (!creds) return null
-  const headers = { Authorization: `Bot ${creds.bot_token}` }
-  const channelsRes = await upstreamFetch(`${API}/guilds/${creds.server_id}/channels`, { headers })
+  const channelsRes = await discordFetch(creds.bot_token, `/guilds/${creds.server_id}/channels`)
   if (!channelsRes.ok) return null
   const channels = ((await channelsRes.json()) as Array<{ id: string; type: number }>).filter((c) => c.type === GUILD_TEXT).slice(0, CHANNEL_CAP)
 
@@ -73,7 +71,7 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
     let newest = cursor
     let after = cursor
     for (let page = 0; page < PAGE_CAP; page++) {
-      const res = await upstreamFetch(`${API}/channels/${channel.id}/messages?limit=100${after ? `&after=${after}` : ''}`, { headers })
+      const res = await discordFetch(creds.bot_token, `/channels/${channel.id}/messages?limit=100${after ? `&after=${after}` : ''}`)
       if (!res.ok) break // 403: channel not visible to the bot
       const messages = (await res.json()) as DiscordRestMessage[]
       if (messages.length === 0) break

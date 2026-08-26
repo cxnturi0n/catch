@@ -24,9 +24,13 @@ export interface SyncResult {
   metrics: Record<string, unknown>
 }
 
+export interface SyncContext {
+  workspaceId: string
+}
+
 export interface PlatformClient<C extends Record<string, string>, Input> {
   connect(input: Input): Promise<ConnectResult>
-  sync(credentials: C): Promise<SyncResult>
+  sync(credentials: C, ctx?: SyncContext): Promise<SyncResult>
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000

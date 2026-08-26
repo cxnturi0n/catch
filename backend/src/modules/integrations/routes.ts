@@ -99,6 +99,21 @@ export async function integrationRoutes(app: FastifyInstance) {
     },
   )
 
+  // Re-run the history import (30 days). Picked up by the worker tick.
+  r.post(
+    '/workspaces/:workspaceId/integrations/:platform/backfill',
+    { preHandler: manage, config: { rateLimit: { max: 2, timeWindow: '10 minutes' } }, schema: { params: params.extend({ platform: z.enum(['discord', 'telegram']) }) } },
+    async (req) => {
+      const meta = await repo.getMetadata(req.workspace.id, req.params.platform)
+      const creds = await repo.getCredentials(req.workspace.id, req.params.platform)
+      if (!meta || !creds) throw new HttpError(400, 'NOT_CONNECTED', `${req.params.platform} is not connected`)
+      const current = (meta.backfill as { status?: string } | undefined)?.status
+      if (current === 'running' || current === 'queued') throw new HttpError(409, 'BACKFILL_RUNNING', 'A history import is already in progress')
+      await repo.patchMetadata(req.workspace.id, req.params.platform, { backfill: { status: 'queued', requestedAt: new Date().toISOString() } })
+      return { platform: req.params.platform, backfill: { status: 'queued' } }
+    },
+  )
+
   r.delete(
     '/workspaces/:workspaceId/integrations/:platform',
     { preHandler: manage, schema: { params: platformParams } },

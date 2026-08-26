@@ -1,14 +1,13 @@
 import { desc, eq, sql } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { discordMembershipSnapshots, discordMemberTenure } from '../db/schema/index.js'
-import { upstreamFetch } from '../integrations/types.js'
+import { discordFetch } from '../integrations/discord/rest.js'
 import * as integrations from '../modules/integrations/repo.js'
 import { publishMany } from '../lib/events.js'
 
 // Pages the full member list (needs the privileged SERVER MEMBERS intent),
 // records join dates and derives new/left counts against the previous run.
 // Self-limited to once per 20 hours because it walks the whole guild.
-const API = 'https://discord.com/api/v10'
 const PAGE_SIZE = 1000
 const MAX_PAGES = 20
 const UPSERT_CHUNK = 500
@@ -34,12 +33,11 @@ export async function syncDiscordMembers(workspaceId: string, opts: { force?: bo
     const last = await lastMembersRun(workspaceId)
     if (last && Date.now() - last.getTime() < MEMBERS_MIN_INTERVAL_MS) return { ok: false, code: 'THROTTLED', message: 'Member list was synced less than 20 hours ago' }
   }
-  const headers = { Authorization: `Bot ${creds.bot_token}` }
   const seen = new Map<string, Date | null>()
   let after = '0'
   let truncated = false
   for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await upstreamFetch(`${API}/guilds/${creds.server_id}/members?limit=${PAGE_SIZE}&after=${after}`, { headers })
+    const res = await discordFetch(creds.bot_token, `/guilds/${creds.server_id}/members?limit=${PAGE_SIZE}&after=${after}`)
     if (res.status === 401 || res.status === 403) return { ok: false, code: 'MISSING_MEMBERS_INTENT', message: MISSING_INTENT_MESSAGE }
     if (!res.ok) return { ok: false, code: 'UPSTREAM', message: `Discord API error (${res.status})` }
     const batch = (await res.json()) as Array<{ joined_at?: string; user?: { id: string; bot?: boolean } }>
