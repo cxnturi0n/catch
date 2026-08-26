@@ -2,7 +2,7 @@ import { PgBoss } from 'pg-boss'
 import { and, eq } from 'drizzle-orm'
 import { config } from '../config.js'
 import { db } from '../db/client.js'
-import { integrations, integrationSyncState } from '../db/schema/index.js'
+import { discordGatewayState, integrations, integrationSyncState } from '../db/schema/index.js'
 import { logger } from '../logger.js'
 import { captureException } from '../lib/sentry.js'
 import { syncPlatform } from '../modules/integrations/service.js'
@@ -24,6 +24,9 @@ export const PLATFORM_MIN_INTERVAL_MS: Record<IntegrationPlatform, number> = {
 const ACTIVITY_KEY = 'discord:activity'
 const ACTIVITY_INTERVAL_MS = 60_000
 const JITTER_WINDOW_MS = 45_000
+// A gateway that acked a heartbeat this recently is live: the REST message
+// poller is skipped for that workspace.
+export const GATEWAY_HEALTHY_MS = 5 * 60_000
 const GRACE_MS = 5_000
 
 export const QUEUES = {
@@ -64,6 +67,8 @@ export async function enqueueDueSyncs(boss: PgBoss, now = Date.now()) {
     .where(eq(integrations.status, 'connected'))
   const states = await db.select().from(integrationSyncState)
   const lastAttempt = new Map(states.map((s) => [`${s.workspaceId}:${s.platform}`, s.lastAttemptAt]))
+  const gateways = await db.select({ workspaceId: discordGatewayState.workspaceId, status: discordGatewayState.status, lastAckAt: discordGatewayState.lastAckAt }).from(discordGatewayState)
+  const liveGateway = new Set(gateways.filter((g) => g.status === 'connected' && g.lastAckAt && now - g.lastAckAt.getTime() < GATEWAY_HEALTHY_MS).map((g) => g.workspaceId))
   let queued = 0
   for (const row of rows) {
     const platform = row.platform as IntegrationPlatform
@@ -73,7 +78,7 @@ export async function enqueueDueSyncs(boss: PgBoss, now = Date.now()) {
       queued++
     }
     if (platform === 'discord') {
-      if (isDue(lastAttempt.get(`${row.workspaceId}:${ACTIVITY_KEY}`), ACTIVITY_INTERVAL_MS, now)) {
+      if (!liveGateway.has(row.workspaceId) && isDue(lastAttempt.get(`${row.workspaceId}:${ACTIVITY_KEY}`), ACTIVITY_INTERVAL_MS, now)) {
         await boss.send(QUEUES.activity, { workspaceId: row.workspaceId }, { singletonKey: `${row.workspaceId}:activity`, startAfter, expireInSeconds: 300, retryLimit: 0 })
         queued++
       }

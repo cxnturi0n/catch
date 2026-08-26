@@ -53,8 +53,18 @@ const schema = z.object({
   // Error tracking (optional)
   SENTRY_DSN: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
 
-  // Inbound webhooks
+  // Inbound webhooks (legacy global Telegram secret; new installs get a
+  // per-integration secret at connect time).
   TELEGRAM_WEBHOOK_SECRET: optionalSecret,
+
+  // Discord gateway (worker keeps one websocket per connected bot).
+  DISCORD_GATEWAY_ENABLED: z.preprocess((v) => (v === '' || v === undefined ? true : v !== 'false' && v !== '0'), z.boolean()),
+  WORKER_ID: optionalSecret,
+
+  // Telegram MTProto (history backfill for public groups). All three or none.
+  TELEGRAM_API_ID: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().int().positive().optional()),
+  TELEGRAM_API_HASH: optionalSecret,
+  TELEGRAM_SESSION: optionalSecret,
 
   // File storage (local driver). Mount a volume here in containers.
   STORAGE_LOCAL_ROOT: z.string().default('./storage'),
@@ -82,3 +92,4 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
 export const config = loadConfig()
 export const isProduction = config.NODE_ENV === 'production'
+export const telegramMtprotoEnabled = Boolean(config.TELEGRAM_API_ID && config.TELEGRAM_API_HASH && config.TELEGRAM_SESSION)

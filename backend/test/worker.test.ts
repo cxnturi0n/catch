@@ -13,6 +13,7 @@ const { classifyTransition } = await import('../src/jobs/telegramUpdate.js')
 const { syncDiscordActivity } = await import('../src/jobs/discordActivity.js')
 const { syncDiscordMembers } = await import('../src/jobs/discordMembers.js')
 const { runRetention } = await import('../src/jobs/retention.js')
+const { createDispatchHandler } = await import('../src/integrations/discord/gatewayEvents.js')
 
 type App = Awaited<ReturnType<typeof buildApp>>
 let app: App
@@ -169,7 +170,83 @@ describe('discord jobs', () => {
   })
 })
 
+describe('discord gateway events', () => {
+  const GUILD = '123456789012345678'
+  let handler: ReturnType<typeof createDispatchHandler>
+  beforeAll(() => {
+    handler = createDispatchHandler({ workspaceId: ws, guildId: GUILD })
+  })
+  it('GUILD_CREATE upserts channels and untracks vanished ones', async () => {
+    await db.insert(schema.platformChannels).values({ workspaceId: ws, platform: 'discord', channelId: '999', name: 'old', type: 'text' })
+    await handler.handle('GUILD_CREATE', { id: GUILD, name: 'Guild', member_count: 42, channels: [{ id: '100', type: 0, name: 'general', position: 0 }, { id: '300', type: 2, name: 'voice' }], threads: [{ id: '101', type: 11, name: 'thread', parent_id: '100' }] })
+    const rows = await db.select().from(schema.platformChannels).where(eq(schema.platformChannels.workspaceId, ws))
+    const by = Object.fromEntries(rows.map((r) => [r.channelId, r]))
+    expect(by['100']).toMatchObject({ name: 'general', type: 'text', isTracked: true })
+    expect(by['101']).toMatchObject({ type: 'thread', parentId: '100' })
+    expect(by['300']).toMatchObject({ type: 'voice' })
+    expect(by['999']).toMatchObject({ isTracked: false })
+    const [integ] = await db.select().from(schema.integrations).where(and(eq(schema.integrations.workspaceId, ws), eq(schema.integrations.platform, 'discord')))
+    expect(integ!.metadata).toMatchObject({ member_count: 42, server_name: 'Guild' })
+  })
+  it('MESSAGE_CREATE ingests humans once, skips bots and system messages, advances the cursor', async () => {
+    const before = (await db.select().from(schema.platformMessages).where(eq(schema.platformMessages.workspaceId, ws))).length
+    const base = { guild_id: GUILD, channel_id: '100', timestamp: new Date().toISOString(), type: 0 }
+    await handler.handle('MESSAGE_CREATE', { ...base, id: snow(1000, 20n), author: { id: '21', username: 'cat' }, content: 'gm' })
+    await handler.handle('MESSAGE_CREATE', { ...base, id: snow(1000, 20n), author: { id: '21', username: 'cat' }, content: 'gm' }) // replay
+    await handler.handle('MESSAGE_CREATE', { ...base, id: snow(900, 21n), author: { id: '22', username: 'robot', bot: true }, content: 'beep' })
+    await handler.handle('MESSAGE_CREATE', { ...base, id: snow(800, 22n), type: 7, author: { id: '23', username: 'joiner' } })
+    await handler.handle('MESSAGE_CREATE', { ...base, id: snow(700, 23n), author: { id: '21', username: 'cat' }, message_reference: { message_id: snow(1000, 20n) } })
+    const after = await db.select().from(schema.platformMessages).where(eq(schema.platformMessages.workspaceId, ws))
+    expect(after.length - before).toBe(2)
+    expect(after.find((m) => m.messageId === snow(700, 23n))?.replyToMessageId).toBe(snow(1000, 20n))
+    await handler.flushCursors()
+    const cursor = await db.query.discordChannelCursors.findFirst({ where: and(eq(schema.discordChannelCursors.workspaceId, ws), eq(schema.discordChannelCursors.channelId, '100')) })
+    expect(cursor?.lastMessageId).toBe(snow(700, 23n))
+  })
+  it('member add/remove become events and tenure; audit entries become moderator actions', async () => {
+    await handler.handle('GUILD_MEMBER_ADD', { guild_id: GUILD, user: { id: '31', username: 'newbie' }, joined_at: '2026-08-01T10:00:00Z' })
+    await handler.handle('GUILD_MEMBER_ADD', { guild_id: GUILD, user: { id: '32', username: 'bot', bot: true } })
+    await handler.handle('GUILD_MEMBER_REMOVE', { guild_id: GUILD, user: { id: '1', username: 'gone' } })
+    const ev = await db.select().from(schema.discordMembershipEvents).where(eq(schema.discordMembershipEvents.workspaceId, ws))
+    expect(ev.map((e) => `${e.memberRef}:${e.eventType}`).sort()).toEqual(['1:leave', '31:join'])
+    const ten = await db.query.discordMemberTenure.findFirst({ where: and(eq(schema.discordMemberTenure.workspaceId, ws), eq(schema.discordMemberTenure.memberRef, '31')) })
+    expect(ten?.joinedAt?.toISOString()).toBe('2026-08-01T10:00:00.000Z')
+    await handler.handle('GUILD_AUDIT_LOG_ENTRY_CREATE', { guild_id: GUILD, id: snow(500, 40n), action_type: 22, user_id: '11', target_id: '99', reason: 'spam' })
+    await handler.handle('GUILD_AUDIT_LOG_ENTRY_CREATE', { guild_id: GUILD, id: snow(500, 40n), action_type: 22, user_id: '11', target_id: '99' }) // replay
+    await handler.handle('GUILD_AUDIT_LOG_ENTRY_CREATE', { guild_id: GUILD, id: snow(400, 41n), action_type: 24, user_id: '11', target_id: '98', changes: [{ key: 'communication_disabled_until', new_value: new Date(Date.now() + 3_600_000).toISOString() }] })
+    await handler.handle('GUILD_AUDIT_LOG_ENTRY_CREATE', { guild_id: GUILD, id: snow(300, 42n), action_type: 24, user_id: '11', target_id: '98', changes: [{ key: 'nick', new_value: 'x' }] })
+    await handler.handle('GUILD_AUDIT_LOG_ENTRY_CREATE', { guild_id: GUILD, id: snow(200, 43n), action_type: 72, user_id: '13', target_id: '21', options: { channel_id: '100', count: '1' } })
+    const acts = await db.select().from(schema.moderatorActions).where(eq(schema.moderatorActions.workspaceId, ws))
+    expect(acts.map((a) => `${a.executorRef}:${a.actionType}`).sort()).toEqual(['11:ban', '11:timeout', '13:delete_message'])
+    expect(acts.find((a) => a.actionType === 'ban')).toMatchObject({ targetRef: '99', reason: 'spam' })
+  })
+  it('scheduler skips the REST poller while the gateway is live', async () => {
+    await db.insert(schema.discordGatewayState).values({ workspaceId: ws, status: 'connected', lastAckAt: new Date() })
+    const sent: Array<{ q: string; key?: string }> = []
+    const boss = { send: async (q: string, _d: unknown, o: { singletonKey?: string }) => void sent.push({ q, key: o.singletonKey }) }
+    await enqueueDueSyncs(boss as never)
+    expect(sent.filter((s) => s.key?.startsWith(ws)).map((s) => s.q)).not.toContain('discord-activity')
+    await db.update(schema.discordGatewayState).set({ lastAckAt: new Date(Date.now() - 10 * 60_000) }).where(eq(schema.discordGatewayState.workspaceId, ws))
+    sent.length = 0
+    await enqueueDueSyncs(boss as never)
+    expect(sent.filter((s) => s.key?.startsWith(ws)).map((s) => s.q)).toContain('discord-activity')
+  })
+})
+
 describe('retention', () => {
+  it('prunes stored message text older than 30 days, keeps the counters', async () => {
+    await db.insert(schema.platformMessages).values([
+      { workspaceId: ws, platform: 'telegram', messageId: 'old', channelId: CHAT, memberRef: '42', sentAt: new Date(Date.now() - 40 * 86_400_000), source: 'webhook' },
+      { workspaceId: ws, platform: 'telegram', messageId: 'new', channelId: CHAT, memberRef: '42', sentAt: new Date(), source: 'webhook' },
+    ])
+    const r = await runRetention()
+    expect(r.messages).toBeGreaterThanOrEqual(1)
+    const ids = (await db.select({ id: schema.platformMessages.messageId }).from(schema.platformMessages).where(eq(schema.platformMessages.workspaceId, ws))).map((x) => x.id)
+    expect(ids).toContain('new')
+    expect(ids).not.toContain('old')
+    const mm = await app.inject({ method: 'GET', url: `/workspaces/${ws}/metrics/member-messages?days=2`, headers: { cookie } })
+    expect(mm.json().members[0]).toMatchObject({ memberRef: '42', messages: 2 })
+  })
   it('deletes snapshots older than 30 days only', async () => {
     await db.insert(schema.platformMetricSnapshots).values([
       { workspaceId: ws, platform: 'telegram', capturedAt: new Date(Date.now() - 40 * 86_400_000), metrics: { members: 1 } },
