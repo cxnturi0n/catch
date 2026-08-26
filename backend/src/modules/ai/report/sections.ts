@@ -119,6 +119,8 @@ function moderation(d: AllData): Section {
   s.metrics.push(metric('moderation.shiftsEvaluated', 'Shifts evaluated', 'count', evaluated, m.prevShifts.evaluated))
   s.metrics.push(metric('moderation.punctuality', 'Punctuality', 'pct', pct(onTime, evaluated), pct(m.prevShifts.onTime, m.prevShifts.evaluated)))
   s.metrics.push(metric('moderation.noShows', 'No-shows', 'count', noShow, m.prevShifts.noShow))
+  s.metrics.push(metric('moderation.responses', 'Member questions answered', 'count', m.responses.count, m.prevResponses.count))
+  s.metrics.push(metric('moderation.avgResponse', 'Average response time', 'seconds', m.responses.avgSeconds, m.prevResponses.avgSeconds))
   for (const p of m.paid) s.metrics.push(metric(`moderation.paid.${p.currency}`, `Paid (${p.currency})`, 'usd', round(p.amount, 2), null))
 
   const gaps = coverageGaps(peakHours(d.engagement.hourly), m.moderators)

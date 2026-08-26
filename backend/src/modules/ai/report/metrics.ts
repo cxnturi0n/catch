@@ -13,6 +13,7 @@ import {
   memberMessages,
   messageActivity,
   moderatorShiftEvents,
+  moderatorResponseMetrics,
   moderators,
   payments,
   platformMetrics,
@@ -90,6 +91,8 @@ export interface ModerationData {
   shifts: { moderatorId: string; evaluated: number; onTime: number; noShow: number }[]
   prevShifts: { evaluated: number; onTime: number; noShow: number }
   paid: { currency: string; amount: number }[]
+  responses: { count: number; avgSeconds: number | null }
+  prevResponses: { count: number; avgSeconds: number | null }
 }
 
 export interface IncidentData {
@@ -287,7 +290,15 @@ async function moderationOf(workspaceId: string, cur: Window, prev: Window): Pro
       .from(moderatorShiftEvents)
       .where(and(eq(moderatorShiftEvents.workspaceId, workspaceId), gte(moderatorShiftEvents.day, w.start), sql`${moderatorShiftEvents.day} <= ${w.end}`))
       .groupBy(moderatorShiftEvents.moderatorId)
-  const [mods, perf, shifts, prevShifts, paid] = await Promise.all([
+  const respAgg = async (w: Window) => {
+    const [r] = await db
+      .select({ count: sql<number>`coalesce(sum(${moderatorResponseMetrics.responsesCount}),0)::int`, weighted: sql<number | null>`sum(${moderatorResponseMetrics.responsesCount} * ${moderatorResponseMetrics.avgResponseSeconds})::float` })
+      .from(moderatorResponseMetrics)
+      .where(and(eq(moderatorResponseMetrics.workspaceId, workspaceId), gte(moderatorResponseMetrics.day, w.start), sql`${moderatorResponseMetrics.day} <= ${w.end}`))
+    const count = r?.count ?? 0
+    return { count, avgSeconds: count && r?.weighted != null ? Math.round(r.weighted / count) : null }
+  }
+  const [mods, perf, shifts, prevShifts, paid, responses, prevResponses] = await Promise.all([
     db
       .select({ id: moderators.id, name: moderators.fullName, status: moderators.status, shiftStartUtc: moderators.shiftStartUtc, shiftEndUtc: moderators.shiftEndUtc, shiftDays: moderators.shiftDays })
       .from(moderators)
@@ -301,9 +312,11 @@ async function moderationOf(workspaceId: string, cur: Window, prev: Window): Pro
       .from(payments)
       .where(and(eq(payments.workspaceId, workspaceId), gte(payments.paidAt, cur.startTs), lt(payments.paidAt, cur.endTs)))
       .groupBy(payments.currency),
+    respAgg(cur),
+    respAgg(prev),
   ])
   const p = prevShifts.reduce((a, s) => ({ evaluated: a.evaluated + s.evaluated, onTime: a.onTime + s.onTime, noShow: a.noShow + s.noShow }), { evaluated: 0, onTime: 0, noShow: 0 })
-  return { moderators: mods, performance: perf, shifts, prevShifts: p, paid }
+  return { moderators: mods, performance: perf, shifts, prevShifts: p, paid, responses, prevResponses }
 }
 
 async function incidentsOf(workspaceId: string, cur: Window, prev: Window): Promise<IncidentData> {

@@ -10,6 +10,8 @@ export function toOut(m: Moderator): ModeratorOut {
     fullName: m.fullName,
     discordHandle: m.discordHandle,
     telegramHandle: m.telegramHandle,
+    discordUserId: m.discordUserId,
+    telegramUserId: m.telegramUserId,
     platforms: m.platforms,
     startDate: m.startDate,
     contractType: m.contractType,
@@ -41,6 +43,8 @@ function toColumns(b: Partial<ModeratorBody>) {
   if (b.fullName !== undefined) c.fullName = b.fullName
   if (b.discordHandle !== undefined) c.discordHandle = b.discordHandle || null
   if (b.telegramHandle !== undefined) c.telegramHandle = b.telegramHandle || null
+  if (b.discordUserId !== undefined) c.discordUserId = b.discordUserId || null
+  if (b.telegramUserId !== undefined) c.telegramUserId = b.telegramUserId || null
   if (b.platforms !== undefined) c.platforms = b.platforms
   if (b.startDate !== undefined) c.startDate = b.startDate
   if (b.contractType !== undefined) c.contractType = b.contractType

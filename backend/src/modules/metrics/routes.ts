@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.js'
 import {
+  integrations,
   channelActivity,
   platformChannels,
   platformMessages,
@@ -135,6 +136,34 @@ export async function metricsRoutes(app: FastifyInstance) {
       return { platform: v.platform, channelId: v.channelId, name: c?.name ?? null, type: c?.type ?? null, messages: v.messages, activeMembers: byAuthors.get(key(v.platform, v.channelId)) ?? 0, lastMessageAt: c?.lastMessageAt ?? null }
     })
     return { rows }
+  })
+
+  // Member picker for the moderator form: people seen in the last 30 days,
+  // plus Telegram admins reported at connect time.
+  r.get(`${base}/platform-members`, { preHandler: member, schema: { params, querystring: z.object({ platform: z.enum(['telegram', 'discord']), q: z.string().trim().max(80).optional(), limit: z.coerce.number().int().min(1).max(50).default(20) }) } }, async (req) => {
+    const q = req.query.q?.replace(/^@/, '') ?? ''
+    const where = [eq(memberMessages.workspaceId, req.workspace.id), eq(memberMessages.platform, req.query.platform), gte(memberMessages.day, sinceDay(30))]
+    if (q) where.push(sql`(${memberMessages.displayName} ilike ${'%' + q + '%'} or ${memberMessages.memberRef} = ${q})`)
+    const seen = await db
+      .select({ memberRef: memberMessages.memberRef, displayName: sql<string | null>`max(${memberMessages.displayName})`, messages: sql<number>`sum(${memberMessages.messageCount})::int`, lastMessageAt: sql<Date | null>`max(${memberMessages.lastMessageAt})` })
+      .from(memberMessages)
+      .where(and(...where))
+      .groupBy(memberMessages.memberRef)
+      .orderBy(desc(sql`sum(${memberMessages.messageCount})`))
+      .limit(req.query.limit)
+    const rows = seen.map((s) => ({ ...s, isAdmin: false }))
+    if (req.query.platform === 'telegram') {
+      const [row] = await db.select({ metadata: integrations.metadata }).from(integrations).where(and(eq(integrations.workspaceId, req.workspace.id), eq(integrations.platform, 'telegram'))).limit(1)
+      const admins = (row?.metadata.admins as Array<{ id: string; username: string | null; first_name: string | null }> | undefined) ?? []
+      for (const a of admins) {
+        const name = a.username ? `@${a.username}` : (a.first_name ?? `id:${a.id}`)
+        if (q && !name.toLowerCase().includes(q.toLowerCase()) && a.id !== q) continue
+        const existing = rows.find((r) => r.memberRef === a.id)
+        if (existing) existing.isAdmin = true
+        else rows.push({ memberRef: a.id, displayName: name, messages: 0, lastMessageAt: null, isAdmin: true })
+      }
+    }
+    return { rows: rows.slice(0, req.query.limit) }
   })
 
   // Exact Telegram joins/leaves in a window (from webhook events).

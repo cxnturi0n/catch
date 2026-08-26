@@ -15,6 +15,9 @@ export const moderatorBody = z.object({
   fullName: z.string().trim().min(1).max(120),
   discordHandle: z.string().trim().max(80).nullish(),
   telegramHandle: z.string().trim().max(80).nullish(),
+  // Stable platform user ids (linked from the member picker); handles stay as fallback.
+  discordUserId: z.string().trim().regex(/^\d{15,22}$/).nullish().or(z.literal('')),
+  telegramUserId: z.string().trim().regex(/^\d{1,20}$/).nullish().or(z.literal('')),
   platforms: strList(10).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
   contractType: z.string().trim().max(40).optional(),
@@ -42,6 +45,8 @@ export const moderatorOut = z.object({
   fullName: z.string(),
   discordHandle: z.string().nullable(),
   telegramHandle: z.string().nullable(),
+  discordUserId: z.string().nullable(),
+  telegramUserId: z.string().nullable(),
   platforms: z.array(z.string()),
   startDate: z.string().nullable(),
   contractType: z.string(),

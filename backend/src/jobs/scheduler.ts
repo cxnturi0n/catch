@@ -14,6 +14,7 @@ import { dispatchDueReports } from '../modules/reports/dispatch.js'
 import { recordShiftEventsForAll } from './moderatorPerformance.js'
 import { runDiscordBackfill } from './discordBackfill.js'
 import { runTelegramBackfill } from './telegramBackfill.js'
+import { recordResponseMetricsForAll } from './responseMetrics.js'
 
 // Scheduling rules (BP §5): per-platform floor, deterministic jitter per
 // workspace, throttle on the last ATTEMPT (a rejected call still spent quota).
@@ -41,6 +42,7 @@ export const QUEUES = {
   shifts: 'shift-events',
   discordBackfill: 'discord-backfill',
   telegramBackfill: 'telegram-backfill',
+  responseMetrics: 'response-metrics',
 } as const
 
 // FNV-1a → stable offset inside the minute so workspaces do not all fire at :00.
@@ -120,6 +122,7 @@ export async function startWorker(boss: PgBoss) {
   await boss.schedule(QUEUES.retention, '0 3 * * *', {}, { tz: 'UTC' })
   await boss.schedule(QUEUES.reports, '0 * * * *', {}, { tz: 'UTC' })
   await boss.schedule(QUEUES.shifts, '10 0 * * *', {}, { tz: 'UTC' })
+  await boss.schedule(QUEUES.responseMetrics, '20 0 * * *', {}, { tz: 'UTC' })
 
   await boss.work(QUEUES.tick, { batchSize: 1 }, async () => {
     const r = await enqueueDueSyncs(boss)
@@ -174,6 +177,10 @@ export async function startWorker(boss: PgBoss) {
     logger.info(await recordShiftEventsForAll(), 'shift events')
   })
 
+  await boss.work(QUEUES.responseMetrics, { batchSize: 1 }, async () => {
+    logger.info(await recordResponseMetricsForAll(), 'response metrics')
+  })
+
   await boss.work(QUEUES.retention, { batchSize: 1 }, async () => {
     logger.info(await runRetention(), 'retention')
   })
@@ -183,7 +190,7 @@ export async function startWorker(boss: PgBoss) {
     captureException(err)
   })
   boss.on('job-failed' as never, (ev: unknown) => captureException(new Error('job failed'), { job: ev }))
-  logger.info('worker started: sync tick every minute, reports hourly, shift events 00:10 UTC, retention 03:00 UTC')
+  logger.info('worker started: sync tick every minute, reports hourly, shift events 00:10 UTC, response metrics 00:20 UTC, retention 03:00 UTC')
 }
 
 export const _eq = and
