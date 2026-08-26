@@ -18,6 +18,7 @@ const integrationOut = z.object({
   metadata: z.record(z.string(), z.unknown()),
   lastSync: z.date().nullable(),
   lastError: z.string().nullable(),
+  health: z.record(z.string(), z.unknown()),
 })
 
 // One body schema per platform; the union is discriminated by the URL.
@@ -118,7 +119,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     '/workspaces/:workspaceId/integrations/:platform',
     { preHandler: manage, schema: { params: platformParams } },
     async (req, reply) => {
-      await repo.disconnect(req.workspace.id, req.params.platform)
+      await service.disconnect(req.workspace.id, req.params.platform)
       return reply.status(204).send()
     },
   )

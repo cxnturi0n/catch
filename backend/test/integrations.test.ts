@@ -19,14 +19,19 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
   if (url.startsWith('https://discord.com/api/v10/guilds/')) {
     const auth = (init?.headers as Record<string, string>)?.Authorization
     if (auth !== 'Bot good-token-good-token-good') return json(401, { message: 'Unauthorized' })
-    if (url.includes('/audit-logs')) return json(200, { audit_log_entries: [{ id: String((BigInt(Date.now() - 1_420_070_400_000) << 22n) | 1n) }] })
+    if (url.includes('/audit-logs')) return json(200, { audit_log_entries: [{ id: String((BigInt(Date.now() - 1_420_070_400_000) << 22n) | 1n), action_type: 22, user_id: '7', target_id: '8' }] })
     if (url.includes('/guilds/999999999999999999')) return json(404, {})
     return json(200, { name: 'Test Guild', icon: null, approximate_member_count: 1234 })
   }
   if (url.startsWith('https://api.telegram.org/bot')) {
     if (!url.includes('/bot111111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/')) return json(401, { ok: false, description: 'Unauthorized' })
-    if (url.includes('getChat?')) return json(200, { ok: true, result: { title: 'Test Chat', type: 'supergroup' } })
-    if (url.includes('getChatMemberCount')) return json(200, { ok: true, result: tgMembers })
+    if (url.endsWith('/getMe')) return json(200, { ok: true, result: { id: 111111111, is_bot: true, username: 'catch_bot', can_read_all_group_messages: true } })
+    if (url.endsWith('/getChat')) return json(200, { ok: true, result: { id: -1001234567890, title: 'Test Chat', type: 'supergroup' } })
+    if (url.endsWith('/getChatMemberCount')) return json(200, { ok: true, result: tgMembers })
+    if (url.endsWith('/getChatMember')) return json(200, { ok: true, result: { status: 'administrator' } })
+    if (url.endsWith('/getChatAdministrators')) return json(200, { ok: true, result: [{ status: 'creator', user: { id: 5, username: 'owner' } }] })
+    if (url.endsWith('/setWebhook') || url.endsWith('/deleteWebhook')) return json(200, { ok: true, result: true })
+    if (url.endsWith('/getWebhookInfo')) return json(200, { ok: true, result: { url: '' } })
   }
   return realFetch(input, init)
 }

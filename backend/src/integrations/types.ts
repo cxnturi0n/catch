@@ -16,7 +16,7 @@ export interface ConnectResult {
   /** Stored encrypted. */
   credentials: Record<string, string>
   /** Safe to show in the UI. */
-  metadata: Record<string, string | number | null>
+  metadata: Record<string, unknown>
 }
 
 export interface SyncResult {

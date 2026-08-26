@@ -5,6 +5,10 @@ import { platformClients, PlatformError, type IntegrationPlatform } from '../../
 import { logger } from '../../logger.js'
 import * as repo from './repo.js'
 import { publishMany } from '../../lib/events.js'
+import { createHash } from 'node:crypto'
+import { config, telegramMtprotoEnabled } from '../../config.js'
+import { registerWebhook, removeWebhook, webhookUrlFor } from '../../integrations/telegram/client.js'
+import { integrationLog } from '../../lib/integrationLog.js'
 
 // Snapshot cadence: a new row only when the payload changed, plus a
 // heartbeat so short windows never go empty (BP §5).
@@ -22,12 +26,48 @@ function stable(v: unknown): string {
 export async function connect(workspaceId: string, platform: IntegrationPlatform, input: unknown) {
   const client = platformClients[platform] as (typeof platformClients)[IntegrationPlatform] & { connect(i: unknown): Promise<{ credentials: Record<string, string>; metadata: Record<string, unknown> }> }
   const result = await client.connect(input)
+  const requestedAt = new Date().toISOString()
   // History import runs in the worker; the minute tick picks up 'queued'.
-  if (platform === 'discord') result.metadata = { ...result.metadata, backfill: { status: 'queued', requestedAt: new Date().toISOString() } }
-  await repo.upsertConnected(workspaceId, platform, result.credentials, result.metadata)
+  if (platform === 'discord') result.metadata = { ...result.metadata, backfill: { status: 'queued', requestedAt } }
+  if (platform === 'telegram') {
+    const username = result.metadata.username
+    result.metadata = {
+      ...result.metadata,
+      backfill: !telegramMtprotoEnabled ? { status: 'skipped', reason: 'not_configured' } : !username ? { status: 'skipped', reason: 'private_group' } : { status: 'queued', requestedAt },
+      webhook: 'pending',
+    }
+  }
+  const secret = result.credentials.webhook_secret
+  const { id } = await repo.upsertConnected(workspaceId, platform, result.credentials, result.metadata, { webhookSecretHash: secret ? sha256(secret) : null })
+  if (platform === 'telegram' && secret) {
+    // Telegram pushes updates to /webhooks/telegram/<integration id>; the
+    // secret travels in a header and only its hash is stored in clear.
+    const url = webhookUrlFor(id)
+    let webhook: 'set' | 'failed' | 'skipped_local' = 'skipped_local'
+    if (url) {
+      webhook = await registerWebhook(result.credentials.bot_token!, url, secret)
+        .then(() => 'set' as const)
+        .catch(() => 'failed' as const)
+    }
+    await repo.patchMetadata(workspaceId, 'telegram', { webhook, webhook_checked_at: new Date().toISOString() })
+    result.metadata.webhook = webhook
+    integrationLog('telegram.webhook_set', { workspaceId, integrationId: id, webhook, local: !url })
+  }
   await publishMany(workspaceId, ['integrations'])
   await db.delete(integrationSyncState).where(and(eq(integrationSyncState.workspaceId, workspaceId), eq(integrationSyncState.platform, platform)))
   return result.metadata
+}
+
+export const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
+
+// Disconnect: tell Telegram to stop pushing, then wipe the secret and the
+// stored message text (repo.disconnect).
+export async function disconnect(workspaceId: string, platform: IntegrationPlatform): Promise<boolean> {
+  if (platform === 'telegram') {
+    const creds = await repo.getCredentials<{ bot_token: string }>(workspaceId, platform)
+    if (creds?.bot_token) await removeWebhook(creds.bot_token).catch(() => undefined)
+  }
+  return repo.disconnect(workspaceId, platform)
 }
 
 export interface SyncOutcome {
@@ -97,4 +137,4 @@ export async function latestSnapshot(workspaceId: string, platform: string) {
   return row
 }
 
-export const _internal = { stable, sql }
+export const _internal = { stable, sql, apiUrl: () => config.API_URL }
