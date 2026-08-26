@@ -1,6 +1,6 @@
-import { discord } from './discord.js'
+import { discord } from './discord/client.js'
 import { galxe } from './galxe.js'
-import { telegram } from './telegram.js'
+import { telegram } from './telegram/client.js'
 import { zealy } from './zealy.js'
 import type { PlatformClient } from './types.js'
 

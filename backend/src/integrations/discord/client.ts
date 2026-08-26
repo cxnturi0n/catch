@@ -1,4 +1,4 @@
-import { PlatformError, upstreamFetch, type PlatformClient } from './types.js'
+import { PlatformError, upstreamFetch, type PlatformClient } from '../types.js'
 
 export interface DiscordCredentials extends Record<string, string> {
   bot_token: string

@@ -43,6 +43,13 @@
       "when": 1787506458021,
       "tag": "0005_ai_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787775431547,
+      "tag": "0006_integrations_v2",
+      "breakpoints": true
     }
   ]
 }

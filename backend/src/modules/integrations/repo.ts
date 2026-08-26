@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '../../db/client.js'
-import { integrations, integrationSyncState, INTEGRATION_PLATFORMS } from '../../db/schema/index.js'
+import { integrations, integrationSyncState, INTEGRATION_PLATFORMS, platformChannels, platformMessages } from '../../db/schema/index.js'
 import { decryptJson, encryptJson } from '../../lib/crypto.js'
 
 export type IntegrationPlatform = (typeof INTEGRATION_PLATFORMS)[number]
@@ -71,9 +71,14 @@ export async function upsertConnected(
 export async function disconnect(workspaceId: string, platform: IntegrationPlatform): Promise<boolean> {
   const updated = await db
     .update(integrations)
-    .set({ status: 'disconnected', credentialsEnc: null, metadata: {}, updatedAt: new Date() })
+    .set({ status: 'disconnected', credentialsEnc: null, metadata: {}, webhookSecretHash: null, updatedAt: new Date() })
     .where(and(eq(integrations.workspaceId, workspaceId), eq(integrations.platform, platform)))
     .returning({ id: integrations.id })
   await db.delete(integrationSyncState).where(and(eq(integrationSyncState.workspaceId, workspaceId), eq(integrationSyncState.platform, platform)))
+  // Stored message text belongs to the connection: gone with it. Aggregates stay.
+  if (platform === 'discord' || platform === 'telegram') {
+    await db.delete(platformMessages).where(and(eq(platformMessages.workspaceId, workspaceId), eq(platformMessages.platform, platform)))
+    await db.delete(platformChannels).where(and(eq(platformChannels.workspaceId, workspaceId), eq(platformChannels.platform, platform)))
+  }
   return updated.length > 0
 }

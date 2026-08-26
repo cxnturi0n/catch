@@ -1,4 +1,4 @@
-import { PlatformError, upstreamFetch, type PlatformClient } from './types.js'
+import { PlatformError, upstreamFetch, type PlatformClient } from '../types.js'
 
 export interface TelegramCredentials extends Record<string, string> {
   bot_token: string

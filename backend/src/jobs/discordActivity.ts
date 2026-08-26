@@ -1,39 +1,59 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
-import { discordChannelCursors, messageActivity } from '../db/schema/index.js'
-import { snowflakeToDate } from '../integrations/discord.js'
+import { discordChannelCursors } from '../db/schema/index.js'
+import { snowflakeToDate } from '../integrations/discord/client.js'
 import { upstreamFetch } from '../integrations/types.js'
 import * as integrations from '../modules/integrations/repo.js'
-import { publishMany } from '../lib/events.js'
-import { recordMemberMessage } from './memberMessages.js'
+import { ingestBatch, type IngestInput } from './ingest.js'
 
-// Counts human messages per hour across the guild's text channels using a
-// per-channel cursor, so history is never re-read. First run only anchors the
-// cursor (no backfill), exactly like the legacy function.
+export { bumpActivity, hourBucket } from './ingest.js'
+
+// REST fallback collector: counts human messages across the guild's text
+// channels using a per-channel cursor, so history is never re-read. Runs only
+// while the gateway connection for the workspace is not healthy. First run
+// only anchors the cursor (the backfill job covers history).
 const API = 'https://discord.com/api/v10'
 const CHANNEL_CAP = 20
 const PAGE_CAP = 5
 const GUILD_TEXT = 0
 
-export function hourBucket(date: Date): Date {
-  const d = new Date(date)
-  d.setUTCMinutes(0, 0, 0)
-  return d
-}
-
-export async function bumpActivity(workspaceId: string, platform: 'discord' | 'telegram', bucket: Date, delta: number) {
-  await db
-    .insert(messageActivity)
-    .values({ workspaceId, platform, bucketStart: bucket, messageCount: delta })
-    .onConflictDoUpdate({
-      target: [messageActivity.workspaceId, messageActivity.platform, messageActivity.bucketStart],
-      set: { messageCount: sql`${messageActivity.messageCount} + ${delta}`, updatedAt: new Date() },
-    })
-}
-
 export interface ActivityResult {
   channels: number
   messages: number
+}
+
+export interface DiscordRestMessage {
+  id: string
+  channel_id?: string
+  content?: string
+  timestamp?: string
+  type?: number
+  webhook_id?: string
+  message_reference?: { message_id?: string }
+  author?: { id?: string; username?: string; global_name?: string | null; bot?: boolean }
+}
+
+// Message types that carry a human message: 0 default, 19 reply. Everything
+// else (joins, boosts, pins, thread starters) is a system notice.
+const HUMAN_TYPES = new Set([0, 19])
+
+export function toIngest(workspaceId: string, m: DiscordRestMessage, channelId: string, source: IngestInput['source']): IngestInput | null {
+  if (!m.author?.id || m.webhook_id) return null
+  if (m.type !== undefined && !HUMAN_TYPES.has(m.type)) return null
+  const at = m.timestamp ? new Date(m.timestamp) : snowflakeToDate(m.id)
+  return {
+    workspaceId,
+    platform: 'discord',
+    messageId: m.id,
+    channelId,
+    memberRef: m.author.id,
+    displayName: m.author.username ?? null,
+    isBot: m.author.bot === true,
+    content: m.content ?? null,
+    replyToMessageId: m.message_reference?.message_id ?? null,
+    sentAt: at,
+    source,
+  }
 }
 
 export async function syncDiscordActivity(workspaceId: string): Promise<ActivityResult | null> {
@@ -46,8 +66,6 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
 
   const cursorRows = await db.select().from(discordChannelCursors).where(eq(discordChannelCursors.workspaceId, workspaceId))
   const cursors = new Map(cursorRows.map((r) => [r.channelId, r.lastMessageId]))
-  const buckets = new Map<number, number>()
-  const perMember: Array<{ ref: string; name: string | null; at: Date }> = []
   let total = 0
 
   for (const channel of channels) {
@@ -57,18 +75,16 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
     for (let page = 0; page < PAGE_CAP; page++) {
       const res = await upstreamFetch(`${API}/channels/${channel.id}/messages?limit=100${after ? `&after=${after}` : ''}`, { headers })
       if (!res.ok) break // 403: channel not visible to the bot
-      const messages = (await res.json()) as Array<{ id: string; timestamp?: string; author?: { id?: string; username?: string; bot?: boolean } }>
+      const messages = (await res.json()) as DiscordRestMessage[]
       if (messages.length === 0) break
+      const batch: IngestInput[] = []
       for (const m of messages) {
         if (newest === null || BigInt(m.id) > BigInt(newest)) newest = m.id
-        if (m.author?.bot || !cursor) continue // first run: anchor only
-        const at = m.timestamp ? new Date(m.timestamp) : snowflakeToDate(m.id)
-        if (Number.isNaN(at.getTime())) continue
-        const key = hourBucket(at).getTime()
-        buckets.set(key, (buckets.get(key) ?? 0) + 1)
-        total++
-        if (m.author?.id) perMember.push({ ref: m.author.id, name: m.author.username ?? null, at })
+        if (!cursor) continue // first run: anchor only
+        const i = toIngest(workspaceId, m, channel.id, 'rest')
+        if (i) batch.push(i)
       }
+      if (batch.length) total += (await ingestBatch(batch, 'now')).inserted
       if (messages.length < 100 || !after) break
       after = newest
     }
@@ -79,9 +95,6 @@ export async function syncDiscordActivity(workspaceId: string): Promise<Activity
         .onConflictDoUpdate({ target: [discordChannelCursors.workspaceId, discordChannelCursors.channelId], set: { lastMessageId: newest, updatedAt: new Date() } })
     }
   }
-  for (const [ms, count] of buckets) await bumpActivity(workspaceId, 'discord', new Date(ms), count)
-  for (const m of perMember) await recordMemberMessage(workspaceId, 'discord', m.ref, m.name, m.at)
-  if (total > 0) await publishMany(workspaceId, ['message_activity', 'member_messages'])
   return { channels: channels.length, messages: total }
 }
 

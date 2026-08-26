@@ -129,10 +129,13 @@ export const integrations = pgTable(
     credentialsEnc: text('credentials_enc'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
     lastSync: timestamp('last_sync', { withTimezone: true }),
+    // sha256 of the per-integration webhook secret (Telegram). Lets the
+    // webhook route find its row without decrypting anything.
+    webhookSecretHash: text('webhook_secret_hash'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [unique('integrations_workspace_platform_key').on(t.workspaceId, t.platform)],
+  (t) => [unique('integrations_workspace_platform_key').on(t.workspaceId, t.platform), index('integrations_webhook_hash_idx').on(t.webhookSecretHash)],
 )
 
 export const integrationSyncState = pgTable(
@@ -285,6 +288,138 @@ export const discordMembershipSnapshots = pgTable(
   (t) => [index('dms_ws_time_idx').on(t.workspaceId, t.capturedAt)],
 )
 
+// --- Integrations v2: messages, channels, events, actions ------------------
+export const MESSAGE_PLATFORMS = ['discord', 'telegram'] as const
+export const MESSAGE_SOURCES = ['gateway', 'rest', 'backfill', 'webhook', 'mtproto'] as const
+export const MODERATOR_ACTION_TYPES = ['ban', 'unban', 'kick', 'timeout', 'untimeout', 'delete_message', 'mute', 'unmute'] as const
+
+// One row per message seen from any source. Text is encrypted at rest and the
+// row is pruned after 30 days; the counters derived from it stay. The unique
+// key makes every collector idempotent (gateway, REST fallback, backfill and
+// webhook may all see the same message).
+export const platformMessages = pgTable(
+  'platform_messages',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    platform: text('platform', { enum: MESSAGE_PLATFORMS }).notNull(),
+    messageId: text('message_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    memberRef: text('member_ref').notNull(),
+    displayName: text('display_name'),
+    replyToMessageId: text('reply_to_message_id'),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+    contentEnc: text('content_enc'),
+    hasContent: boolean('has_content').notNull().default(false),
+    source: text('source', { enum: MESSAGE_SOURCES }).notNull().default('gateway'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('platform_messages_ws_platform_msg_key').on(t.workspaceId, t.platform, t.messageId),
+    index('platform_messages_ws_sent_idx').on(t.workspaceId, t.sentAt),
+    index('platform_messages_ws_chan_sent_idx').on(t.workspaceId, t.platform, t.channelId, t.sentAt),
+  ],
+)
+
+export const platformChannels = pgTable(
+  'platform_channels',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    platform: text('platform', { enum: MESSAGE_PLATFORMS }).notNull(),
+    channelId: text('channel_id').notNull(),
+    name: text('name'),
+    // discord: text | announcement | thread | forum | voice | category | other
+    // telegram: group | supergroup | channel | topic
+    type: text('type'),
+    parentId: text('parent_id'),
+    position: integer('position'),
+    isTracked: boolean('is_tracked').notNull().default(true),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique('platform_channels_ws_platform_chan_key').on(t.workspaceId, t.platform, t.channelId)],
+)
+
+// Daily per-channel rollup; survives message pruning.
+export const channelActivity = pgTable(
+  'channel_activity',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    platform: text('platform', { enum: MESSAGE_PLATFORMS }).notNull(),
+    channelId: text('channel_id').notNull(),
+    day: date('day').notNull(),
+    messageCount: integer('message_count').notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique('channel_activity_key').on(t.workspaceId, t.platform, t.channelId, t.day), index('channel_activity_ws_day_idx').on(t.workspaceId, t.day)],
+)
+
+// Real-time Discord joins/leaves from the gateway (snapshots stay as the
+// fallback source when the Server Members intent is missing).
+export const discordMembershipEvents = pgTable(
+  'discord_membership_events',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    memberRef: text('member_ref').notNull(),
+    displayName: text('display_name'),
+    eventType: text('event_type', { enum: ['join', 'leave'] }).notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [unique('dme_dedup_key').on(t.workspaceId, t.memberRef, t.eventType, t.occurredAt), index('dme_ws_time_idx').on(t.workspaceId, t.occurredAt)],
+)
+
+// Moderation actions with their executor (Discord audit log, Telegram admin
+// chat_member updates). Attributed to moderators through their platform ids.
+export const moderatorActions = pgTable(
+  'moderator_actions',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    platform: text('platform', { enum: MESSAGE_PLATFORMS }).notNull(),
+    // discord audit entry id | 'tg:<chat>:<update_id>'
+    actionId: text('action_id').notNull(),
+    actionType: text('action_type', { enum: MODERATOR_ACTION_TYPES }).notNull(),
+    executorRef: text('executor_ref').notNull(),
+    executorName: text('executor_name'),
+    targetRef: text('target_ref'),
+    targetName: text('target_name'),
+    channelId: text('channel_id'),
+    reason: text('reason'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('moderator_actions_ws_platform_action_key').on(t.workspaceId, t.platform, t.actionId),
+    index('moderator_actions_ws_time_idx').on(t.workspaceId, t.occurredAt),
+    index('moderator_actions_ws_exec_idx').on(t.workspaceId, t.platform, t.executorRef),
+  ],
+)
+
+// Health of the worker's gateway connection per workspace (one bot each).
+export const discordGatewayState = pgTable('discord_gateway_state', {
+  workspaceId: uuid('workspace_id')
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: 'cascade' }),
+  status: text('status', { enum: ['connecting', 'identifying', 'connected', 'resuming', 'backoff', 'error', 'disconnected'] }).notNull().default('disconnected'),
+  workerId: text('worker_id'),
+  connectedAt: timestamp('connected_at', { withTimezone: true }),
+  lastEventAt: timestamp('last_event_at', { withTimezone: true }),
+  // Liveness: quiet guilds send no events but heartbeats keep being acked.
+  lastAckAt: timestamp('last_ack_at', { withTimezone: true }),
+  sessionId: text('session_id'),
+  resumeUrl: text('resume_url'),
+  seq: integer('seq'),
+  intents: integer('intents'),
+  missingIntents: text('missing_intents').array().notNull().default(sql`'{}'::text[]`),
+  lastCloseCode: integer('last_close_code'),
+  lastError: text('last_error'),
+  updatedAt: updatedAt(),
+})
+
 // Manual X (Twitter) CSV imports, previously kept in localStorage.
 export const xImports = pgTable(
   'x_imports',
@@ -310,6 +445,9 @@ export const moderators = pgTable(
     fullName: text('full_name').notNull(),
     discordHandle: text('discord_handle'),
     telegramHandle: text('telegram_handle'),
+    // Stable platform user ids; handles stay as a fallback for matching.
+    discordUserId: text('discord_user_id'),
+    telegramUserId: text('telegram_user_id'),
     platforms: text('platforms').array().notNull().default(sql`'{}'::text[]`),
     startDate: date('start_date'),
     contractType: text('contract_type').notNull().default('Volunteer'),

@@ -30,6 +30,38 @@ export async function publishMany(workspaceId: string, topics: string[]): Promis
   for (const t of topics) await publish(workspaceId, t)
 }
 
+// Coalesces bursts (a gateway can deliver dozens of messages per second) into
+// one notification per topic every `delayMs` per workspace.
+const pending = new Map<string, { topics: Set<string>; timer: NodeJS.Timeout }>()
+export const THROTTLE_MS = 2_000
+
+export function publishThrottled(workspaceId: string, topics: string[], delayMs = THROTTLE_MS): void {
+  const p = pending.get(workspaceId)
+  if (p) {
+    for (const t of topics) p.topics.add(t)
+    return
+  }
+  const entry = {
+    topics: new Set(topics),
+    timer: setTimeout(() => {
+      pending.delete(workspaceId)
+      void publishMany(workspaceId, [...entry.topics])
+    }, delayMs),
+  }
+  entry.timer.unref?.()
+  pending.set(workspaceId, entry)
+}
+
+/** Flush pending throttled notifications (used at shutdown and in tests). */
+export async function flushThrottled(): Promise<void> {
+  const entries = [...pending.entries()]
+  pending.clear()
+  for (const [ws, e] of entries) {
+    clearTimeout(e.timer)
+    await publishMany(ws, [...e.topics])
+  }
+}
+
 type Listener = (e: WorkspaceEvent) => void
 const listeners = new Map<string, Set<Listener>>()
 let client: Client | null = null

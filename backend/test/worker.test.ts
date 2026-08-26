@@ -25,7 +25,8 @@ const CHAT = '-1009876543210'
 let intentOff = false
 const realFetch = globalThis.fetch
 const json = (status: number, body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }))
-const snow = (msAgo: number, n = 1n) => String((BigInt(Date.now() - msAgo - 1_420_070_400_000) << 22n) | n)
+const BASE = Date.now() // stable ids across calls so re-reads dedupe
+const snow = (msAgo: number, n = 1n) => String((BigInt(BASE - msAgo - 1_420_070_400_000) << 22n) | n)
 function fakeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input)
   if (url.includes('/guilds/123456789012345678/channels')) return json(200, [{ id: '100', type: 0 }, { id: '200', type: 0 }, { id: '300', type: 2 }])
@@ -33,10 +34,10 @@ function fakeFetch(input: RequestInfo | URL, init?: RequestInit) {
   if (url.includes('/channels/100/messages')) {
     if (!url.includes('after=')) return json(200, [{ id: snow(60_000) }]) // first run → anchor only
     return json(200, [
-      { id: snow(30_000, 2n), author: { bot: false } },
-      { id: snow(20_000, 3n), author: { bot: true } },
-      { id: snow(10_000, 4n), author: { bot: false } },
-      { id: snow(5_000, 5n), author: { bot: false } },
+      { id: snow(30_000, 2n), author: { id: '11', username: 'ann', bot: false }, content: 'hello' },
+      { id: snow(20_000, 3n), author: { id: '12', username: 'bot', bot: true } },
+      { id: snow(10_000, 4n), author: { id: '11', username: 'ann', bot: false } },
+      { id: snow(5_000, 5n), author: { id: '13', username: 'ben', bot: false } },
     ])
   }
   if (url.includes('/guilds/123456789012345678/members')) {
@@ -137,6 +138,21 @@ describe('discord jobs', () => {
     expect(second?.messages).toBe(3)
     const cursor = await db.query.discordChannelCursors.findFirst({ where: and(eq(schema.discordChannelCursors.workspaceId, ws), eq(schema.discordChannelCursors.channelId, '100')) })
     expect(cursor?.lastMessageId).toBeTruthy()
+    // Re-reading the same page (cursor reset) must not double count: the
+    // message store is the source of truth for every counter.
+    await db.update(schema.discordChannelCursors).set({ lastMessageId: '1' }).where(eq(schema.discordChannelCursors.workspaceId, ws))
+    const third = await syncDiscordActivity(ws)
+    expect(third?.messages).toBe(0)
+    const mm = await app.inject({ method: 'GET', url: `/workspaces/${ws}/metrics/member-messages?days=2&platform=discord`, headers: { cookie } })
+    expect(mm.json().members).toEqual([
+      { memberRef: '11', displayName: 'ann', messages: 2 },
+      { memberRef: '13', displayName: 'ben', messages: 1 },
+    ])
+    const stored = await db.select().from(schema.platformMessages).where(eq(schema.platformMessages.workspaceId, ws))
+    expect(stored.filter((m) => m.platform === 'discord')).toHaveLength(3)
+    expect(stored.find((m) => m.hasContent)?.contentEnc).toMatch(/^v1:/)
+    const ch = await app.inject({ method: 'GET', url: `/workspaces/${ws}/metrics/channels?days=2`, headers: { cookie } })
+    expect(ch.json().rows.find((r: { channelId: string }) => r.channelId === '100')).toMatchObject({ platform: 'discord', messages: 3, activeMembers: 2 })
   })
   it('members: records tenure + snapshot, reports the missing intent explicitly, manual route is gated', async () => {
     const r = await syncDiscordMembers(ws)

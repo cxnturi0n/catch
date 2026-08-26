@@ -4,6 +4,9 @@ import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.js'
 import {
+  channelActivity,
+  platformChannels,
+  platformMessages,
   discordMembershipSnapshots,
   discordMemberTenure,
   memberMessages,
@@ -95,6 +98,43 @@ export async function metricsRoutes(app: FastifyInstance) {
         .orderBy(asc(memberMessages.day)),
     ])
     return { members, trend }
+  })
+
+  // Top channels: daily rollup for the volume, stored messages (30 days) for
+  // the distinct author count.
+  r.get(`${base}/channels`, { preHandler: member, schema: { params, querystring: daysQuery(30, 365).extend({ platform: z.enum(['telegram', 'discord']).optional() }) } }, async (req) => {
+    const since = sinceDay(req.query.days)
+    const sinceAt = new Date(`${since}T00:00:00Z`)
+    const volWhere = [eq(channelActivity.workspaceId, req.workspace.id), gte(channelActivity.day, since)]
+    if (req.query.platform) volWhere.push(eq(channelActivity.platform, req.query.platform))
+    const volume = await db
+      .select({ platform: channelActivity.platform, channelId: channelActivity.channelId, messages: sql<number>`sum(${channelActivity.messageCount})::int` })
+      .from(channelActivity)
+      .where(and(...volWhere))
+      .groupBy(channelActivity.platform, channelActivity.channelId)
+      .orderBy(desc(sql`sum(${channelActivity.messageCount})`))
+      .limit(50)
+    if (volume.length === 0) return { rows: [] }
+    const ids = volume.map((v) => v.channelId)
+    const [authors, channels] = await Promise.all([
+      db
+        .select({ platform: platformMessages.platform, channelId: platformMessages.channelId, activeMembers: sql<number>`count(distinct ${platformMessages.memberRef})::int` })
+        .from(platformMessages)
+        .where(and(eq(platformMessages.workspaceId, req.workspace.id), gte(platformMessages.sentAt, sinceAt), inArray(platformMessages.channelId, ids)))
+        .groupBy(platformMessages.platform, platformMessages.channelId),
+      db
+        .select({ platform: platformChannels.platform, channelId: platformChannels.channelId, name: platformChannels.name, type: platformChannels.type, lastMessageAt: platformChannels.lastMessageAt })
+        .from(platformChannels)
+        .where(and(eq(platformChannels.workspaceId, req.workspace.id), inArray(platformChannels.channelId, ids))),
+    ])
+    const key = (p: string, c: string) => `${p}|${c}`
+    const byAuthors = new Map(authors.map((a) => [key(a.platform, a.channelId), a.activeMembers]))
+    const byChannel = new Map(channels.map((c) => [key(c.platform, c.channelId), c]))
+    const rows = volume.map((v) => {
+      const c = byChannel.get(key(v.platform, v.channelId))
+      return { platform: v.platform, channelId: v.channelId, name: c?.name ?? null, type: c?.type ?? null, messages: v.messages, activeMembers: byAuthors.get(key(v.platform, v.channelId)) ?? 0, lastMessageAt: c?.lastMessageAt ?? null }
+    })
+    return { rows }
   })
 
   // Exact Telegram joins/leaves in a window (from webhook events).
