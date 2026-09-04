@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { Navigate } from 'react-router-dom'
 import { AlertTriangle, Inbox, Lightbulb, Loader2, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { OWNER_EMAIL } from '../../lib/adminAnalytics'
 import {
   fetchAllDiscoveryResponses,
   type DiscoveryResponseRow,
@@ -173,7 +172,7 @@ export function DiscoveryResponses() {
   const { user } = useAuth()
   // Dev-only preview with sample data (dead-code-eliminated in production).
   const demoMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === '1'
-  const isOwner = demoMode || user?.email?.toLowerCase() === OWNER_EMAIL
+  const isOwner = demoMode || user?.role === 'admin'
 
   const [rows, setRows] = useState<DiscoveryResponseRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
