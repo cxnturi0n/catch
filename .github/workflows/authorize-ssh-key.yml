@@ -35,4 +35,8 @@ jobs:
             ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*) ;;
             *) echo "::error::That does not look like a public key line"; exit 1 ;;
           esac
-          ssh -i ~/.ssh/deploy_key "admin@$DEPLOY_HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && grep -qxF '$PUBLIC_KEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBLIC_KEY' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys; echo authorized: \$(wc -l < ~/.ssh/authorized_keys) keys"
+          # Strip CR / surrounding whitespace a paste may carry, then send the
+          # line over stdin so no shell quoting touches it.
+          KEY="$(printf '%s' "$PUBLIC_KEY" | tr -d '\r' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+          echo "Input fingerprint: $(printf '%s\n' "$KEY" | ssh-keygen -lf - 2>&1)"
+          printf '%s\n' "$KEY" | ssh -i ~/.ssh/deploy_key "admin@$DEPLOY_HOST" 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && k="$(cat)" && (grep -qxF "$k" ~/.ssh/authorized_keys 2>/dev/null || printf "%s\n" "$k" >> ~/.ssh/authorized_keys) && chmod 600 ~/.ssh/authorized_keys && echo "authorized: $(wc -l < ~/.ssh/authorized_keys) keys" && echo "server fingerprints:" && ssh-keygen -lf ~/.ssh/authorized_keys'
