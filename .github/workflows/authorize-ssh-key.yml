@@ -1,0 +1,38 @@
+# Recovery helper: appends a public key to admin's authorized_keys on the
+# server, using the deploy key already stored in DEPLOY_SSH_KEY. Manual only.
+# Actions → Authorize SSH key → Run workflow → paste the public key.
+name: Authorize SSH key
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: 'Public key line to authorize (ssh-ed25519 AAAA... comment)'
+        required: true
+        type: string
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ]; then echo "::error::DEPLOY_HOST / DEPLOY_SSH_KEY secrets missing"; exit 1; fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Append public key
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          PUBLIC_KEY: ${{ inputs.public_key }}
+        run: |
+          case "$PUBLIC_KEY" in
+            ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*) ;;
+            *) echo "::error::That does not look like a public key line"; exit 1 ;;
+          esac
+          ssh -i ~/.ssh/deploy_key "admin@$DEPLOY_HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && grep -qxF '$PUBLIC_KEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBLIC_KEY' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys; echo authorized: \$(wc -l < ~/.ssh/authorized_keys) keys"
