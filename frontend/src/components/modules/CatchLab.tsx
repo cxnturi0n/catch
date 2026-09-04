@@ -11,7 +11,6 @@ import { Modal } from '../ui/Modal'
 import { FormField, Select, inputClass } from '../ui/FormControls'
 import { formatRelativeTime } from '../../lib/format'
 
-const OWNER_EMAIL = 'cinicololuca@gmail.com'
 
 const CATEGORIES: { key: FeedbackCategory; emoji: string }[] = [
   { key: 'Bug Report', emoji: '🐛' },
@@ -45,7 +44,7 @@ const TITLE_MAX = 100
 
 export function CatchLab() {
   const { user } = useAuth()
-  const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL
+  const isOwner = user?.role === 'admin'
 
   const [formOpen, setFormOpen] = useState(false)
   const [roadmap, setRoadmap] = useState<FeedbackEntry[]>([])

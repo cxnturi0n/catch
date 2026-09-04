@@ -3,7 +3,8 @@
 
 import { fetchAdminOverview } from './api/misc'
 
-export const OWNER_EMAIL = 'cinicololuca@gmail.com'
+// Platform admin pages are gated by user.role === 'admin' (set in the
+// database); the API enforces the same on every /admin route.
 
 export interface AdminAnalytics {
   generatedAt: string

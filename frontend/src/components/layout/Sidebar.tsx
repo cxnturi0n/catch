@@ -7,7 +7,6 @@ import { CatchLabGlyph, SECTION_GLYPH } from './sectionIcons'
 import { CatchMark } from '../brand/CatchMark'
 import { useAuth } from '../../context/AuthContext'
 import { useWorkspace } from '../../context/WorkspaceContext'
-import { OWNER_EMAIL } from '../../lib/adminAnalytics'
 import type { IntegrationKey } from '../../types'
 
 interface NavItem {
@@ -135,8 +134,8 @@ export function Sidebar({
           { to: '/dashboard/integrations', label: 'Integrations', icon: Plug },
           { to: '/dashboard/members', label: 'Members', icon: Users },
           { to: '/dashboard/instructions', label: 'Catch Instructions', icon: BookOpen },
-          // Owner-only pages, the routes/RLS also enforce this.
-          ...(user?.email?.toLowerCase() === OWNER_EMAIL
+          // Platform admin pages; the API enforces the same role.
+          ...(user?.role === 'admin'
             ? [
                 { to: '/dashboard/admin', label: 'Platform Analytics', icon: Gauge } as NavItem,
                 { to: '/dashboard/discovery-responses', label: 'Discovery Responses', icon: Inbox } as NavItem,

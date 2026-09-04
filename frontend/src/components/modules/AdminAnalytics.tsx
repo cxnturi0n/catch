@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { fetchAdminAnalytics, OWNER_EMAIL, pct, type AdminAnalytics as Data } from '../../lib/adminAnalytics'
+import { fetchAdminAnalytics, pct, type AdminAnalytics as Data } from '../../lib/adminAnalytics'
 
 // Per-source gradient palette from the Sapphire handoff (§ "Per-source series").
 const SERIES: Record<string, { from: string; to: string; solid: string }> = {
@@ -87,7 +87,7 @@ function IntegrationRow({ label, count, max }: { label: string; count: number; m
 
 export function AdminAnalytics() {
   const { user } = useAuth()
-  const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL
+  const isOwner = user?.role === 'admin'
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Data | null>(null)
