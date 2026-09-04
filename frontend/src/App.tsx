@@ -43,6 +43,7 @@ const Resources = lazy(() => import('./components/modules/Resources').then((m) =
 const Meetings = lazy(() => import('./components/modules/Meetings').then((m) => ({ default: m.Meetings })))
 const AdminAnalytics = lazy(() => import('./components/modules/AdminAnalytics').then((m) => ({ default: m.AdminAnalytics })))
 const DiscoveryResponses = lazy(() => import('./components/modules/DiscoveryResponses').then((m) => ({ default: m.DiscoveryResponses })))
+const DiscoveryForms = lazy(() => import('./components/modules/DiscoveryForms').then((m) => ({ default: m.DiscoveryForms })))
 
 function PageFallback() {
   return (
@@ -239,6 +240,14 @@ function App() {
                     element={
                       <Suspense fallback={<PageFallback />}>
                         <DiscoveryResponses />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="discovery-forms"
+                    element={
+                      <Suspense fallback={<PageFallback />}>
+                        <DiscoveryForms />
                       </Suspense>
                     }
                   />

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart2, BookOpen, CheckSquare, ChevronDown, FileText, FlaskConical, FolderOpen, Gauge, Gem, Inbox, MessageSquare, Plug, Radar, Send, ShieldCheck, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { BarChart2, BookOpen, CheckSquare, ChevronDown, FileText, FlaskConical, FolderOpen, Gauge, Gem, Inbox, Link2, MessageSquare, Plug, Radar, Send, ShieldCheck, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { CatchLabGlyph, SECTION_GLYPH } from './sectionIcons'
@@ -138,6 +138,7 @@ export function Sidebar({
           ...(user?.role === 'admin'
             ? [
                 { to: '/dashboard/admin', label: 'Platform Analytics', icon: Gauge } as NavItem,
+                { to: '/dashboard/discovery-forms', label: 'Discovery Forms', icon: Link2 } as NavItem,
                 { to: '/dashboard/discovery-responses', label: 'Discovery Responses', icon: Inbox } as NavItem,
               ]
             : []),
