@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { config } from '../../config.js'
 import { db } from '../../db/client.js'
@@ -62,4 +62,52 @@ export async function discoveryRoutes(app: FastifyInstance) {
   r.get('/admin/discovery/responses', { preHandler: app.requireAdmin }, async () => ({
     rows: await db.select().from(discoveryResponses).orderBy(desc(discoveryResponses.submittedAt)).limit(1000),
   }))
+
+  // --- Forms (one per link; the questions live in the SPA) ------------------
+  const formBody = z.object({
+    slug,
+    contactName: z.string().trim().max(120).nullish(),
+    contactEmail: z.email().max(200).nullish(),
+    source: z.string().trim().max(80).nullish(),
+    isActive: z.boolean().optional(),
+  })
+  const formOut = (f: typeof discoveryForms.$inferSelect, responses = 0) => ({ id: f.id, slug: f.slug, contactName: f.contactName, contactEmail: f.contactEmail, source: f.source, isActive: f.isActive, createdAt: f.createdAt, responses })
+
+  r.get('/admin/discovery/forms', { preHandler: app.requireAdmin }, async () => {
+    const [forms, counts] = await Promise.all([
+      db.select().from(discoveryForms).orderBy(desc(discoveryForms.createdAt)),
+      db.select({ slug: discoveryResponses.slugSnapshot, n: sql<number>`count(*)::int` }).from(discoveryResponses).groupBy(discoveryResponses.slugSnapshot),
+    ])
+    const by = new Map(counts.map((c) => [c.slug, c.n]))
+    return { forms: forms.map((f) => formOut(f, by.get(f.slug) ?? 0)) }
+  })
+
+  r.post('/admin/discovery/forms', { preHandler: app.requireAdmin, schema: { body: formBody } }, async (req, reply) => {
+    const [existing] = await db.select({ id: discoveryForms.id }).from(discoveryForms).where(eq(discoveryForms.slug, req.body.slug)).limit(1)
+    if (existing) return reply.status(409).send({ error: { code: 'SLUG_TAKEN', message: 'A form with this slug already exists' } })
+    const [f] = await db.insert(discoveryForms).values({ slug: req.body.slug, contactName: req.body.contactName ?? null, contactEmail: req.body.contactEmail ?? null, source: req.body.source ?? null, isActive: req.body.isActive ?? true }).returning()
+    return reply.status(201).send({ form: formOut(f!) })
+  })
+
+  r.patch('/admin/discovery/forms/:id', { preHandler: app.requireAdmin, schema: { params: z.object({ id: z.uuid() }), body: formBody.partial() } }, async (req) => {
+    const patch: Partial<typeof discoveryForms.$inferInsert> = {}
+    if (req.body.slug !== undefined) patch.slug = req.body.slug
+    if (req.body.contactName !== undefined) patch.contactName = req.body.contactName ?? null
+    if (req.body.contactEmail !== undefined) patch.contactEmail = req.body.contactEmail ?? null
+    if (req.body.source !== undefined) patch.source = req.body.source ?? null
+    if (req.body.isActive !== undefined) patch.isActive = req.body.isActive
+    const [f] = await db.update(discoveryForms).set(patch).where(eq(discoveryForms.id, req.params.id)).returning()
+    if (!f) throw notFound('Form')
+    return { form: formOut(f) }
+  })
+
+  // Delete only forms without responses; otherwise deactivate.
+  r.delete('/admin/discovery/forms/:id', { preHandler: app.requireAdmin, schema: { params: z.object({ id: z.uuid() }) } }, async (req, reply) => {
+    const [f] = await db.select().from(discoveryForms).where(eq(discoveryForms.id, req.params.id)).limit(1)
+    if (!f) throw notFound('Form')
+    const [c] = await db.select({ n: sql<number>`count(*)::int` }).from(discoveryResponses).where(and(eq(discoveryResponses.slugSnapshot, f.slug)))
+    if ((c?.n ?? 0) > 0) return reply.status(409).send({ error: { code: 'HAS_RESPONSES', message: 'This form has responses; deactivate it instead' } })
+    await db.delete(discoveryForms).where(eq(discoveryForms.id, f.id))
+    return reply.status(204).send()
+  })
 }

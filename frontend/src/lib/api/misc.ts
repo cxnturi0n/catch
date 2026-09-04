@@ -147,6 +147,39 @@ export async function fetchAllDiscoveryResponses(): Promise<FetchResponsesResult
   }
 }
 
+// ── Discovery forms (admin) ──────────────────────────────────────────────────
+
+export interface DiscoveryFormAdmin {
+  id: string
+  slug: string
+  contactName: string | null
+  contactEmail: string | null
+  source: string | null
+  isActive: boolean
+  createdAt: string
+  responses: number
+}
+export interface DiscoveryFormInput {
+  slug: string
+  contactName?: string | null
+  contactEmail?: string | null
+  source?: string | null
+  isActive?: boolean
+}
+
+export async function fetchDiscoveryForms(): Promise<DiscoveryFormAdmin[]> {
+  return (await api<{ forms: DiscoveryFormAdmin[] }>('/admin/discovery/forms')).forms
+}
+export async function createDiscoveryForm(input: DiscoveryFormInput): Promise<DiscoveryFormAdmin> {
+  return (await api<{ form: DiscoveryFormAdmin }>('/admin/discovery/forms', { method: 'POST', body: input })).form
+}
+export async function updateDiscoveryForm(id: string, patch: Partial<DiscoveryFormInput>): Promise<DiscoveryFormAdmin> {
+  return (await api<{ form: DiscoveryFormAdmin }>(`/admin/discovery/forms/${id}`, { method: 'PATCH', body: patch })).form
+}
+export function deleteDiscoveryForm(id: string) {
+  return api<void>(`/admin/discovery/forms/${id}`, { method: 'DELETE' })
+}
+
 export interface SubmitResponseInput {
   formId: string | null
   slugSnapshot: string
